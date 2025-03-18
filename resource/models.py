@@ -6,7 +6,7 @@ class Category(models.Model):
         blank=True,)
     
     def __str__(self):
-        return self.name
+        return self.name if self.name else "Unnamed Category"
 
     @staticmethod
     def get_default_category():
@@ -58,4 +58,4 @@ class UploadedFile(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return self.name
+        return self.name if self.name else "Unnamed File"

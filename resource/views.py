@@ -21,33 +21,6 @@ def files(request):
     return render(request, 't_files.html')
 
 
-class MetaSearchView(APIView):
-    def get(self, request, *args, **kwargs):
-        search_query = request.query_params.get("q", "").strip()
-
-        # If no search query, return an empty result
-        if not search_query:
-            return Response({"files": [], "folders": []})
-
-        # Full-text search on files and folders
-        file_results = UploadedFile.objects.annotate(
-            search=SearchVector("name", "file_type", "category__name")
-        ).filter(search=search_query)
-
-        folder_results = Folder.objects.annotate(
-            search=SearchVector("name")
-        ).filter(search=search_query)
-
-        # Serialize results
-        file_serializer = FileSerializer(file_results, many=True)
-        folder_serializer = FolderSerializer(folder_results, many=True)
-
-        return Response({
-            "files": file_serializer.data,
-            "folders": folder_serializer.data,
-        })
-
-
 def myFiles(request, folder_id=None):
     if folder_id:
         files = UploadedFile.objects.filter(folder_id=folder_id).order_by("-uploaded_at")  # Get files in the folder
@@ -133,6 +106,8 @@ class FileUploadView(APIView):
         all_files = UploadedFile.objects.order_by("-uploaded_at")
         all_folders = Folder.objects.order_by("-created_at")
 
+        search_query = request.GET.get("search", "").strip().lower()
+
         # file_serializer = UploadedFileSerializer(all_files, many=True)
         # folder_serializer = FolderSerializer(all_folders, many=True)
         
@@ -169,10 +144,7 @@ class FileUploadView(APIView):
         if is_starred:  
             files = files.filter(is_starred=True)
 
-        # if is_archived: 
-        #     files = files.filter(is_archived=True)  
-
-
+        
         files = files.order_by("-uploaded_at")  
         folders = folders.order_by("-created_at")  
 

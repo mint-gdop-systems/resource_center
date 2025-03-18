@@ -1019,3 +1019,27 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 });
+
+// Search Functionality
+document.getElementById("searchInput").addEventListener("input", function () {
+  let searchQuery = this.value.toLowerCase();
+  let rows = document.querySelectorAll("table tbody tr");
+
+  rows.forEach((row) => {
+    let fileName = row
+      .querySelector(".name-col span")
+      .textContent.toLowerCase();
+    let fileCategory = row.cells[3]?.textContent.toLowerCase() || ""; // Category Column
+    let fileDate = row.cells[4]?.textContent.toLowerCase() || ""; // Date Column
+
+    if (
+      fileName.includes(searchQuery) ||
+      fileCategory.includes(searchQuery) ||
+      fileDate.includes(searchQuery)
+    ) {
+      row.style.display = "";
+    } else {
+      row.style.display = "none";
+    }
+  });
+});
