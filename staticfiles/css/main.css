@@ -1,0 +1,233 @@
+/* Search Bar Container */
+.search-bar {
+  display: flex;
+  align-items: center;
+  background-color: #f1f3f4; /* Light gray background */
+  border-radius: 12px;
+  padding: 14px 16px;
+  width: 100%;
+  max-width: 600px;
+  margin: 0;
+  margin-bottom: 10px;
+  transition: box-shadow 0.3s ease, background-color 0.3s ease; /* Smooth transition for shadow and background color */
+}
+
+/* Search Icon */
+.search-icon {
+  color: #5f6368; /* Default icon color */
+  margin-right: 8px;
+  font-size: 17px;
+  font-weight: 900;
+  transition: color 0.3s ease; /* Transition for icon color */
+}
+
+/* Search Input */
+.search-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  flex-grow: 1;
+  font-size: 14px;
+  color: #202124;
+  padding: 0;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease; /* Transition for background and shadow */
+}
+
+/* Focus Effect (Active) */
+.search-bar:focus-within {
+  background-color: #f8f8f8; /* Change background color to white when focused */
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1); /* Add shadow to give a "pop" effect */
+}
+
+.search-bar:focus-within .search-icon {
+  color: #4285f4; /* Change icon color when focused */
+}
+
+.search-bar:focus-within .search-input {
+  background-color: #f8f8f8;
+}
+
+/* Optional: Input Focus Effect */
+.search-input:focus {
+  background-color: #f8f8f8;
+}
+
+/* Unique Dropdown Button */
+#fileActionDropdown .btn-light {
+  background-color: #f8f9fa;
+  border: none;
+  /* padding: 6px 5px; */
+}
+
+#fileActionDropdown .btn-light:hover {
+  background-color: #e2e6ea;
+}
+.file-action-dropdown {
+  max-height: 350px;
+  overflow-y: auto; /* Enables scrolling when needed */
+  overflow-x: hidden; /* Prevents horizontal scrolling */
+  border-radius: 8px; /* Makes the dropdown look nicer */
+  padding: 5px; /* Adds some spacing */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Soft shadow */
+}
+
+/* Dropdown Items */
+.file-action-dropdown .dropdown-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  font-size: 15px; /* Increase text size */
+  font-weight: 500;
+  color: #333;
+  transition: background 0.3s ease;
+}
+
+/* Hover Effect */
+.file-action-dropdown .dropdown-item:hover {
+  background-color: #f1f1f1;
+  color: #007bff;
+}
+
+/* Icon Styling */
+.file-action-dropdown .dropdown-item i {
+  font-size: 18px; /* Bigger icons */
+  width: 24px; /* Space between icon and text */
+  text-align: center;
+}
+
+/* Custom Colors for Icons */
+.file-action-dropdown .dropdown-item i.fa-eye {
+  color: #17a2b8;
+} /* View - Blue */
+.file-action-dropdown .dropdown-item i.fa-pen {
+  color: #ffc107;
+} /* Edit - Yellow */
+.file-action-dropdown .dropdown-item i.fa-share-alt {
+  color: #28a745;
+} /* Share - Green */
+.file-action-dropdown .dropdown-item i.fa-download {
+  color: #007bff;
+} /* Download - Blue */
+.file-action-dropdown .dropdown-item i.fa-upload {
+  color: #6c757d;
+} /* Upload - Gray */
+.file-action-dropdown .dropdown-item i.fa-history {
+  color: #6610f2;
+} /* History - Purple */
+.file-action-dropdown .dropdown-item i.fa-comment {
+  color: #fd7e14;
+} /* Comment - Orange */
+.file-action-dropdown .dropdown-item i.fa-bookmark {
+  color: #ffc107;
+} /* Favorite - Yellow */
+.file-action-dropdown .dropdown-item i.fa-bell {
+  color: #dc3545;
+} /* Reminder - Red */
+.file-action-dropdown .dropdown-item i.fa-envelope {
+  color: #17a2b8;
+} /* Email - Blue */
+.file-action-dropdown .dropdown-item i.fa-archive {
+  color: #343a40;
+} /* Archive - Dark Gray */
+.file-action-dropdown .dropdown-item i.fa-trash {
+  color: #e60000;
+} /* Delete - Red */
+
+#google-drive-style .table-hover tbody tr:hover {
+  background-color: #f1f3f4;
+}
+
+#google-drive-style td {
+  vertical-align: middle;
+}
+
+#google-drive-style .fa {
+  font-size: 18px;
+}
+
+.file-action-dropdown {
+  min-width: 180px;
+}
+
+.file-action-dropdown .dropdown-item i {
+  font-size: 16px;
+  width: 20px;
+}
+
+.three-dots {
+  cursor: pointer;
+  font-size: 1.5rem;
+  color: #6c757d;
+}
+
+/* Action bar styling */
+.action-bar {
+  display: none !important; /* Initially hidden */
+  /* display: flex; */
+  align-items: center;
+  background-color: #f7f9fa; /* Light background color */
+  border-radius: 20px; /* Rounded corners */
+  padding: 5px 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 10px; /* Add margin to separate from the table */
+}
+
+.action-icons {
+  display: flex;
+  gap: 13px; /* Spacing between icons */
+  margin-left: 80px;
+}
+
+.action-btn {
+  background: none;
+  border: none;
+  color: #5f6368; /* Neutral icon color */
+  font-size: 18px; /* Icon size */
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 50%; /* Circular hover effect */
+  transition: background-color 0.2s ease;
+}
+
+.selected-text {
+  font-size: 14px;
+  color: #202124; /* Dark text color */
+  font-weight: 500;
+}
+
+.action-btn:hover {
+  background-color: #e8f0fe; /* Light blue hover */
+  color: #1a73e8; /* Blue icon on hover */
+}
+
+.action-btn i {
+  vertical-align: middle; /* Align icons with text */
+}
+
+/* Styling for the 'X' button */
+.clear-selection {
+  position: relative;
+  margin-right: 15px;
+  font-size: 18px;
+  color: #6c757d;
+  cursor: pointer;
+  transition: all 0.3s ease; /* Smooth transition for color, background, and shadow */
+  padding: 5px; /* Padding to make the hover effect look balanced */
+  border-radius: 50%; /* Rounded shape when hovering */
+}
+
+/* Hover effect for 'X' button */
+.clear-selection:hover {
+  color: #fff; /* Change the icon color to white */
+  background-color: #d9534f; /* Red background on hover */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2); /* Add a soft shadow */
+  transform: scale(1.1); /* Slight scaling for a hover effect */
+}
+
+#google-drive-style tbody tr.selected {
+  background-color: #e7f3fc !important;
+}
+
+#google-drive-style tbody tr.selected td {
+  background-color: inherit !important; /* Ensure child cells follow the row's color */
+}
