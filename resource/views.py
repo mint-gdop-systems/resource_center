@@ -1,5 +1,5 @@
 from django.contrib.postgres.search import SearchVector
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from rest_framework.response import Response
 from rest_framework import status, generics
 from rest_framework.views import APIView
@@ -11,12 +11,19 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.core.mail import EmailMessage
+from rest_framework.permissions import IsAuthenticated
 import json
+from django.contrib.auth import logout
+from urllib.parse import urlencode
+from django.contrib.auth.decorators import login_required
+
 
 # Create your views here.
 def home(request):
+    permission_classes = [IsAuthenticated] 
     return render(request, 'home.html')
 
+@login_required
 def files(request):
     return render(request, 't_files.html')
 
@@ -44,7 +51,7 @@ def myFiles(request, folder_id=None):
 
 
 class FileUploadView(APIView):
-    permission_classes = []  # No authentication required
+    permission_classes = [IsAuthenticated] # No authentication required
 
     def post(self, request, folder_id=None, format=None):
         if "files" not in request.FILES:
@@ -373,3 +380,10 @@ class ToggleArchivedView(APIView):
                 {"error": "File not found"},
                 status=status.HTTP_404_NOT_FOUND
             )        
+
+
+def logout_view(request):
+    logout(request)
+    redirect_uri = "http://localhost:8000/"  
+    logout_url = f"{settings.OIDC_OP_LOGOUT_ENDPOINT}?{urlencode({'post_logout_redirect_uri': redirect_uri, 'client_id': settings.OIDC_RP_CLIENT_ID})}"
+    return redirect(logout_url)

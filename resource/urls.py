@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from .views import FileUploadView, CreateFolderView, FolderContentsView, ToggleStarredView, ToggleArchivedView, ToggleFolderStarredView
+from .views import FileUploadView, CreateFolderView, FolderContentsView, ToggleStarredView, ToggleArchivedView, ToggleFolderStarredView, logout_view
 
 urlpatterns = [
     path( "", views.home, name="home"),
@@ -19,5 +19,5 @@ urlpatterns = [
     path("files/<int:file_id>/toggle-star/", ToggleStarredView.as_view(), name="toggle-star"),
     path("folders/<int:folder_id>/toggle-star/", ToggleFolderStarredView.as_view(), name="toggle-folder-star"),
     path("files/<int:file_id>/toggle-archive/", ToggleArchivedView.as_view(), name="toggle-archive"),
-   
+    path("logout/", logout_view, name="logout"),
 ]
