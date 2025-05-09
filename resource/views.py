@@ -16,6 +16,7 @@ import json
 from django.contrib.auth import logout
 from urllib.parse import urlencode
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 
 
 # Create your views here.
@@ -25,10 +26,15 @@ def home(request):
 
 @login_required
 def files(request):
+  
+    
     return render(request, 't_files.html')
 
 
 def myFiles(request, folder_id=None):
+    if not request.user.is_authenticated:
+        return redirect('/oidc/authenticate/') 
+
     if folder_id:
         files = UploadedFile.objects.filter(folder_id=folder_id).order_by("-uploaded_at")  # Get files in the folder
         folders = Folder.objects.filter(parent_id=folder_id).order_by("-created_at")  
@@ -40,6 +46,7 @@ def myFiles(request, folder_id=None):
     files_exist = files.exists()
     folders_exist = folders.exists()
 
+    
     return render(request, 'myFiles.html', {
         "files": files,
         "folders": folders,
@@ -51,7 +58,7 @@ def myFiles(request, folder_id=None):
 
 
 class FileUploadView(APIView):
-    permission_classes = [IsAuthenticated] # No authentication required
+    permission_classes = [IsAuthenticated] 
 
     def post(self, request, folder_id=None, format=None):
         if "files" not in request.FILES:
@@ -87,10 +94,16 @@ class FileUploadView(APIView):
                 file_type=file_type,
                 file_size=file_size,
                 category=category,
-                folder=folder
+                folder=folder,
+                owner=request.user, 
+                is_public=request.data.get("is_public", False),
             )
             uploaded_file.save()
             uploaded_files.append(uploaded_file)
+
+            shared_with = request.data.get("shared_with", [])
+            if shared_with:
+                uploaded_file.shared_with.set(shared_with)
 
         all_files = folder.files.order_by("-uploaded_at") if folder else UploadedFile.objects.filter(folder__isnull=True).order_by("-uploaded_at")
         uploaded_files_serializer = UploadedFileSerializer(uploaded_files, many=True)
@@ -110,6 +123,10 @@ class FileUploadView(APIView):
     # def get(self, request, format=None):
     def get(self, request, folder_id=None):
         """Return all uploaded files sorted by latest."""
+        current_email = request.user.email
+        current_first_name = request.user.first_name
+        print(current_first_name)
+
         all_files = UploadedFile.objects.order_by("-uploaded_at")
         all_folders = Folder.objects.order_by("-created_at")
 
@@ -155,14 +172,16 @@ class FileUploadView(APIView):
         files = files.order_by("-uploaded_at")  
         folders = folders.order_by("-created_at")  
 
-        file_serializer = UploadedFileSerializer(files, many=True)
-        folder_serializer = FolderSerializer(folders, many=True)
+        file_serializer = UploadedFileSerializer(files, many=True, context={'request': request})
+        folder_serializer = FolderSerializer(folders, many=True, context={'request': request})
         # print(file_serializer.data)
 
         return Response({
             "files": file_serializer.data,
             "folders": folder_serializer.data,
-            "current_folder": folder_id
+            "current_folder": folder_id,
+            "current_email": current_email,
+            "current_first_name": current_first_name
         })
 
 # Fetch Categories
@@ -178,7 +197,7 @@ class CreateFolderView(generics.CreateAPIView):
     serializer_class = FolderSerializer
 
     def perform_create(self, serializer):
-        folder = serializer.save()
+        folder = serializer.save(owner=self.request.user)
 
     def create(self, request, *args, **kwargs):
         parent_id = request.data.get('parent') or self.kwargs.get('parent_id')
@@ -209,18 +228,33 @@ class FolderContentsView(generics.RetrieveAPIView):
 
     def get(self, request, folder_id=None):
         try:
+            current_email = request.user.email
+            current_first_name = request.user.first_name
+            
 
+            # print(current_email)
             is_starred = request.GET.get("starred") == "true"
             is_archived = request.GET.get("archived") == "true"
+
             
             if folder_id:
                 # Fetch files and subfolders for the given folder
-                files = UploadedFile.objects.filter(folder_id=folder_id).order_by("-uploaded_at")
-                subfolders = Folder.objects.filter(parent_id=folder_id).order_by("-created_at")
+                files = UploadedFile.objects.filter(
+                    Q(folder_id=folder_id) & (Q(owner=request.user) | Q(is_public=True))
+                ).order_by("-uploaded_at")
+
+                subfolders = Folder.objects.filter(
+                    Q(parent_id=folder_id) & (Q(owner=request.user) | Q(is_public=True))
+                ).order_by("-created_at")
             else:
                 # Fetch root-level files and folders
-                files = UploadedFile.objects.filter(folder__isnull=True).order_by("-uploaded_at")
-                subfolders = Folder.objects.filter(parent__isnull=True).order_by("-created_at")
+                files = UploadedFile.objects.filter(
+                    Q(folder__isnull=True) & (Q(owner=request.user) | Q(is_public=True))
+                ).order_by("-uploaded_at")
+
+                subfolders = Folder.objects.filter(
+                    Q(parent__isnull=True) & (Q(owner=request.user) | Q(is_public=True))
+                ).order_by("-created_at")
 
             if is_starred:
                 files = files.filter(is_starred=True)
@@ -232,13 +266,15 @@ class FolderContentsView(generics.RetrieveAPIView):
             files = files.order_by("-uploaded_at")
             subfolders = subfolders.order_by("-created_at")    
 
-            files_serializer = UploadedFileSerializer(files, many=True)
-            folders_serializer = FolderSerializer(subfolders, many=True)
+            files_serializer = UploadedFileSerializer(files, many=True, context={'request': request})
+            folders_serializer = FolderSerializer(subfolders, many=True, context={'request': request})
 
             return Response({
                 "files": files_serializer.data,
                 "folders": folders_serializer.data,
-                "current_folder": folder_id  # If None, it means root
+                "current_folder": folder_id,
+                "current_email": current_email,
+                "current_first_name": current_first_name
             }, status=status.HTTP_200_OK)
         
         except Exception as e:
@@ -301,24 +337,24 @@ def view_file(request, file_id):
 #     return JsonResponse({"error": "Invalid request method."}, status=400)
                                                   
                                                     
-class Sendmail(APIView):
-    def post(self, request):
-        email = data.get('email')
-        message = data.get('message')
-        # file_id = data.get('file_id')
+# class Sendmail(APIView):
+#     def post(self, request):
+#         email = data.get('email')
+#         message = data.get('message')
+#         # file_id = data.get('file_id')
 
 
-        # email = request.data['d']
-        emailw = EmailMessage(
-            'Test email Subject',
-            'Test emal body, this msg is from python', 
-            setting.EMAIL_HOST_USER, 
-            [email]
-        )
+#         # email = request.data['d']
+#         emailw = EmailMessage(
+#             'Test email Subject',
+#             'Test emal body, this msg is from python', 
+#             setting.EMAIL_HOST_USER, 
+#             [email]
+#         )
 
-        # emailw.attach_file('')
-        emailw.send(fail_silently=False)
-        return Response({'status': True, 'message': 'Email Sent Successfully' })
+#         # emailw.attach_file('')
+#         emailw.send(fail_silently=False)
+#         return Response({'status': True, 'message': 'Email Sent Successfully' })
 
 
 class ToggleStarredView(APIView):

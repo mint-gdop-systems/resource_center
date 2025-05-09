@@ -97,7 +97,7 @@
                       <a href="my-files">
                         <i class="fas fa-folder-open"></i>
                         <p>My Files</p>
-                        <span class="badge bg-primary">2</span>
+                        <span class="badge bg-primary" id="myFilesCount"></span>
                       </a>
                     </li>
 
@@ -109,10 +109,10 @@
                     </li>
 
                     <li class="nav-item">
-                      <a href="#">
+                      <a href="#" id="sharedWithMeLink">
                         <i class="fas fa-users"></i>
                         <p>Shared With Me</p>
-                        <span class="badge bg-warning">5</span>
+                        <span class="badge bg-warning" id="sharedWithMeCount"></span>
                       </a>
                     </li>
                                                                                          
@@ -135,7 +135,7 @@
 
               <!-- Projects Section -->
 
-              <li class="nav-item">
+              <!-- <li class="nav-item">
                 <a
                   data-bs-toggle="collapse"
                   data-bs-target="#project-documents"
@@ -290,75 +290,75 @@
                     </li>
                   </ul>
                 </div>
-              </li>
+              </li> -->
 
               <!-- Resources -->
-              <li class="nav-section">
+              <!-- <li class="nav-section">
                 <span class="sidebar-mini-icon">
                   <i class="fa fa-book"></i>
                 </span>
                 <h4 class="text-section">Resources</h4>
-              </li>
+              </li> -->
 
               <!-- Resource Categories -->
              
 
-              <li class="nav-item">
+              <!-- <li class="nav-item">
                 <a href="#">
                   <i class="fas fa-file-alt"></i>
                   <p>Policies & Guidelines</p>
                 </a>
-              </li>
+              </li> -->
 
-              <li class="nav-item">
+              <!-- <li class="nav-item">
                 <a href="#">
                   <i class="fas fa-graduation-cap"></i>
                   <p>Trainings & User Guides</p>
                 </a>
-              </li>
+              </li> -->
 
-              <li class="nav-item">
+              <!-- <li class="nav-item">
                 <a href="#">
                   <i class="fas fa-clipboard"></i>
                   <p>Forms & Templates</p>
                 </a>
-              </li>
+              </li> -->
 
-              <li class="nav-item">
+              <!-- <li class="nav-item">
                 <a href="#">
                   <i class="fas fa-chart-line"></i>
                   <p>Reports & Analysis</p>
                 </a>
-              </li>
+              </li> -->
 
-              <li class="nav-item">
+              <!-- <li class="nav-item">
                 <a href="#">
                   <i class="fas fa-paperclip"></i>
                   <p>Submitted Reports</p>
                 </a>
-              </li>
+              </li> -->
                                
               <!-- Settings -->
-              <li class="nav-section">
+              <!-- <li class="nav-section">
                 <span class="sidebar-mini-icon">
                   <i class="fa fa-cog"></i>
                 </span>
                 <h4 class="text-section">Settings</h4>
-              </li>
+              </li> -->
 
-              <li class="nav-item">
+              <!-- <li class="nav-item">
                 <a href="#">
                   <i class="fas fa-user"></i>
                   <p>Profile</p>
                 </a>
-              </li>
+              </li> -->
 
-              <li class="nav-item">
+              <!-- <li class="nav-item">
                 <a href="#">
                   <i class="fas fa-question-circle"></i>
                   <p>Help & Support</p>
                 </a>
-              </li>
+              </li> -->
             </ul>
           </div>
         </div>
@@ -455,9 +455,20 @@
                     </div>
                     <span class="profile-username">
                       <span class="op-7">Hi,</span>
-                      <span class="fw-bold">Hussen</span>
+                      <span class="fw-bold" id="user-name" style="text-transform: capitalize"></span>
                     </span>
                   </a>
+                  <ul class="dropdown-menu dropdown-user animated fadeIn">
+                    <div class="dropdown-user-scroll scrollbar-outer">
+                      
+                      <li>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item" href="#">My Profile</a>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item" href="{% url 'logout' %}">Logout</a>
+                      </li>
+                    </div>
+                  </ul>
                 </li>
               </ul>
             </div>
@@ -470,32 +481,32 @@
           <div class="page-inner">
             <div class="row d-flex justify-content-center align-items-center">
               <!-- Upload or Drop -->
-              <div class="col-6 col-sm-4 col-lg-2">
+              <!-- <div class="col-6 col-sm-4 col-lg-2">
                 <button class="card-button upload_card">
                   <div class="card-body">
                     <i class="fa fa-upload fa-2x text-primary"></i>
                     <div class="text-muted mt-2">Upload or Drop</div>
                   </div>
                 </button>
-              </div>
+              </div> -->
               <!-- New "Create" card -->
-    <div class="col-6 col-sm-4 col-lg-2">
+    <!-- <div class="col-6 col-sm-4 col-lg-2">
       <button class="card-button">
         <div class="card-body">
           <i class="fa fa-plus fa-2x text-primary"></i>
           <div class="text-muted mt-2">Create</div>
         </div>
       </button>
-    </div>
+    </div> -->
               <!-- Create Folder -->
-              <div class="col-6 col-sm-4 col-lg-2">
+              <!-- <div class="col-6 col-sm-4 col-lg-2">
                 <button class="card-button" type="button" data-bs-toggle="modal" data-bs-target="#cf-createFolderModal">
                   <div class="card-body">
                     <i class="fa fa-folder fa-2x text-primary"></i>
                     <div class="text-muted mt-2">Create Folder</div>
                   </div>
                 </button>
-              </div>
+              </div> -->
 
               <!-- Modal -->
             <div class="modal fade" id="cf-createFolderModal" tabindex="-1" aria-labelledby="cf-createFolderModalLabel" aria-hidden="true">
@@ -523,31 +534,31 @@
             </div>
 
               <!-- Share -->
-              <div class="col-6 col-sm-4 col-lg-2">
+              <!-- <div class="col-6 col-sm-4 col-lg-2">
                 <button class="card-button">
                   <div class="card-body">
                     <i class="fa fa-share-alt fa-2x text-primary"></i>
                     <div class="text-muted mt-2">Share</div>
                   </div>
                 </button>
-              </div>
+              </div> -->
               <!-- Transfer a Copy -->
-              <div class="col-6 col-sm-4 col-lg-2">
+              <!-- <div class="col-6 col-sm-4 col-lg-2">
                 <button class="card-button">
                   <div class="card-body">
                     <i class="fa fa-copy fa-2x text-primary"></i>
                     <div class="text-muted mt-2">Transfer a Copy</div>
                   </div>
                 </button>
-              </div>
-              <div class="col-6 col-sm-4 col-lg-2">
+              </div> -->
+              <!-- <div class="col-6 col-sm-4 col-lg-2">
                 <button class="card-button" id="archive-button">
                   <div class="card-body">
-                    <i class="fa fa-archive fa-2x text-primary"></i> <!-- 'text-dark' for a more neutral, professional look -->
+                    <i class="fa fa-archive fa-2x text-primary"></i> 
                     <div class="text-muted mt-2">Archived</div> 
                   </div>
                 </button>
-              </div>
+              </div> -->
             </div>
             
             <div class="row mt-5 mb-2">
@@ -762,7 +773,7 @@
               <tr>
                   <th>Name</th>
                   <th></th>
-                  <th>Who can access</th>
+                  <th>Owner</th>
                   <th style="width: 15%;">Category</th>
                   <th style="width: 12%;">Modified</th>
                   <th style="width: 12%;">File size</th>
@@ -775,9 +786,25 @@
   </div>
 </div>
 
+<div id="shared-with-me-section" style="display: none;">
+  <div class="table-responsive">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Shared By</th>
+          <th>Shared Date</th>
+          <th>Message</th>
+        </tr>
+      </thead>
+      <tbody id="shared-with-me-table-body"></tbody>
+    </table>
+  </div>
+</div>
+
 
 <!-- send email modal -->
-<div id="customModalOverlay" class="custom-modal-overlay">
+<!-- <div id="customModalOverlay" class="custom-modal-overlay">
   <div class="custom-modal-card">
       <div class="custom-modal-header">
           <h2 class="custom-modal-title">Send your transfer using email</h2>
@@ -793,7 +820,26 @@
           <button class="custom-modal-button send" onclick="sendEmail()">Send</button>
       </div>
   </div>
+</div> -->
+
+
+<!-- Share Modal -->
+<div id="customModalOverlay" class="custom-modal-overlay">
+  <div class="custom-modal-card">
+    <div class="custom-modal-header">
+      <h2 class="custom-modal-title">Share via Email</h2>
+    </div>
+    <form id="shareForm" class="custom-modal-body">
+      <input type="email" id="email" class="custom-modal-input" placeholder="Recipient email" required>
+      <textarea id="message" class="custom-modal-input" placeholder="Add a message" rows="4" required></textarea>
+      <div class="custom-modal-footer">
+        <button type="button" class="custom-modal-button cancel" onclick="closeCustomModal()">Cancel</button>
+        <button type="submit" class="custom-modal-button send">Send</button>
+      </div>
+    </form>
+  </div>
 </div>
+
 
 
 

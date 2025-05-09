@@ -346,7 +346,7 @@ function fetchFilesAndFolders(
 ) {
   // console.log(folderId);
   let url = folderId ? `/folder-contents/${folderId}/` : "/folder-contents/"; // Default URL for all folders
-
+  console.log("Fetching from:", url);
   // If we are viewing archived files
   if (archived) {
     url = "/file-upload/"; // Set base URL for archived files
@@ -366,14 +366,22 @@ function fetchFilesAndFolders(
   fetch(url)
     .then((response) => response.json())
     .then((data) => {
+      console.log("Raw response data:", data);
       if (!data.files || !data.folders) {
         console.error("Unexpected API response format:", data);
         return;
       }
 
       currentFolder.id = data.current_folder ? data.current_folder : null;
-      // console.log(data);
-      renderFilesAndFolders({ files: data.files, folders: data.folders });
+      const currentEmail = data.current_email;
+      const current_first_name = data.current_first_name;
+      document.getElementById("user-name").innerText = current_first_name;
+      renderFilesAndFolders({
+        files: data.files,
+        folders: data.folders,
+        currentEmail: currentEmail,
+      });
+      document.getElementById("myFilesCount").innerText = data.files.length;
     })
     .catch((error) => {
       console.error("Error fetching files and folders:", error);
@@ -381,7 +389,7 @@ function fetchFilesAndFolders(
     });
 }
 
-function renderFilesAndFolders({ folders = [], files = [] }) {
+function renderFilesAndFolders({ folders = [], files = [], currentEmail }) {
   const combinedData = [...folders, ...files];
 
   // Sort folders and files separately
@@ -392,7 +400,7 @@ function renderFilesAndFolders({ folders = [], files = [] }) {
   const sortedData = [...folders, ...files];
 
   // console.log("Sorted Data:", sortedData);
-  updateTable(sortedData);
+  updateTable(sortedData, currentEmail);
 }
 
 // Helper function to format dates
@@ -450,7 +458,7 @@ function generateActionButton(fileId, fileName) {
           <li><a class="dropdown-item" href="#" onclick="viewFile(${fileId})"><i class="fa fa-eye mx-2"></i> View</a></li>
           <li><a class="dropdown-item" href="#" onclick="editFile(${fileId})"><i class="fa fa-pen mx-2"></i> Edit</a></li>
           <li><a class="dropdown-item" href="#" onclick="downloadFile(${fileId})"><i class="fa fa-download mx-2"></i> Download</a></li>
-          <li><a class="dropdown-item" href="#" onclick="shareFile(${fileId})"><i class="fa fa-share-alt mx-2"></i> Share</a></li>
+          <li><a class="dropdown-item" href="#" onclick="openCustomModal(${fileId})"><i class="fa fa-share-alt mx-2"></i> Share</a></li>
           <li><a class="dropdown-item" href="#" onclick="favoriteFile(${fileId})"><i class="fa fa-bookmark mx-2"></i> Favorite</a></li>
           <li><a class="dropdown-item" href="#" onclick="uploadNewVersion(${fileId})"><i class="fa fa-upload mx-2"></i> Upload New Version</a></li>
           <li><a class="dropdown-item" href="#" onclick="viewVersionHistory(${fileId})"><i class="fa fa-history mx-2"></i> Version History</a></li>
@@ -465,9 +473,11 @@ function generateActionButton(fileId, fileName) {
   `;
 }
 
-function updateTable(files) {
+function updateTable(files, currentEmail) {
   let tableBody = document.querySelector("table tbody");
   tableBody.innerHTML = ""; // Clear existing content
+  // const cu = response.current_email;
+  // console.log(currentEmail);
 
   files.forEach((file) => {
     const isFolder = file.hasOwnProperty("created_at"); // Determine if it's a folder
@@ -483,6 +493,10 @@ function updateTable(files) {
       : file.category
       ? file.category.name
       : "--";
+
+    let ownerDisplay =
+      file.owner_email === currentEmail ? "me" : file.owner_email;
+    // console.log(file.owner_email);
 
     let row = `<tr class="${isFolder ? "folder-row" : "file-row"}">
     <td class="name-col">
@@ -504,7 +518,7 @@ function updateTable(files) {
       isFolder ? "folder" : "file"
     }', this, '${file.name}')"></i>
   </td>
-      <td>Private</td>  
+      <td>${ownerDisplay}</td>
       <td>${category}</td>  
       <td>${formattedDate}</td>
       <td>${formattedFileSize}</td>
@@ -660,6 +674,8 @@ function showNotification(itemNames, action) {
       message = `${itemNames.join(", ")} archived successfully.`;
     } else if (action === "unarchived") {
       message = `${itemNames.join(", ")} unarchived successfully.`;
+    } else if (action === "shared") {
+      message = `Shared successfully!`;
     }
 
     // Update only the message text
@@ -1043,3 +1059,131 @@ document.getElementById("searchInput").addEventListener("input", function () {
     }
   });
 });
+
+document
+  .getElementById("shareForm")
+  .addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const email = document.getElementById("email").value.trim();
+    const message = document.getElementById("message").value.trim();
+
+    try {
+      const response = await fetch("/api/share/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]")
+            .value,
+        },
+        body: JSON.stringify({
+          id: selectedFileId,
+          email: email,
+          message: message,
+        }),
+      });
+
+      if (response.ok) {
+        // alert("Shared successfully!");
+        showNotification("File", "shared");
+        closeCustomModal();
+      } else {
+        const errorData = await response.json();
+        alert("Error: " + (errorData.detail || "Something went wrong"));
+      }
+    } catch (err) {
+      alert("Network error: " + err.message);
+    }
+  });
+
+document
+  .getElementById("sharedWithMeLink")
+  .addEventListener("click", function (e) {
+    e.preventDefault();
+    loadSharedWithMe(); // Load and display shared files
+  });
+
+function loadSharedWithMe() {
+  fetch("/api/shared-with-me/")
+    .then((res) => res.json())
+    .then((data) => {
+      updateSharedTable(data.files); // This fills the shared-with-me table
+
+      // Show the shared-with-me section and hide the rest
+      document.getElementById("shared-with-me-section").style.display = "block";
+      document.getElementById("file-table-section").style.display = "none";
+
+      // Update the badge count
+      document.getElementById("sharedWithMeCount").innerText =
+        data.files.length;
+      markSharedFilesAsSeen();
+    })
+    .catch((err) => console.error("Failed to load shared files:", err));
+}
+
+function updateSharedTable(sharedFiles) {
+  const tableBody = document.getElementById("shared-with-me-table-body");
+  tableBody.innerHTML = "";
+
+  sharedFiles.forEach((entry) => {
+    const file = entry.file;
+    const fileIcon = getFileIcon(file.file_type);
+    const formattedDate = formatDate(entry.shared_at);
+    // const fileSize = formatFileSize(file.file_size);
+
+    const row = `
+      <tr>
+      <td class="name-col">
+  <i class="${fileIcon} file-icon"></i>
+  <span class="text-muted" 
+        onclick="viewFile(${file.id})" style="cursor:pointer">${file.name}
+  </span>
+</td>
+        
+        <td>${entry.shared_by}</td>
+        <td>${formattedDate}</td>
+        <td>${entry.message || "--"}</td>
+      </tr>
+    `;
+
+    tableBody.innerHTML += row;
+  });
+}
+
+function updateSharedNotificationCount() {
+  fetch("/api/shared-with-me/unseen-count/")
+    .then((res) => res.json())
+    .then((data) => {
+      const badge = document.getElementById("sharedWithMeCount");
+      if (data.count > 0) {
+        badge.innerText = data.count;
+        badge.style.display = "inline-block";
+      } else {
+        badge.innerText = "";
+        badge.style.display = "none";
+      }
+    })
+    .catch((err) => console.error("Notification count fetch failed", err));
+}
+
+document.addEventListener("DOMContentLoaded", updateSharedNotificationCount);
+function markSharedFilesAsSeen() {
+  fetch("/api/shared-with-me/mark-seen/", {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCSRFToken(),
+    },
+  })
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error("Failed to mark files as seen.");
+      }
+      // Reset badge after marking seen
+      document.getElementById("sharedWithMeCount").innerText = "";
+    })
+    .catch((err) => {
+      console.error("Error marking shared files as seen:", err);
+    });
+}

@@ -43,16 +43,16 @@ INSTALLED_APPS = [
 ]
 
 AUTHENTICATION_BACKENDS = (
-    'mozilla_django_oidc.auth.OIDCAuthenticationBackend',
+    'resource.backends.MyOIDCAuthenticationBackend',
     'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend',
 )
 
-OIDC_RP_CLIENT_ID = "resource-center-client"
-OIDC_RP_CLIENT_SECRET = ""  
+OIDC_RP_CLIENT_ID = "resource-center"
+OIDC_RP_CLIENT_SECRET = "WR1t72WQYTi0DZq9kakp29hcOXNakpW5"  
 
-KEYCLOAK_URL = "http://localhost:8080"
-REALM = "myrealm"
+KEYCLOAK_URL = "http://localhost:9090"
+REALM = "ResourceCenterRealm"
 
 OIDC_OP_AUTHORIZATION_ENDPOINT = f"{KEYCLOAK_URL}/realms/{REALM}/protocol/openid-connect/auth"
 OIDC_OP_TOKEN_ENDPOINT = f"{KEYCLOAK_URL}/realms/{REALM}/protocol/openid-connect/token"
@@ -63,7 +63,7 @@ OIDC_OP_LOGOUT_ENDPOINT = f"{KEYCLOAK_URL}/realms/{REALM}/protocol/openid-connec
 OIDC_RP_SIGN_ALGO = "RS256"
 
 LOGIN_URL = "oidc_authentication_init"
-LOGOUT_REDIRECT_URL = "http://localhost:8080"
+LOGOUT_REDIRECT_URL = "http://localhost:9090"
 LOGIN_REDIRECT_URL = "http://localhost:8000/my-files"
 
 
@@ -202,5 +202,8 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'hussenjebril12@gmail.com'
 EMAIL_HOST_PASSWORD = 'muka nvoo hzlk aavw'
 DEFAULT_FROM_EMAIL = 'hussenjebril12@gmail.com'
+
+
+
 
 

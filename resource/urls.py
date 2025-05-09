@@ -1,6 +1,10 @@
 from django.urls import path
 from . import views
 from .views import FileUploadView, CreateFolderView, FolderContentsView, ToggleStarredView, ToggleArchivedView, ToggleFolderStarredView, logout_view
+from .sharing_views import ShareItemView, SharedWithMeView, shared_unseen_count, mark_shared_as_seen 
+
+
+
 
 urlpatterns = [
     path( "", views.home, name="home"),
@@ -20,4 +24,9 @@ urlpatterns = [
     path("folders/<int:folder_id>/toggle-star/", ToggleFolderStarredView.as_view(), name="toggle-folder-star"),
     path("files/<int:file_id>/toggle-archive/", ToggleArchivedView.as_view(), name="toggle-archive"),
     path("logout/", logout_view, name="logout"),
+    path('api/share/', ShareItemView.as_view(), name='share-item'),
+    path('api/shared-with-me/', SharedWithMeView.as_view(), name='shared-with-me'),
+    path("api/shared-with-me/unseen-count/", shared_unseen_count),
+    path("api/shared-with-me/mark-seen/", mark_shared_as_seen),
+
 ]
