@@ -375,6 +375,7 @@ function fetchFilesAndFolders(
       currentFolder.id = data.current_folder ? data.current_folder : null;
       const currentEmail = data.current_email;
       const current_first_name = data.current_first_name;
+      console.log(currentEmail, current_first_name);
       document.getElementById("user-name").innerText = current_first_name;
       renderFilesAndFolders({
         files: data.files,
@@ -1005,7 +1006,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Update button style dynamically
     if (showOnlyStarred) {
-      starredBtn.classList.add("active-starred"); // Custom class for active state
+      starredBtn.classList.add("active-starred"); 
     } else {
       starredBtn.classList.remove("active-starred");
     }
@@ -1187,3 +1188,127 @@ function markSharedFilesAsSeen() {
       console.error("Error marking shared files as seen:", err);
     });
 }
+
+
+
+
+
+
+function editFile(fileId) {
+ 
+  fetch("/get-categories/")
+  .then(res => res.json())
+  .then(data => {
+    const select = document.getElementById("edit-category");
+    select.innerHTML = "";
+    data.categories.forEach(cat => {
+      const option = document.createElement("option");
+      option.value = cat.id;
+      option.textContent = cat.name;
+      select.appendChild(option);
+    });
+  });
+
+
+  fetch(`/files-update/${fileId}/`, {
+    method: 'GET',
+    headers: {
+      'Authorization': 'Bearer ' + localStorage.getItem('access_token'), // if using JWT
+      'Content-Type': 'application/json'
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    // Populate modal fields
+    document.getElementById('edit-name').value = data.name;
+    document.getElementById('edit-category').value = data.category.id; // assumes category object has an id
+    document.getElementById('edit-tags').value = data.meta_tags.map(tag => tag.name).join(', ');
+    document.getElementById('edit-is-public').checked = data.is_public;
+
+    // Store file ID in a hidden field or global variable
+    document.getElementById('edit-file-form').setAttribute('data-file-id', fileId);
+
+    // Show modal
+    let modal = new bootstrap.Modal(document.getElementById('editFileModal'));
+    modal.show();
+  })
+  .catch(error => console.error('Error fetching file data:', error));
+}
+
+
+document.getElementById("save-edit-btn").addEventListener("click", function () {
+  const fileId = document.getElementById('edit-file-form').getAttribute('data-file-id');
+
+  const name = document.getElementById('edit-name').value;
+  const category_id = document.getElementById('edit-category').value;
+  const tags = document.getElementById('edit-tags').value.split(',').map(tag => tag.trim()).filter(tag => tag);
+  const is_public = document.getElementById('edit-is-public').checked;
+
+  const payload = {
+    name: name,
+    category_id: category_id,
+    meta_tag_names: tags,
+    is_public: is_public
+  };
+
+  fetch(`/file/update/${fileId}/`, {
+    method: 'PATCH',  
+    headers: {
+      'Authorization': 'Bearer ' + localStorage.getItem('access_token'),
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCSRFToken(),  
+    },
+    body: JSON.stringify(payload) 
+  })
+  .then(response => {
+    if (!response.ok) {
+      if (response.status === 403) {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('editFileModal'));
+        modal.hide();
+        throw new Error("You do not have permission to update this file.");
+      } else {
+        throw new Error("An unexpected error occurred while updating.");
+      }
+    }
+    return response.json();
+  })
+  .then(data => {
+    location.reload();  
+  })
+  .catch(error => {
+    showErrorMessage(error.message);
+  });
+});
+
+function showErrorMessage(message) {
+  const alertContainer = document.getElementById("alert-container");
+
+  // Clear existing alerts
+  alertContainer.innerHTML = '';
+
+  // Create the alert element
+  const alertElement = document.createElement("div");
+  alertElement.className = "alert alert-dismissible fade show";
+  alertElement.setAttribute("role", "alert");
+  alertElement.setAttribute("style", `
+    background-color: #f8d7da;         /* Soft pinkish red */
+    color: #842029;                    /* Dark red text */
+    border: 1px solid #f5c2c7;
+    box-shadow: 0 0.5rem 1rem rgba(220, 53, 69, 0.1);
+  `);
+
+  alertElement.innerHTML = `
+    <strong>Access Denied:</strong> ${message}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  `;
+
+  alertContainer.appendChild(alertElement);
+
+  // Auto-dismiss after 4 seconds
+  setTimeout(() => {
+    const alert = bootstrap.Alert.getOrCreateInstance(alertElement);
+    alert.close();
+  }, 4000);
+}
+
+

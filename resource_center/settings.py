@@ -4,6 +4,7 @@ import os
 import dj_database_url
 from pathlib import Path
 from dotenv import load_dotenv
+from decouple import config
 
 # Load environment variables from .env
 load_dotenv()
@@ -48,11 +49,11 @@ AUTHENTICATION_BACKENDS = (
     'allauth.account.auth_backends.AuthenticationBackend',
 )
 
-OIDC_RP_CLIENT_ID = "resource-center"
-OIDC_RP_CLIENT_SECRET = "WR1t72WQYTi0DZq9kakp29hcOXNakpW5"  
+OIDC_RP_CLIENT_ID = config("OIDC_RP_CLIENT_ID")
+OIDC_RP_CLIENT_SECRET = config("OIDC_RP_CLIENT_SECRET")
 
-KEYCLOAK_URL = "http://localhost:9090"
-REALM = "ResourceCenterRealm"
+KEYCLOAK_URL = config("KEYCLOAK_URL")
+REALM = config("KEYCLOAK_REALM")
 
 OIDC_OP_AUTHORIZATION_ENDPOINT = f"{KEYCLOAK_URL}/realms/{REALM}/protocol/openid-connect/auth"
 OIDC_OP_TOKEN_ENDPOINT = f"{KEYCLOAK_URL}/realms/{REALM}/protocol/openid-connect/token"
@@ -63,8 +64,8 @@ OIDC_OP_LOGOUT_ENDPOINT = f"{KEYCLOAK_URL}/realms/{REALM}/protocol/openid-connec
 OIDC_RP_SIGN_ALGO = "RS256"
 
 LOGIN_URL = "oidc_authentication_init"
-LOGOUT_REDIRECT_URL = "http://localhost:9090"
-LOGIN_REDIRECT_URL = "http://localhost:8000/my-files"
+LOGOUT_REDIRECT_URL = config("OIDC_LOGOUT_REDIRECT_URL")
+LOGIN_REDIRECT_URL = config("OIDC_LOGIN_REDIRECT_URL")
 
 
 

@@ -3,6 +3,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from rest_framework.response import Response
 from rest_framework import status, generics
 from rest_framework.views import APIView
+from rest_framework.generics import RetrieveUpdateAPIView
 from .models import UploadedFile, Category, Folder
 from .serializers import UploadedFileSerializer, FolderSerializer
 from django.http import JsonResponse, FileResponse, Http404
@@ -122,10 +123,9 @@ class FileUploadView(APIView):
 
     # def get(self, request, format=None):
     def get(self, request, folder_id=None):
-        """Return all uploaded files sorted by latest."""
         current_email = request.user.email
         current_first_name = request.user.first_name
-        print(current_first_name)
+
 
         all_files = UploadedFile.objects.order_by("-uploaded_at")
         all_folders = Folder.objects.order_by("-created_at")
@@ -151,8 +151,8 @@ class FileUploadView(APIView):
             file_serializer = UploadedFileSerializer(files, many=True)
             return Response({
                 "files": file_serializer.data,
-                "folders": [],  # ✅ Send an empty list for folders
-                "current_folder": None  # No specific folder
+                "folders": [],  
+                "current_folder": None  
             })
 
 
@@ -184,11 +184,57 @@ class FileUploadView(APIView):
             "current_first_name": current_first_name
         })
 
+
+    def patch(self, request, file_id=None, format=None):
+        try:
+            # Retrieve the file by ID
+            file = UploadedFile.objects.get(id=file_id)
+
+            # Ensure the file belongs to the authenticated user
+            if file.owner != request.user:
+                return Response({"error": "You don't have permission to update this file."}, status=status.HTTP_403_FORBIDDEN)
+
+            # Update the fields provided in the request data
+            file.name = request.data.get("name", file.name)
+            file.is_public = request.data.get("is_public", file.is_public)
+            category_id = request.data.get("category_id")
+            if category_id:
+                category = Category.objects.filter(id=category_id).first()
+                if category:
+                    file.category = category
+
+            # Update tags (assuming 'meta_tag_names' is the key sent in the request)
+            tags = request.data.get("meta_tag_names", [])
+
+
+            # Serialize the updated file and return the response
+            file_serializer = UploadedFileSerializer(file, data=request.data, partial=True)
+
+            if file_serializer.is_valid():
+                file_serializer.save()
+                return Response({
+                    "message": "File updated successfully",
+                    "file": file_serializer.data
+                }, status=status.HTTP_200_OK)
+                
+            else:
+                return Response(file_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        except UploadedFile.DoesNotExist:
+            return Response({"error": "File not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
 # Fetch Categories
 def get_categories(request):
     categories = Category.objects.all()
     categories_list = [{"id": category.id, "name": category.name} for category in categories]
     return JsonResponse({"categories": categories_list})
+
+
+class FileDetailView(RetrieveUpdateAPIView):
+    queryset = UploadedFile.objects.all()
+    serializer_class = UploadedFileSerializer
+    permission_classes = [IsAuthenticated]
 
 
 # Create a Folder

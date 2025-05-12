@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Category, UploadedFile, Folder, FileSharing
+from .models import Category, UploadedFile, Folder, FileSharing, Tag
 
 User = get_user_model()
 
@@ -37,6 +37,12 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = ["id", "name"]  # Include 'id' for API use
 
 
+class TagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tag
+        fields = ['id', 'name']
+
+
 class UploadedFileSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)  # Nested representation
     category_id = serializers.PrimaryKeyRelatedField(
@@ -46,9 +52,14 @@ class UploadedFileSerializer(serializers.ModelSerializer):
     owner_email = serializers.SerializerMethodField()
     owner_first_name = serializers.SerializerMethodField()
 
+    meta_tags = TagSerializer(many=True, read_only=True)
+    meta_tag_names = serializers.ListField(
+        child=serializers.CharField(), write_only=True, required=False
+    )
+
     class Meta:
         model = UploadedFile
-        fields = ["id", "name", "file", "file_type", "file_size", "category", "category_id", "uploaded_at", 'folder', 'is_starred', 'is_archived', 'owner_email',  'owner_first_name']
+        fields = ["id", "name", "file", "file_type", "file_size", "category", "category_id", "uploaded_at", 'folder', 'is_starred', 'is_archived', 'is_public', 'owner_email',  'owner_first_name', 'meta_tags', 'meta_tag_names']
 
     def get_owner_email(self, obj):
         if obj.owner:
@@ -59,6 +70,24 @@ class UploadedFileSerializer(serializers.ModelSerializer):
         if obj.owner:
             return obj.owner.first_name
         return None      
+
+    def create(self, validated_data):
+        tag_names = validated_data.pop('meta_tag_names', [])
+        instance = super().create(validated_data)
+        self._handle_tags(instance, tag_names)
+        return instance
+
+    def update(self, instance, validated_data):
+        tag_names = validated_data.pop('meta_tag_names', [])
+        instance = super().update(instance, validated_data)
+        self._handle_tags(instance, tag_names)
+        return instance
+
+    def _handle_tags(self, instance, tag_names):
+        instance.meta_tags.clear()
+        for name in tag_names:
+            tag, _ = Tag.objects.get_or_create(name=name.strip())
+            instance.meta_tags.add(tag)
 
 
 class FileSharingSerializer(serializers.ModelSerializer):

@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from .views import FileUploadView, CreateFolderView, FolderContentsView, ToggleStarredView, ToggleArchivedView, ToggleFolderStarredView, logout_view
+from .views import FileUploadView, CreateFolderView, FolderContentsView, ToggleStarredView, ToggleArchivedView, ToggleFolderStarredView, logout_view, FileDetailView
 from .sharing_views import ShareItemView, SharedWithMeView, shared_unseen_count, mark_shared_as_seen 
 
 
@@ -13,6 +13,7 @@ urlpatterns = [
     path('get-categories/', views.get_categories, name='get_categories'), 
     path('file-upload/', FileUploadView.as_view(), name='file-upload'),  
     path('file-upload/<int:folder_id>/', FileUploadView.as_view(), name='folder-file-upload'),
+    path('file/update/<int:file_id>/', FileUploadView.as_view(), name='file-upload-update'),
     path('folders/', CreateFolderView.as_view(), name='create_folder'),
     path('folders/<int:parent_id>/', CreateFolderView.as_view(), name='create_subfolder'),
     path('folder-contents/', FolderContentsView.as_view(), name='folder-contents'),  # Root folder contents
@@ -28,5 +29,7 @@ urlpatterns = [
     path('api/shared-with-me/', SharedWithMeView.as_view(), name='shared-with-me'),
     path("api/shared-with-me/unseen-count/", shared_unseen_count),
     path("api/shared-with-me/mark-seen/", mark_shared_as_seen),
+    path("files-update/<int:pk>/", FileDetailView.as_view(), name="file-detail"),
+
 
 ]

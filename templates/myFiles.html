@@ -117,7 +117,7 @@
                     </li>
                                                                                          
                     <li class="nav-item">
-                      <a href="#">
+                      <a href="#" id="starred-button">
                         <i class="fas fa-star"></i>
                         <p>Starred Files</p>
                       </a>
@@ -481,32 +481,32 @@
           <div class="page-inner">
             <div class="row d-flex justify-content-center align-items-center">
               <!-- Upload or Drop -->
-              <!-- <div class="col-6 col-sm-4 col-lg-2">
+              <div class="col-6 col-sm-4 col-lg-2">
                 <button class="card-button upload_card">
                   <div class="card-body">
                     <i class="fa fa-upload fa-2x text-primary"></i>
                     <div class="text-muted mt-2">Upload or Drop</div>
                   </div>
                 </button>
-              </div> -->
+              </div>
               <!-- New "Create" card -->
-    <!-- <div class="col-6 col-sm-4 col-lg-2">
+    <div class="col-6 col-sm-4 col-lg-2">
       <button class="card-button">
         <div class="card-body">
           <i class="fa fa-plus fa-2x text-primary"></i>
           <div class="text-muted mt-2">Create</div>
         </div>
       </button>
-    </div> -->
+    </div>
               <!-- Create Folder -->
-              <!-- <div class="col-6 col-sm-4 col-lg-2">
+              <div class="col-6 col-sm-4 col-lg-2">
                 <button class="card-button" type="button" data-bs-toggle="modal" data-bs-target="#cf-createFolderModal">
                   <div class="card-body">
                     <i class="fa fa-folder fa-2x text-primary"></i>
                     <div class="text-muted mt-2">Create Folder</div>
                   </div>
                 </button>
-              </div> -->
+              </div>
 
               <!-- Modal -->
             <div class="modal fade" id="cf-createFolderModal" tabindex="-1" aria-labelledby="cf-createFolderModalLabel" aria-hidden="true">
@@ -534,33 +534,35 @@
             </div>
 
               <!-- Share -->
-              <!-- <div class="col-6 col-sm-4 col-lg-2">
+              <div class="col-6 col-sm-4 col-lg-2">
                 <button class="card-button">
                   <div class="card-body">
                     <i class="fa fa-share-alt fa-2x text-primary"></i>
                     <div class="text-muted mt-2">Share</div>
                   </div>
                 </button>
-              </div> -->
+              </div>
               <!-- Transfer a Copy -->
-              <!-- <div class="col-6 col-sm-4 col-lg-2">
+              <div class="col-6 col-sm-4 col-lg-2">
                 <button class="card-button">
                   <div class="card-body">
                     <i class="fa fa-copy fa-2x text-primary"></i>
                     <div class="text-muted mt-2">Transfer a Copy</div>
                   </div>
                 </button>
-              </div> -->
-              <!-- <div class="col-6 col-sm-4 col-lg-2">
+              </div>
+              <div class="col-6 col-sm-4 col-lg-2">
                 <button class="card-button" id="archive-button">
                   <div class="card-body">
                     <i class="fa fa-archive fa-2x text-primary"></i> 
                     <div class="text-muted mt-2">Archived</div> 
                   </div>
                 </button>
-              </div> -->
+              </div>
             </div>
             
+            <div id="alert-container" class="mt-3"></div>
+
             <div class="row mt-5 mb-2">
             <div class="d-flex align-items-center file-header">
               <h2 class="file-header-title "><b>All files</b></h2>
@@ -765,6 +767,10 @@
   </div>
   </div>
 </div>
+
+
+
+
 <!-- File Table (Initially Hidden) -->
 <div id="file-table-section" >
   <div class="table-responsive ">
@@ -841,6 +847,57 @@
 </div>
 
 
+<!-- Edit modal -->
+<div class="modal fade" id="editFileModal" tabindex="-1" aria-labelledby="editFileModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      
+      <div class="modal-header">
+        <h5 class="modal-title" id="editFileModalLabel">Edit Document</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      
+      <div class="modal-body">
+        <form id="edit-file-form" method="POST">
+          {% csrf_token %}
+
+          <!-- Name -->
+          <div class="mb-3">
+            <label for="edit-name" class="form-label">Name</label>
+            <input type="text" class="form-control" id="edit-name" name="name">
+          </div>
+
+          <!-- Category (dropdown) -->
+          <div class="mb-3">
+            <label for="edit-category" class="form-label">Category</label>
+            <select class="form-select" id="edit-category" name="category_id">
+              <!-- Categories will be dynamically inserted -->
+            </select>
+          </div>
+
+          <!-- Meta Tags (comma separated input) -->
+          <div class="mb-3">
+            <label for="edit-tags" class="form-label">Meta Tags</label>
+            <input type="text" class="form-control" id="edit-tags" name="meta_tag_names" placeholder="e.g. login, module1">
+          </div>
+
+          <!-- is_public (checkbox) -->
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" value="" id="edit-is-public" name="is_public">
+            <label class="form-check-label" for="edit-is-public">
+              Public
+            </label>
+          </div>
+
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="save-edit-btn">Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 
 
@@ -872,7 +929,9 @@
       </div>
   </div>
 </div>
-          
+   
+
+
           
             
         </div>

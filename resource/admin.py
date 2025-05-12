@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import UploadedFile, Category, Folder, FileSharing
+from .models import UploadedFile, Category, Folder, FileSharing, Tag
 
 
 admin.site.register(Category)
@@ -14,6 +14,7 @@ class FolderAdmin(admin.ModelAdmin):
     list_display = ('name', 'parent', 'created_at')  
 
 admin.site.register(Folder, FolderAdmin)
+admin.site.register(Tag)
 
 
 @admin.register(FileSharing)
