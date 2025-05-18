@@ -1,8 +1,5 @@
-// let currentFolder = {
-//   id: null,
-//   name: "",
-//   path: [],
-// };
+import { performAction } from "./actionHandler.js";
+
 let currentFolder = { id: null, name: "", parent: null };
 
 let uploadedFile = null;
@@ -465,7 +462,7 @@ function generateActionButton(fileId, fileName) {
           <li><a class="dropdown-item" href="#" onclick="viewVersionHistory(${fileId})"><i class="fa fa-history mx-2"></i> Version History</a></li>
           <li><a class="dropdown-item" href="#" onclick="commentOnFile(${fileId})"><i class="fa fa-comment mx-2"></i> Comment</a></li>
           <li><a class="dropdown-item" href="#" onclick="addReminder(${fileId})"><i class="fa fa-bell mx-2"></i> Add Reminder</a></li>
-          <li><a class="dropdown-item" href="#" onclick="openCustomModal(${fileId})"><i class="fa fa-envelope mx-2"></i> Send Email</a></li>
+          <li><a class="dropdown-item" href="#" onclick="openModal(${fileId})"><i class="fa fa-envelope mx-2"></i> Send Email</a></li>
           <li><a class="dropdown-item" href="#" onclick="archiveFile(${fileId}, '${fileName}')"><i class="fa fa-archive mx-2"></i> Archive</a></li>
           <li><a class="dropdown-item text-danger" href="#" onclick="deleteFile(${fileId})"><i class="fa fa-trash mx-2"></i> Delete</a></li>
         </ul>
@@ -615,12 +612,12 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 // Function to format file size into KB, MB, etc.
-function formatFileSize(bytes) {
-  if (bytes === 0) return "0 B";
-  let sizes = ["B", "KB", "MB", "GB", "TB"];
-  let i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return (bytes / Math.pow(1024, i)).toFixed(2) + " " + sizes[i];
-}
+// function formatFileSize(bytes) {
+//   if (bytes === 0) return "0 B";
+//   let sizes = ["B", "KB", "MB", "GB", "TB"];
+//   let i = Math.floor(Math.log(bytes) / Math.log(1024));
+//   return (bytes / Math.pow(1024, i)).toFixed(2) + " " + sizes[i];
+// }
 
 // Initial fetch for files and folders on page load
 
@@ -677,6 +674,8 @@ function showNotification(itemNames, action) {
       message = `${itemNames.join(", ")} unarchived successfully.`;
     } else if (action === "shared") {
       message = `Shared successfully!`;
+    } else if (action === "email") {
+      message = itemNames;
     }
 
     // Update only the message text
@@ -843,12 +842,14 @@ function openCustomModal(fileId) {
   const overlay = document.getElementById("customModalOverlay");
   overlay.classList.add("active");
 }
-
+window.openCustomModal = openCustomModal;
 // Function to close the modal
 function closeCustomModal() {
+  document.getElementById("shareForm").reset();
   const overlay = document.getElementById("customModalOverlay");
   overlay.classList.remove("active");
 }
+window.closeCustomModal = closeCustomModal;
 
 // Close modal when clicking outside the modal card
 window.onclick = function (event) {
@@ -857,44 +858,6 @@ window.onclick = function (event) {
     closeCustomModal();
   }
 };
-
-function sendEmail() {
-  const email = document.getElementById("email").value;
-  const message = document.getElementById("message").value;
-
-  if (!email || !message || !selectedFileId) {
-    alert("Please provide email, message, and select a file.");
-    return;
-  }
-
-  const data = {
-    email: email,
-    message: message,
-    fileId: selectedFileId, // Send the file ID with the email
-  };
-
-  fetch("/send-email/", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRFToken": getCookie("csrftoken"), // CSRF token for security
-    },
-    body: JSON.stringify(data),
-  })
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.success) {
-        alert("Email sent successfully!");
-        closeCustomModal(); // Close the modal
-      } else {
-        alert("Error sending email: " + data.error);
-      }
-    })
-    .catch((error) => {
-      console.error("Error:", error);
-      alert("An error occurred while sending the email.");
-    });
-}
 
 function getCookie(name) {
   const cookieValue = document.cookie
@@ -940,6 +903,7 @@ function toggleStar(objectId, objectType, starIcon, itemName) {
       console.error("Error:", error);
     });
 }
+window.toggleStar = toggleStar;
 
 function archiveFile(fileId, fileName) {
   fetch(`/files/${fileId}/toggle-archive/`, {
@@ -989,6 +953,7 @@ function archiveFile(fileId, fileName) {
     })
     .catch((error) => console.error("Error:", error));
 }
+window.archiveFile = archiveFile;
 
 document.addEventListener("DOMContentLoaded", function () {
   const starredBtn = document.querySelector("#starred-button");
@@ -1006,7 +971,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Update button style dynamically
     if (showOnlyStarred) {
-      starredBtn.classList.add("active-starred"); 
+      starredBtn.classList.add("active-starred");
     } else {
       starredBtn.classList.remove("active-starred");
     }
@@ -1061,39 +1026,79 @@ document.getElementById("searchInput").addEventListener("input", function () {
   });
 });
 
+// document
+//   .getElementById("shareForm")
+//   .addEventListener("submit", async function (e) {
+//     e.preventDefault();
+
+//     const email = document.getElementById("email").value.trim();
+//     const message = document.getElementById("message").value.trim();
+
+//     try {
+//       const response = await fetch("/api/share/", {
+//         method: "POST",
+//         headers: {
+//           "Content-Type": "application/json",
+//           "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]")
+//             .value,
+//         },
+//         body: JSON.stringify({
+//           id: selectedFileId,
+//           email: email,
+//           message: message,
+//         }),
+//       });
+
+//       if (response.ok) {
+//         // alert("Shared successfully!");
+//         showNotification("File", "shared");
+//         closeCustomModal();
+//       } else {
+//         const errorData = await response.json();
+//         alert("Error: " + (errorData.detail || "Something went wrong"));
+//       }
+//     } catch (err) {
+//       alert("Network error: " + err.message);
+//     }
+//   });
 document
   .getElementById("shareForm")
   .addEventListener("submit", async function (e) {
     e.preventDefault();
 
-    const email = document.getElementById("email").value.trim();
+    const rawEmails = document.getElementById("email").value.trim();
     const message = document.getElementById("message").value.trim();
+    const emailList = rawEmails
+      .split(",")
+      .map((email) => email.trim())
+      .filter((email) => email !== "");
+
+    if (emailList.length === 0) {
+      Swal.fire(
+        "Validation Error",
+        "Please enter at least one email.",
+        "warning"
+      );
+      return;
+    }
 
     try {
-      const response = await fetch("/api/share/", {
+      await performAction({
+        url: "/api/share/",
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]")
-            .value,
-        },
-        body: JSON.stringify({
+        data: {
           id: selectedFileId,
-          email: email,
+          emails: emailList, // send the list
           message: message,
-        }),
+        },
+        successMessage: "File shared with selected recipients!",
+        errorMessage: "Failed to share file.",
       });
 
-      if (response.ok) {
-        // alert("Shared successfully!");
-        showNotification("File", "shared");
-        closeCustomModal();
-      } else {
-        const errorData = await response.json();
-        alert("Error: " + (errorData.detail || "Something went wrong"));
-      }
+      document.getElementById("shareForm").reset();
+      closeCustomModal();
     } catch (err) {
-      alert("Network error: " + err.message);
+      // Error already handled by performAction
     }
   });
 
@@ -1189,113 +1194,121 @@ function markSharedFilesAsSeen() {
     });
 }
 
-
-
-
-
-
 function editFile(fileId) {
- 
   fetch("/get-categories/")
-  .then(res => res.json())
-  .then(data => {
-    const select = document.getElementById("edit-category");
-    select.innerHTML = "";
-    data.categories.forEach(cat => {
-      const option = document.createElement("option");
-      option.value = cat.id;
-      option.textContent = cat.name;
-      select.appendChild(option);
+    .then((res) => res.json())
+    .then((data) => {
+      const select = document.getElementById("edit-category");
+      select.innerHTML = "";
+      data.categories.forEach((cat) => {
+        const option = document.createElement("option");
+        option.value = cat.id;
+        option.textContent = cat.name;
+        select.appendChild(option);
+      });
     });
-  });
-
 
   fetch(`/files-update/${fileId}/`, {
-    method: 'GET',
+    method: "GET",
     headers: {
-      'Authorization': 'Bearer ' + localStorage.getItem('access_token'), // if using JWT
-      'Content-Type': 'application/json'
-    }
+      Authorization: "Bearer " + localStorage.getItem("access_token"), // if using JWT
+      "Content-Type": "application/json",
+    },
   })
-  .then(response => response.json())
-  .then(data => {
-    // Populate modal fields
-    document.getElementById('edit-name').value = data.name;
-    document.getElementById('edit-category').value = data.category.id; // assumes category object has an id
-    document.getElementById('edit-tags').value = data.meta_tags.map(tag => tag.name).join(', ');
-    document.getElementById('edit-is-public').checked = data.is_public;
+    .then((response) => response.json())
+    .then((data) => {
+      // Populate modal fields
+      document.getElementById("edit-name").value = data.name;
+      document.getElementById("edit-category").value = data.category.id; // assumes category object has an id
+      document.getElementById("edit-tags").value = data.meta_tags
+        .map((tag) => tag.name)
+        .join(", ");
+      document.getElementById("edit-is-public").checked = data.is_public;
 
-    // Store file ID in a hidden field or global variable
-    document.getElementById('edit-file-form').setAttribute('data-file-id', fileId);
+      // Store file ID in a hidden field or global variable
+      document
+        .getElementById("edit-file-form")
+        .setAttribute("data-file-id", fileId);
 
-    // Show modal
-    let modal = new bootstrap.Modal(document.getElementById('editFileModal'));
-    modal.show();
-  })
-  .catch(error => console.error('Error fetching file data:', error));
+      // Show modal
+      let modal = new bootstrap.Modal(document.getElementById("editFileModal"));
+      modal.show();
+    })
+    .catch((error) => console.error("Error fetching file data:", error));
 }
-
+window.editFile = editFile;
 
 document.getElementById("save-edit-btn").addEventListener("click", function () {
-  const fileId = document.getElementById('edit-file-form').getAttribute('data-file-id');
+  const fileId = document
+    .getElementById("edit-file-form")
+    .getAttribute("data-file-id");
 
-  const name = document.getElementById('edit-name').value;
-  const category_id = document.getElementById('edit-category').value;
-  const tags = document.getElementById('edit-tags').value.split(',').map(tag => tag.trim()).filter(tag => tag);
-  const is_public = document.getElementById('edit-is-public').checked;
+  const name = document.getElementById("edit-name").value;
+  const category_id = document.getElementById("edit-category").value;
+  const tags = document
+    .getElementById("edit-tags")
+    .value.split(",")
+    .map((tag) => tag.trim())
+    .filter((tag) => tag);
+  const is_public = document.getElementById("edit-is-public").checked;
 
   const payload = {
     name: name,
     category_id: category_id,
     meta_tag_names: tags,
-    is_public: is_public
+    is_public: is_public,
   };
 
   fetch(`/file/update/${fileId}/`, {
-    method: 'PATCH',  
+    method: "PATCH",
     headers: {
-      'Authorization': 'Bearer ' + localStorage.getItem('access_token'),
-      'Content-Type': 'application/json',
-      'X-CSRFToken': getCSRFToken(),  
+      Authorization: "Bearer " + localStorage.getItem("access_token"),
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCSRFToken(),
     },
-    body: JSON.stringify(payload) 
+    body: JSON.stringify(payload),
   })
-  .then(response => {
-    if (!response.ok) {
-      if (response.status === 403) {
-        const modal = bootstrap.Modal.getInstance(document.getElementById('editFileModal'));
-        modal.hide();
-        throw new Error("You do not have permission to update this file.");
-      } else {
-        throw new Error("An unexpected error occurred while updating.");
+    .then((response) => {
+      if (!response.ok) {
+        if (response.status === 403) {
+          const modal = bootstrap.Modal.getInstance(
+            document.getElementById("editFileModal")
+          );
+          modal.hide();
+          throw new Error("You do not have permission to update this file.");
+        } else {
+          throw new Error("An unexpected error occurred while updating.");
+        }
       }
-    }
-    return response.json();
-  })
-  .then(data => {
-    location.reload();  
-  })
-  .catch(error => {
-    showErrorMessage(error.message);
-  });
+      return response.json();
+    })
+    .then((data) => {
+      location.reload();
+    })
+    .catch((error) => {
+      showErrorMessage(error.message);
+    });
 });
 
 function showErrorMessage(message) {
   const alertContainer = document.getElementById("alert-container");
 
   // Clear existing alerts
-  alertContainer.innerHTML = '';
+  alertContainer.innerHTML = "";
 
   // Create the alert element
   const alertElement = document.createElement("div");
   alertElement.className = "alert alert-dismissible fade show";
   alertElement.setAttribute("role", "alert");
-  alertElement.setAttribute("style", `
+  alertElement.setAttribute(
+    "style",
+    `
     background-color: #f8d7da;         /* Soft pinkish red */
     color: #842029;                    /* Dark red text */
     border: 1px solid #f5c2c7;
     box-shadow: 0 0.5rem 1rem rgba(220, 53, 69, 0.1);
-  `);
+  `
+  );
 
   alertElement.innerHTML = `
     <strong>Access Denied:</strong> ${message}
@@ -1311,4 +1324,69 @@ function showErrorMessage(message) {
   }, 4000);
 }
 
+let selected_FileId = null;
 
+function openModal(fileId) {
+  selected_FileId = fileId;
+
+  const overlay = document.getElementById("emailShareModal");
+  overlay.classList.add("active");
+}
+window.openModal = openModal;
+// Function to close the modal
+function closeModal() {
+  const overlay = document.getElementById("emailShareModal");
+  overlay.classList.remove("active");
+}
+window.closeModal = closeModal;
+
+document
+  .getElementById("emailShareForm")
+  .addEventListener("submit", function (e) {
+    e.preventDefault();
+
+    const recipient = document.getElementById("email_send").value;
+    const recipientList = recipient
+      .split(",")
+      .map((email) => email.trim())
+      .filter((email) => email !== "");
+    const message = document.getElementById("emailMessage").value;
+
+    //   fetch("/send-email/", {
+    //     method: "POST",
+    //     headers: {
+    //       "Content-Type": "application/json",
+    //       "X-CSRFToken": getCSRFToken(),
+    //     },
+    //     body: JSON.stringify({
+    //       recipients: recipientList,
+    //       message: message,
+    //       file_id: selected_FileId,
+    //     }),
+    //   })
+    //     .then((response) => response.json())
+    //     .then((data) => {
+    //       // alert(data.success || data.error);
+    //       showNotification(data.success || data.error, "email");
+    //       document.getElementById("emailShareForm").reset();
+    //       closeModal("emailShareModal");
+    //     })
+    //     .catch((error) => {
+    //       console.error("Error:", error);
+    //       alert("Failed to send email.");
+    //     });
+    // });
+    performAction({
+      url: "/send-email/",
+      data: {
+        recipients: recipientList,
+        message: message,
+        file_id: selected_FileId,
+      },
+      successMessage: "Email sent successfully!",
+      errorMessage: "Failed to send email.",
+    }).then(() => {
+      document.getElementById("emailShareForm").reset();
+      closeModal("emailShareModal");
+    });
+  });

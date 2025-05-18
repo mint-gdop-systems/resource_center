@@ -1,13 +1,13 @@
 from django.urls import path
 from . import views
-from .views import FileUploadView, CreateFolderView, FolderContentsView, ToggleStarredView, ToggleArchivedView, ToggleFolderStarredView, logout_view, FileDetailView
-from .sharing_views import ShareItemView, SharedWithMeView, shared_unseen_count, mark_shared_as_seen 
+from .views import HomeView, FileUploadView, CreateFolderView, FolderContentsView, ToggleStarredView, ToggleArchivedView, ToggleFolderStarredView, logout_view, FileDetailView
+from .sharing_views import ShareItemView, SharedWithMeView, shared_unseen_count, mark_shared_as_seen, SendFileEmailView
 
 
 
 
 urlpatterns = [
-    path( "", views.home, name="home"),
+     path('', HomeView.as_view(), name='home'),
     path("files", views.files, name="files"),
     path("my-files", views.myFiles, name="myFiles"),
     path('get-categories/', views.get_categories, name='get_categories'), 
@@ -20,7 +20,7 @@ urlpatterns = [
     path('folder-contents/<int:folder_id>/', FolderContentsView.as_view(), name='folder_contents'),
     path('download-file/<int:file_id>/', views.download_file, name='download_file'),
     path('view-file/<int:file_id>/', views.view_file, name='view_file'),
-    # path('send-email/', views.Sendmail.as_view(), name='send_email'),
+    path('send-email/', SendFileEmailView.as_view(), name='send-email'),
     path("files/<int:file_id>/toggle-star/", ToggleStarredView.as_view(), name="toggle-star"),
     path("folders/<int:folder_id>/toggle-star/", ToggleFolderStarredView.as_view(), name="toggle-folder-star"),
     path("files/<int:file_id>/toggle-archive/", ToggleArchivedView.as_view(), name="toggle-archive"),

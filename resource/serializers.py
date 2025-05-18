@@ -106,3 +106,12 @@ class FileSharingSerializer(serializers.ModelSerializer):
         if data.get('file') and data.get('folder'):
             raise serializers.ValidationError("Cannot share both file and folder at the same time.")
         return data
+    
+
+class EmailShareSerializer(serializers.Serializer):
+    recipients = serializers.ListField(
+        child=serializers.EmailField(),
+        allow_empty=False
+    )
+    message = serializers.CharField()
+    file_id = serializers.IntegerField()

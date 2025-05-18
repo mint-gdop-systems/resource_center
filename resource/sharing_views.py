@@ -7,53 +7,63 @@ from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from django.db import IntegrityError
 from django.utils import timezone
+from django.core.mail import EmailMultiAlternatives
+from django.conf import settings
+from django.template.loader import render_to_string
+from datetime import datetime
+from django.utils.html import strip_tags
 
 
-
-from .models import UploadedFile, FileSharing
-from .serializers import FileSharingSerializer
+from .models import UploadedFile, FileSharing 
+from .serializers import FileSharingSerializer, EmailShareSerializer
 
 class ShareItemView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        file_id = request.data.get("id")      # ID of the file to share
-        email = request.data.get("email")     # Recipient's email
-        message = request.data.get("message") # Optional message
+        file_id = request.data.get("id")
+        emails = request.data.get("emails", [])
+        message = request.data.get("message", "")
 
-        if not all([file_id, email]):
-            return Response({"error": "File ID and recipient email are required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not file_id or not emails:
+            return Response({"error": "File ID and recipient emails are required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Lookup recipient
-        try:
-            recipient = User.objects.get(email=email)
-        except User.DoesNotExist:
-            return Response({"error": "No user found with that email."}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Lookup file and verify ownership
         file = get_object_or_404(UploadedFile, id=file_id)
         if file.owner != request.user:
             return Response({"error": "You do not own this file."}, status=status.HTTP_403_FORBIDDEN)
 
-        # Prevent duplicate sharing
-        try:
-            share = FileSharing.objects.create(
-                file=file,
-                shared_by=request.user,
-                shared_to=recipient,
-                message=message,
-                share_type=FileSharing.FILE,
-                shared_at=timezone.now()
-            )
-        except IntegrityError:
-            return Response({"error": "This file is already shared with this user."}, status=status.HTTP_400_BAD_REQUEST)
+        shared = []
+        errors = []
 
-        # Optional: return the created share info
-        serializer = FileSharingSerializer(share)
+        for email in emails:
+            try:
+                recipient = User.objects.get(email=email)
+
+                share, created = FileSharing.objects.get_or_create(
+                    file=file,
+                    shared_to=recipient,
+                    defaults={
+                        'shared_by': request.user,
+                        'message': message,
+                        'share_type': FileSharing.FILE,
+                        'shared_at': timezone.now()
+                    }
+                )
+                if created:
+                    shared.append(email)
+                else:
+                    errors.append(f"{email} already has access.")
+            except User.DoesNotExist:
+                errors.append(f"No user found with email {email}.")
+            except IntegrityError:
+                errors.append(f"{email} already shared.")
+            except Exception as e:
+                errors.append(f"{email}: {str(e)}")
+
         return Response({
-            "message": "File shared successfully.",
-            "shared": serializer.data
-        }, status=status.HTTP_201_CREATED)
+            "message": f"Shared with: {shared}",
+            "errors": errors,
+        }, status=status.HTTP_207_MULTI_STATUS if errors else status.HTTP_201_CREATED)
 
 
 
@@ -79,3 +89,55 @@ def shared_unseen_count(request):
 def mark_shared_as_seen(request):
     FileSharing.objects.filter(shared_to=request.user, is_seen=False).update(is_seen=True)
     return Response({'status': 'marked_as_seen'})
+
+
+class SendFileEmailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        serializer = EmailShareSerializer(data=request.data)
+
+        if serializer.is_valid():
+            recipients = serializer.validated_data['recipients']
+            message = serializer.validated_data['message']
+            file_id = serializer.validated_data['file_id']
+
+            try:
+                file_instance = UploadedFile.objects.get(id=file_id)
+                file_url = request.build_absolute_uri(file_instance.file.url)
+
+                subject = "A file has been shared with you"
+                sender_email = request.user.email if request.user.is_authenticated else settings.DEFAULT_FROM_EMAIL
+
+                context = {
+                    'message': message,
+                    'download_url': file_url,
+                    'sender': sender_email,  # or name
+                    'current_year': datetime.now().year,
+                }
+
+              
+                html_content = render_to_string("email_template.html", context)
+                plain_text = strip_tags(html_content)
+
+
+                # text_content = f"{message}\n\nDownload here: {file_url}\n\nSent by: {sender_email}"
+
+                email = EmailMultiAlternatives(
+                    subject=subject,
+                    body=plain_text,
+                    from_email="MinT <passengerlunar@gmail.com>",  
+                    to=recipients,
+                    reply_to=[sender_email] 
+                )
+                email.attach_alternative(html_content, "text/html")
+                email.send()
+
+                return Response({'success': 'Email sent successfully!'}, status=status.HTTP_200_OK)
+
+            except UploadedFile.DoesNotExist:
+                return Response({'error': 'File not found'}, status=status.HTTP_404_NOT_FOUND)
+            except Exception as e:
+                return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

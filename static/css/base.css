@@ -812,12 +812,18 @@ body.modal-open {
 }
 
 .file-action-dropdown {
-  max-height: 350px;
-  overflow-y: auto; /* Enables scrolling when needed */
-  overflow-x: hidden; /* Prevents horizontal scrolling */
+  position: fixed !important;
+  max-height: 450px;
+  max-width: 300px;
+  top: 50% !important;
+  overflow-y: auto;
+  transform: translateX(-50%) !important;
+  overflow-x: hidden;
   border-radius: 8px; /* Makes the dropdown look nicer */
   padding: 5px; /* Adds some spacing */
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Soft shadow */
+  white-space: nowrap;
+  z-index: 1050;
 }
 
 /* Dropdown Items */
@@ -843,5 +849,3 @@ body.modal-open {
   width: 24px; /* Space between icon and text */
   text-align: center;
 }
-
-

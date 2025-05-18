@@ -416,6 +416,7 @@
                     </form>
                   </ul>
                 </li>
+                {% if first_name %}
                 <li class="nav-item topbar-icon dropdown hidden-caret">
                   <a
                     class="nav-link dropdown-toggle"
@@ -460,10 +461,32 @@
                     </div>
                     <span class="profile-username">
                       <span class="op-7">Hi,</span>
-                      <span class="fw-bold">Hussen</span>
+                      <span class="fw-bold">{{ first_name }}</span>
                     </span>
                   </a>
+                  <ul class="dropdown-menu dropdown-user animated fadeIn">
+                    <div class="dropdown-user-scroll scrollbar-outer">
+                      <li>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item" href="#">My Profile</a>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item" href="{% url 'logout' %}"
+                          >Logout</a
+                        >
+                      </li>
+                    </div>
+                  </ul>
                 </li>
+                {% else %}
+                <li class="nav-item topbar-icon dropdown hidden-caret">
+                  <a
+                    href="{% url 'oidc_authentication_init' %}"
+                    class="btn btn-primary"
+                    style="margin-right: 30px"
+                    >Login</a
+                  >
+                </li>
+                {% endif %}
               </ul>
             </div>
           </nav>

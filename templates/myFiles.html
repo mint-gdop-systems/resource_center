@@ -833,10 +833,10 @@
 <div id="customModalOverlay" class="custom-modal-overlay">
   <div class="custom-modal-card">
     <div class="custom-modal-header">
-      <h2 class="custom-modal-title">Share via Email</h2>
+      <h2 class="custom-modal-title">Share with Resource Center</h2>
     </div>
     <form id="shareForm" class="custom-modal-body">
-      <input type="email" id="email" class="custom-modal-input" placeholder="Recipient email" required>
+      <input type="text" id="email" class="custom-modal-input" placeholder="Recipient emails (comma-separated)" required>
       <textarea id="message" class="custom-modal-input" placeholder="Add a message" rows="4" required></textarea>
       <div class="custom-modal-footer">
         <button type="button" class="custom-modal-button cancel" onclick="closeCustomModal()">Cancel</button>
@@ -845,6 +845,25 @@
     </form>
   </div>
 </div>
+
+
+<!-- Email Share Modal -->
+<div id="emailShareModal" class="custom-modal-overlay">
+  <div class="custom-modal-card">
+    <div class="custom-modal-header">
+      <h2 class="custom-modal-title">Share via Email</h2>
+    </div>
+    <form id="emailShareForm" class="custom-modal-body">
+      <input type="text" id="email_send" class="custom-modal-input" placeholder="Recipient emails (comma separated)" required>
+      <textarea id="emailMessage" class="custom-modal-input" placeholder="Add a message" rows="4" required></textarea>
+      <div class="custom-modal-footer">
+        <button type="button" class="custom-modal-button cancel" onclick="closeModal('emailShareModal')">Cancel</button>
+        <button type="submit" class="custom-modal-button send">Send</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 
 
 <!-- Edit modal -->
@@ -946,7 +965,7 @@
     <script src="{% static 'assets/js/kaiadmin.min.js' %}"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.9.3/dropzone.min.js"></script>
     
-    <script src="{% static 'js/base.js' %}"></script>
+    <script type="module"  src="{% static 'js/base.js' %}"></script>
 
 
 <script>

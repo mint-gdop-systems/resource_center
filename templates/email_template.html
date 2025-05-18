@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Document Shared</title>
+  </head>
+  <body
+    style="
+      font-family: Arial, sans-serif;
+      background-color: #f6f9fc;
+      padding: 20px;
+      margin: 0;
+    "
+  >
+    <table
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      style="
+        max-width: 600px;
+        margin: auto;
+        background-color: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+      "
+    >
+      <tr>
+        <td style="padding: 30px">
+          <h2 style="margin-top: 0; color: #333333">Hello,</h2>
+
+          <div
+            style="
+              font-size: 15px;
+              color: #333333;
+              background-color: #f0f4ff;
+              padding: 15px;
+              border-left: 4px solid #007bff;
+              border-radius: 4px;
+              margin-bottom: 40px;
+              line-height: 1.6;
+            "
+          >
+            {{ message }}
+          </div>
+
+          <!-- System Message -->
+          <p style="font-size: 15px; color: #555555">
+            You can download the document using the link below:
+          </p>
+          <p style="margin: 25px 0">
+            <a
+              href="{{ download_url }}"
+              style="
+                display: inline-block;
+                background-color: #007bff;
+                color: white;
+                text-decoration: none;
+                padding: 12px 20px;
+                border-radius: 5px;
+                font-weight: bold;
+              "
+              >Download File</a
+            >
+          </p>
+
+          <hr
+            style="border: none; border-top: 1px solid #eee; margin: 30px 0"
+          />
+          <p style="font-size: 13px; color: #999999">
+            Sent by: <strong>{{ sender }}</strong>
+          </p>
+        </td>
+      </tr>
+    </table>
+    <p
+      style="
+        text-align: center;
+        font-size: 12px;
+        color: #aaaaaa;
+        margin-top: 20px;
+      "
+    >
+      &copy; {{ current_year }} MinT. All rights reserved.
+    </p>
+  </body>
+</html>

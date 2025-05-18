@@ -8,7 +8,7 @@ from .models import UploadedFile, Category, Folder
 from .serializers import UploadedFileSerializer, FolderSerializer
 from django.http import JsonResponse, FileResponse, Http404
 from rest_framework.parsers import MultiPartParser, FormParser
-from django.core.mail import send_mail
+# from django.core.mail import send_mail
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.core.mail import EmailMessage
@@ -18,18 +18,26 @@ from django.contrib.auth import logout
 from urllib.parse import urlencode
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-
+from django.views.generic import TemplateView
+from django.contrib.auth.mixins import LoginRequiredMixin
 
 # Create your views here.
-def home(request):
-    permission_classes = [IsAuthenticated] 
-    return render(request, 'home.html')
+class HomeView(TemplateView):
+    template_name = 'home.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        if self.request.user.is_authenticated:
+            context['first_name'] = self.request.user.first_name
+        else:
+            context['first_name'] = None
+
+        return context
 
 @login_required
 def files(request):
-  
-    
-    return render(request, 't_files.html')
+  return render(request, 't_files.html')
 
 
 def myFiles(request, folder_id=None):
