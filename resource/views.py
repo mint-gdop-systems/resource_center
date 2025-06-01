@@ -1,14 +1,13 @@
 from django.contrib.postgres.search import SearchVector
 from django.shortcuts import render, get_object_or_404, redirect
 from rest_framework.response import Response
-from rest_framework import status, generics
+from rest_framework import status, generics, viewsets
 from rest_framework.views import APIView
 from rest_framework.generics import RetrieveUpdateAPIView
-from .models import UploadedFile, Category, Folder
-from .serializers import UploadedFileSerializer, FolderSerializer
+from .models import UploadedFile, Category, Folder, FileVersion, Reminder
+from .serializers import UploadedFileSerializer, FolderSerializer, FileVersionSerializer, ReminderSerializer
 from django.http import JsonResponse, FileResponse, Http404
 from rest_framework.parsers import MultiPartParser, FormParser
-# from django.core.mail import send_mail
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.core.mail import EmailMessage
@@ -20,6 +19,10 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.utils.timezone import now
+from datetime import timedelta
+from django.utils import timezone
+
 
 # Create your views here.
 class HomeView(TemplateView):
@@ -411,6 +414,26 @@ def view_file(request, file_id):
 #         return Response({'status': True, 'message': 'Email Sent Successfully' })
 
 
+class DeleteUploadedFileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, file_id):
+        try:
+            uploaded_file = UploadedFile.objects.get(id=file_id)
+
+           
+            if uploaded_file.owner != request.user:
+                return Response({'error': 'You do not have permission to delete this file.'}, status=403)
+
+            uploaded_file.delete()
+            return Response({'message': 'File deleted successfully.'})
+
+        except UploadedFile.DoesNotExist:
+            return Response({'error': 'File not found.'}, status=404)
+
+
+
+
 class ToggleStarredView(APIView):
     """
     View to toggle the 'is_starred' status of a file.
@@ -477,3 +500,179 @@ def logout_view(request):
     redirect_uri = "http://localhost:8000/"  
     logout_url = f"{settings.OIDC_OP_LOGOUT_ENDPOINT}?{urlencode({'post_logout_redirect_uri': redirect_uri, 'client_id': settings.OIDC_RP_CLIENT_ID})}"
     return redirect(logout_url)
+
+
+class UploadNewVersionView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, file_id):
+        try:
+            uploaded_file = UploadedFile.objects.get(id=file_id)
+
+            if uploaded_file.owner != request.user:
+                return Response(
+                    {"error": "You are not authorized to upload a new version of this file."},
+                    status=403
+                )
+
+            new_file = request.FILES['new_version']
+            file_name = new_file.name.split('/')[-1]
+            file_type = file_name.split('.')[-1].lower()
+            file_size = new_file.size
+
+            # If no versions exist, this is the base version
+            if not FileVersion.objects.filter(uploaded_file=uploaded_file).exists():
+                FileVersion.objects.create(
+                    uploaded_file=uploaded_file,
+                    version_number=0,
+                    file=uploaded_file.file,
+                    file_name=uploaded_file.file.name.split("/")[-1],
+                    file_size=uploaded_file.file_size,
+                    file_type=uploaded_file.file_type,
+                    uploaded_by=uploaded_file.owner,
+                    change_note="Base version",
+                    is_current=False  # Base version is not current anymore
+                )
+                version_number = 1
+            else:
+                latest_version = FileVersion.objects.filter(uploaded_file=uploaded_file).order_by('-version_number').first()
+                version_number = latest_version.version_number + 1 if latest_version else 1
+
+            # Set all previous versions to not current
+            FileVersion.objects.filter(uploaded_file=uploaded_file).update(is_current=False)
+
+            # Create new version as current
+            FileVersion.objects.create(
+                uploaded_file=uploaded_file,
+                version_number=version_number,
+                file=new_file,
+                file_name=file_name,
+                file_size=file_size,
+                file_type=file_type,
+                uploaded_by=request.user,
+                change_note=request.data.get('change_note', ''),
+                is_current=True  # ✅ This is the current version now
+            )
+
+            # Update current file in UploadedFile
+            uploaded_file.file = new_file
+            uploaded_file.name = file_name
+            uploaded_file.file_size = file_size
+            uploaded_file.file_type = file_type
+            uploaded_file.save()
+
+            return Response({'message': 'New version uploaded'})
+
+        except UploadedFile.DoesNotExist:
+            return Response({'error': 'File not found'}, status=404)
+
+
+class FileVersionHistoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, file_id):
+        try:
+            uploaded_file = UploadedFile.objects.get(id=file_id)
+
+            
+            if not FileVersion.objects.filter(uploaded_file=uploaded_file, version_number=0).exists():
+                FileVersion.objects.create(
+                    uploaded_file=uploaded_file,
+                    version_number=0,
+                    file=uploaded_file.file,
+                    file_name=uploaded_file.file.name.split("/")[-1],
+                    file_size=uploaded_file.file_size,
+                    file_type=uploaded_file.file_type,
+                    uploaded_by=uploaded_file.owner,
+                    change_note="Base version",
+                    uploaded_at=uploaded_file.uploaded_at,
+                    is_current=True 
+                )
+
+            versions = uploaded_file.versions.order_by("uploaded_at")
+
+            version_history = []
+
+            is_owner = request.user == uploaded_file.owner
+            current_file_path = uploaded_file.file.name
+
+            for version in versions:
+                version_history.append({
+                    "id": version.id,
+                    "version_number": version.version_number,
+                    "file_name": version.file.name.split("/")[-1],
+                    "uploaded_by_name": version.uploaded_by.get_full_name() if version.uploaded_by else "Unknown",
+                    "uploaded_at": version.uploaded_at.isoformat(),
+                    "change_note": version.change_note or "",
+                    "uploaded_file_url": version.file.url,
+                    "is_current": version.is_current,
+                })
+            return Response({
+                "is_owner": is_owner,
+                "versions": sorted(version_history, key=lambda x: x["uploaded_at"], reverse=True)
+            })
+
+        except UploadedFile.DoesNotExist:
+            return Response({'error': 'File not found'}, status=404)
+
+
+
+
+class RevertVersionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, file_id, version_id):
+        try:
+            version = FileVersion.objects.get(id=version_id, uploaded_file__id=file_id)
+            uploaded_file = version.uploaded_file
+
+            # Update uploaded_file to match selected version
+            uploaded_file.file = version.file
+            uploaded_file.name = version.file.name.split("/")[-1]
+            uploaded_file.file_size = version.file_size
+            uploaded_file.file_type = version.file_type
+            uploaded_file.save()
+
+            # Update all other versions to is_current=False
+            FileVersion.objects.filter(uploaded_file=uploaded_file).exclude(id=version.id).update(is_current=False)
+
+            # Mark this version as current
+            version.is_current = True
+            version.uploaded_at = now()
+            version.save(update_fields=["is_current", "uploaded_at"])
+
+            return Response({'message': 'Reverted successfully'})
+
+        except FileVersion.DoesNotExist:
+            return Response({'error': 'Version not found'}, status=404)
+
+
+class ReminderViewSet(viewsets.ModelViewSet):
+    serializer_class = ReminderSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Only return reminders for the current user
+        return Reminder.objects.filter(user=self.request.user).order_by('-remind_at')
+
+    def perform_create(self, serializer):
+        # Automatically assign the user to the reminder
+        serializer.save(user=self.request.user)
+
+
+class UpcomingRemindersView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        now = timezone.now()
+        start = now - timedelta(minutes=10)
+        end = now + timedelta(hours=1)
+
+        reminders = Reminder.objects.filter(
+            user=request.user,
+            remind_at__range=(start, end)
+        ).order_by("remind_at")
+
+        serializer = ReminderSerializer(reminders, many=True)
+        return Response(serializer.data)

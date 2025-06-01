@@ -57,7 +57,14 @@ class UploadedFile(models.Model):
     is_public = models.BooleanField(default=False)
     meta_tags = models.ManyToManyField(Tag, blank=True, related_name="files")
 
-    
+
+    def rollback_to_version(self, version: 'FileVersion'):
+        self.file = version.file
+        self.file_size = version.file.size
+        self.file_type = version.file.name.split('.')[-1].lower()
+        self.save()
+
+
     def save(self, *args, **kwargs):
         """ Extract file type and size before saving. """
         if self.file:
@@ -107,3 +114,49 @@ class FileSharing(models.Model):
         return f"{self.shared_by} shared {self.share_type.lower()} to {self.shared_to}"
 
 
+class FileVersion(models.Model):
+    uploaded_file = models.ForeignKey(UploadedFile, on_delete=models.CASCADE, related_name="versions")
+    version_number = models.PositiveIntegerField()
+    file = models.FileField(upload_to='uploads/versions/')
+    uploaded_at = models.DateTimeField(default=timezone.now)
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    change_note = models.TextField(blank=True)
+    is_current = models.BooleanField(default=False)
+
+    file_size = models.PositiveIntegerField(blank=True, null=True)
+    file_type = models.CharField(max_length=50, blank=True)
+    file_name = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ['-version_number']
+
+    def save(self, *args, **kwargs):
+        if self.file:
+            self.file_size = self.file.size
+            self.file_type = self.file.name.split('.')[-1].lower()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Version {self.version_number} of {self.uploaded_file.name}"
+
+
+class Reminder(models.Model):
+    REPEAT_CHOICES = [
+        ('none', 'Does not repeat'),
+        ('daily', 'Daily'),
+        ('weekly', 'Weekly'),
+        ('monthly', 'Monthly'),
+        ('yearly', 'Yearly'),
+        # Add more if needed
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    file = models.ForeignKey(UploadedFile, on_delete=models.CASCADE, related_name='reminders')
+    note = models.TextField(blank=True)
+    remind_at = models.DateTimeField()
+    repeat = models.CharField(max_length=20, choices=REPEAT_CHOICES, default='none')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def is_recurring(self):
+        return self.repeat != 'none'

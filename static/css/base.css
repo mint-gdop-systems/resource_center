@@ -815,7 +815,7 @@ body.modal-open {
   position: fixed !important;
   max-height: 450px;
   max-width: 300px;
-  top: 50% !important;
+
   overflow-y: auto;
   transform: translateX(-50%) !important;
   overflow-x: hidden;
@@ -848,4 +848,56 @@ body.modal-open {
   font-size: 18px; /* Bigger icons */
   width: 24px; /* Space between icon and text */
   text-align: center;
+}
+
+/* versionHistory.css */
+
+#versionHistoryModal .modal-content {
+  border-radius: 1rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  font-family: "Segoe UI", Roboto, sans-serif;
+  width: 100%;
+  max-width: 950px !important;
+}
+
+#versionHistoryModal .modal-header,
+#versionHistoryModal .modal-footer {
+  background-color: #f8f9fa;
+}
+
+#versionHistoryModal .modal-title {
+  font-size: 1.25rem;
+  color: #333;
+}
+
+#versionHistoryModal table thead {
+  background-color: #f1f3f5;
+}
+
+#versionHistoryModal table td,
+#versionHistoryModal table th {
+  vertical-align: middle;
+  padding: 0.75rem;
+}
+
+#versionHistoryModal .table td .fa {
+  font-size: 1.1rem;
+}
+
+#versionHistoryModal .table a {
+  color: #495057;
+  transition: color 0.2s ease-in-out;
+}
+
+#versionHistoryModal .table a:hover {
+  color: #0d6efd;
+  text-decoration: none;
+}
+
+#versionHistoryModal .badge.bg-success {
+  font-size: 0.8rem;
+  padding: 0.4em 0.65em;
+  border-radius: 0.5rem;
+  font-weight: 500;
 }

@@ -1,5 +1,3 @@
-
-
 import os
 import dj_database_url
 from pathlib import Path
@@ -13,9 +11,6 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
-
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-gko%l37t30+r4=%h0l=@npj&_o!06%fsnrd8!=#j6yem@x5)&t'
 
@@ -24,8 +19,6 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'doc-management.onrender.com', '*']
 
-
-# Application definition
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -68,8 +61,6 @@ LOGOUT_REDIRECT_URL = config("OIDC_LOGOUT_REDIRECT_URL")
 LOGIN_REDIRECT_URL = config("OIDC_LOGIN_REDIRECT_URL")
 
 
-
-
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -101,8 +92,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'resource_center.wsgi.application'
-
-
 
 
 DATABASES = {

@@ -1,8 +1,9 @@
 from django.contrib import admin
-from .models import UploadedFile, Category, Folder, FileSharing, Tag
+from .models import UploadedFile, Category, Folder, FileSharing, Tag, FileVersion, Reminder
 
 
 admin.site.register(Category)
+admin.site.register(FileVersion)
 
 
 @admin.register(UploadedFile)
@@ -26,4 +27,11 @@ class FileSharingAdmin(admin.ModelAdmin):
     def get_shared_to_email(self, obj):
         return obj.shared_to.email
     get_shared_to_email.short_description = 'Shared to (Email)'
+
+@admin.register(Reminder)
+class ReminderAdmin(admin.ModelAdmin):
+    list_display = ('file', 'remind_at', 'repeat', 'note', 'user')
+    list_filter = ('repeat', 'remind_at')
+    search_fields = ('note', 'file__name', 'user__username')
+    ordering = ('-remind_at',)
 

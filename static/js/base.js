@@ -9,6 +9,7 @@ let categoryModalShown = false;
 document.addEventListener("DOMContentLoaded", function () {
   // fetchFolders();
   fetchFilesAndFolders();
+  fetchUpcomingReminders();
 });
 
 // Function to handle file upload with category selection
@@ -175,6 +176,7 @@ function showCategoryModal() {
       // alert("Failed to load categories.");
     });
 }
+window.showCategoryModal = showCategoryModal;
 
 // Initialize Dropzone when the page loads
 document.addEventListener("DOMContentLoaded", function () {
@@ -445,7 +447,25 @@ function getFileIcon(fileType) {
   return fileIcons[fileType] || fileIcons["default"];
 }
 
-function generateActionButton(fileId, fileName) {
+function generateActionButton(fileId, fileName, isOwner) {
+  let ownerOptions = "";
+
+  if (isOwner) {
+    ownerOptions += `
+      <li><a class="dropdown-item" href="#" onclick="editFile(${fileId})">
+        <i class="fa fa-pen mx-2"></i> Edit</a></li>
+      <li><a class="dropdown-item" href="#" onclick="uploadNewVersion(${fileId})">
+        <i class="fa fa-upload mx-2"></i> Upload New Version</a></li>
+    `;
+  }
+
+  if (isOwner) {
+    ownerOptions += `
+      <li><a class="dropdown-item text-danger" href="#" onclick="deleteFile(${fileId})">
+        <i class="fa fa-trash mx-2"></i> Delete</a></li>
+    `;
+  }
+
   return `
     <td class="position-relative">
       <div class="dropdown">
@@ -453,18 +473,41 @@ function generateActionButton(fileId, fileName) {
           <i class="fa fa-ellipsis-v"></i>
         </button>
         <ul class="dropdown-menu dropdown-menu-end file-action-dropdown">
-          <li><a class="dropdown-item" href="#" onclick="viewFile(${fileId})"><i class="fa fa-eye mx-2"></i> View</a></li>
-          <li><a class="dropdown-item" href="#" onclick="editFile(${fileId})"><i class="fa fa-pen mx-2"></i> Edit</a></li>
-          <li><a class="dropdown-item" href="#" onclick="downloadFile(${fileId})"><i class="fa fa-download mx-2"></i> Download</a></li>
-          <li><a class="dropdown-item" href="#" onclick="openCustomModal(${fileId})"><i class="fa fa-share-alt mx-2"></i> Share</a></li>
-          <li><a class="dropdown-item" href="#" onclick="favoriteFile(${fileId})"><i class="fa fa-bookmark mx-2"></i> Favorite</a></li>
-          <li><a class="dropdown-item" href="#" onclick="uploadNewVersion(${fileId})"><i class="fa fa-upload mx-2"></i> Upload New Version</a></li>
-          <li><a class="dropdown-item" href="#" onclick="viewVersionHistory(${fileId})"><i class="fa fa-history mx-2"></i> Version History</a></li>
-          <li><a class="dropdown-item" href="#" onclick="commentOnFile(${fileId})"><i class="fa fa-comment mx-2"></i> Comment</a></li>
-          <li><a class="dropdown-item" href="#" onclick="addReminder(${fileId})"><i class="fa fa-bell mx-2"></i> Add Reminder</a></li>
-          <li><a class="dropdown-item" href="#" onclick="openModal(${fileId})"><i class="fa fa-envelope mx-2"></i> Send Email</a></li>
-          <li><a class="dropdown-item" href="#" onclick="archiveFile(${fileId}, '${fileName}')"><i class="fa fa-archive mx-2"></i> Archive</a></li>
-          <li><a class="dropdown-item text-danger" href="#" onclick="deleteFile(${fileId})"><i class="fa fa-trash mx-2"></i> Delete</a></li>
+          <li><a class="dropdown-item" href="#" onclick="viewFile(${fileId})">
+            <i class="fa fa-eye mx-2"></i> View</a></li>
+          ${
+            isOwner
+              ? `
+          <li><a class="dropdown-item" href="#" onclick="editFile(${fileId})">
+            <i class="fa fa-pen mx-2"></i> Edit</a></li>`
+              : ""
+          }
+          <li><a class="dropdown-item" href="#" onclick="downloadFile(${fileId})">
+            <i class="fa fa-download mx-2"></i> Download</a></li>
+          ${
+            isOwner
+              ? `
+          <li><a class="dropdown-item" href="#" onclick="uploadNewVersion(${fileId})">
+            <i class="fa fa-upload mx-2"></i> Upload New Version</a></li>`
+              : ""
+          }
+          <li><a class="dropdown-item" href="#" onclick="viewVersionHistory(${fileId})">
+            <i class="fa fa-history mx-2"></i> Version History</a></li>
+          <li><a class="dropdown-item" href="#" onclick="openCustomModal(${fileId})">
+            <i class="fa fa-share-alt mx-2"></i> Share</a></li>
+          <li><a class="dropdown-item" href="#" onclick="openModal(${fileId})">
+            <i class="fa fa-envelope mx-2"></i> Send Email</a></li>
+          <li><a class="dropdown-item" href="#" onclick="addReminder(${fileId})">
+            <i class="fa fa-bell mx-2"></i> Add Reminder</a></li>
+          <li><a class="dropdown-item" href="#" onclick="archiveFile(${fileId}, '${fileName}')">
+            <i class="fa fa-archive mx-2"></i> Archive</a></li>
+          ${
+            isOwner
+              ? `
+          <li><a class="dropdown-item text-danger" href="#" onclick="deleteFile(${fileId})">
+            <i class="fa fa-trash mx-2"></i> Delete</a></li>`
+              : ""
+          }
         </ul>
       </div>
     </td>
@@ -520,16 +563,16 @@ function updateTable(files, currentEmail) {
       <td>${category}</td>  
       <td>${formattedDate}</td>
       <td>${formattedFileSize}</td>
-       <td>
+      <td>
       ${
         !isFolder
           ? file.is_archived
             ? `<i class="fas fa-undo text-primary" title="Unarchive this file"
                onclick="archiveFile(${file.id}, '${file.name}')"></i>`
-            : generateActionButton(file.id, file.name)
+            : generateActionButton(file.id, file.name, file.is_owner)
           : ""
       }
-    </td>
+      </td>
 
     </tr>`;
 
@@ -807,6 +850,7 @@ function updateBreadcrumbs() {
 function handleFolderClick(folderId, folderName) {
   navigateToFolder(folderId, folderName);
 }
+window.handleFolderClick = handleFolderClick;
 
 function downloadFile(fileId) {
   const downloadUrl = `/download-file/${fileId}/`;
@@ -818,6 +862,7 @@ function downloadFile(fileId) {
   a.click();
   document.body.removeChild(a);
 }
+window.downloadFile = downloadFile;
 
 function viewFile(fileId) {
   // Create the URL to the file (using Django view to serve the file)
@@ -833,6 +878,7 @@ function viewFile(fileId) {
   // Clean up by removing the element
   document.body.removeChild(a);
 }
+window.viewFile = viewFile;
 
 let selectedFileId = null;
 // Function to open the modal
@@ -1211,30 +1257,42 @@ function editFile(fileId) {
   fetch(`/files-update/${fileId}/`, {
     method: "GET",
     headers: {
-      Authorization: "Bearer " + localStorage.getItem("access_token"), // if using JWT
+      Authorization: "Bearer " + localStorage.getItem("access_token"),
       "Content-Type": "application/json",
     },
   })
     .then((response) => response.json())
     .then((data) => {
-      // Populate modal fields
-      document.getElementById("edit-name").value = data.name;
-      document.getElementById("edit-category").value = data.category.id; // assumes category object has an id
+      const fullName = data.name;
+      const dotIndex = fullName.lastIndexOf(".");
+      const baseName =
+        dotIndex !== -1 ? fullName.substring(0, dotIndex) : fullName;
+      const extension = dotIndex !== -1 ? fullName.substring(dotIndex) : "";
+
+      // Set editable part (base name)
+      document.getElementById("edit-name").value = baseName;
+
+      // Store file extension in a hidden field
+      document
+        .getElementById("edit-name")
+        .setAttribute("data-extension", extension);
+
+      document.getElementById("edit-category").value = data.category.id;
       document.getElementById("edit-tags").value = data.meta_tags
         .map((tag) => tag.name)
         .join(", ");
       document.getElementById("edit-is-public").checked = data.is_public;
 
-      // Store file ID in a hidden field or global variable
       document
         .getElementById("edit-file-form")
         .setAttribute("data-file-id", fileId);
 
-      // Show modal
       let modal = new bootstrap.Modal(document.getElementById("editFileModal"));
       modal.show();
     })
-    .catch((error) => console.error("Error fetching file data:", error));
+    .catch((error) => {
+      Swal.fire("Error", "Failed to load file info.", "error");
+    });
 }
 window.editFile = editFile;
 
@@ -1243,7 +1301,21 @@ document.getElementById("save-edit-btn").addEventListener("click", function () {
     .getElementById("edit-file-form")
     .getAttribute("data-file-id");
 
-  const name = document.getElementById("edit-name").value;
+  const nameInput = document.getElementById("edit-name");
+  const baseName = nameInput.value.trim();
+  const extension = nameInput.getAttribute("data-extension");
+
+  if (!baseName) {
+    const modal = bootstrap.Modal.getInstance(
+      document.getElementById("editFileModal")
+    );
+    modal.hide();
+    Swal.fire("Error", "File name cannot be empty.", "warning");
+    return;
+  }
+
+  const fullName = baseName + extension;
+
   const category_id = document.getElementById("edit-category").value;
   const tags = document
     .getElementById("edit-tags")
@@ -1253,7 +1325,7 @@ document.getElementById("save-edit-btn").addEventListener("click", function () {
   const is_public = document.getElementById("edit-is-public").checked;
 
   const payload = {
-    name: name,
+    name: fullName,
     category_id: category_id,
     meta_tag_names: tags,
     is_public: is_public,
@@ -1269,12 +1341,13 @@ document.getElementById("save-edit-btn").addEventListener("click", function () {
     body: JSON.stringify(payload),
   })
     .then((response) => {
+      const modal = bootstrap.Modal.getInstance(
+        document.getElementById("editFileModal")
+      );
+      modal.hide();
+
       if (!response.ok) {
         if (response.status === 403) {
-          const modal = bootstrap.Modal.getInstance(
-            document.getElementById("editFileModal")
-          );
-          modal.hide();
           throw new Error("You do not have permission to update this file.");
         } else {
           throw new Error("An unexpected error occurred while updating.");
@@ -1283,10 +1356,12 @@ document.getElementById("save-edit-btn").addEventListener("click", function () {
       return response.json();
     })
     .then((data) => {
-      location.reload();
+      Swal.fire("Success", "File updated successfully.", "success").then(() => {
+        location.reload();
+      });
     })
     .catch((error) => {
-      showErrorMessage(error.message);
+      Swal.fire("Error", error.message, "error");
     });
 });
 
@@ -1390,3 +1465,446 @@ document
       closeModal("emailShareModal");
     });
   });
+
+function uploadNewVersion(fileId) {
+  const modalEl = document.getElementById("uploadVersionModal");
+
+  // Create and store modal instance so we can control it later
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+  document.getElementById("upload-version-form").dataset.fileId = fileId;
+  document.getElementById("upload-version-form").reset(); // Clear previous data
+
+  modal.show();
+}
+window.uploadNewVersion = uploadNewVersion;
+
+document
+  .getElementById("upload-version-form")
+  .addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const modalEl = document.getElementById("uploadVersionModal");
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+    const fileId = e.target.dataset.fileId;
+    const fileInput = document.getElementById("newVersionFile").files[0];
+    const changeNote = document.getElementById("changeNote").value;
+
+    if (!fileInput) {
+      modal.hide();
+      modalEl.addEventListener(
+        "hidden.bs.modal",
+        () => {
+          Swal.fire({
+            icon: "warning",
+            title: "Missing File",
+            text: "Please select a file to upload.",
+          });
+        },
+        { once: true } // Run only once to avoid duplicates
+      );
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("new_version", fileInput);
+    formData.append("change_note", changeNote);
+
+    // Show loading state
+    Swal.fire({
+      title: "Uploading...",
+      text: "Please wait while the new version is being uploaded.",
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      didOpen: () => {
+        Swal.showLoading();
+      },
+    });
+
+    try {
+      const response = await fetch(`/files/${fileId}/upload-new-version/`, {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": getCookie("csrftoken"),
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || data.error) {
+        throw new Error(data.error || "Failed to upload the file.");
+      }
+
+      // Hide modal first before showing success
+      modal.hide();
+      modalEl.addEventListener(
+        "hidden.bs.modal",
+        () => {
+          Swal.fire({
+            icon: "success",
+            title: "Upload Successful",
+            text:
+              data.message || "The new version has been uploaded successfully.",
+            timer: 2000,
+            showConfirmButton: false,
+          });
+
+          setTimeout(() => location.reload(), 1000);
+        },
+        { once: true }
+      );
+    } catch (err) {
+      modal.hide();
+      modalEl.addEventListener(
+        "hidden.bs.modal",
+        () => {
+          Swal.fire({
+            icon: "error",
+            title: "Upload Failed",
+            text: err.message || "An unexpected error occurred.",
+          });
+        },
+        { once: true }
+      );
+    }
+  });
+
+function viewVersionHistory(fileId) {
+  fetch(`/files/${fileId}/version-history/`)
+    .then((res) => res.json())
+    .then((data) => {
+      const tbody = document.getElementById("version-history-table-body");
+      tbody.innerHTML = "";
+
+      const isOwner = data.is_owner;
+      const versions = data.versions;
+
+      if (versions.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No version history found.</td></tr>`;
+      } else {
+        versions.forEach((version) => {
+          const isCurrent = version.is_current;
+          const row = `
+            <tr>
+              <td><span class="fw-bold text-primary">v${
+                version.version_number
+              }</span></td>
+              <td><small class="text-muted">${
+                version.file_name || "Unnamed file"
+              }</small></td>
+              <td>${new Date(version.uploaded_at).toLocaleString()}</td>
+              <td>${version.change_note || "—"}</td>
+              <td>
+                <a href="${
+                  version.uploaded_file_url
+                }" class="text-primary me-2" title="Preview" target="_blank">
+                  <i class="fa fa-eye"></i>
+                </a>
+                <a href="javascript:void(0);" onclick="downloadVersionFile('${
+                  version.uploaded_file_url
+                }')" class="text-primary me-2" title="Download">
+                  <i class="fa fa-download"></i>
+                </a>
+                ${
+                  isCurrent
+                    ? `<span class="badge bg-success">Current Version</span>`
+                    : isOwner
+                    ? `<a href="javascript:void(0);" onclick="revertVersion(${fileId}, ${version.id})" class="text-primary" title="Revert">
+                        <i class="fa fa-undo"></i>
+                      </a>`
+                    : ``
+                }
+              </td>
+            </tr>`;
+          tbody.insertAdjacentHTML("beforeend", row);
+        });
+      }
+
+      const modalEl = document.getElementById("versionHistoryModal");
+      const versionModal = new bootstrap.Modal(modalEl);
+      versionModal.show();
+    })
+    .catch((err) => {
+      console.error("Error fetching version history:", err);
+    });
+}
+
+window.viewVersionHistory = viewVersionHistory;
+
+function downloadVersionFile(url) {
+  const a = document.createElement("a");
+  a.href = url;
+  a.setAttribute("download", "");
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+window.downloadVersionFile = downloadVersionFile;
+
+function revertVersion(fileId, versionId) {
+  // Close the Bootstrap modal first
+  const modalEl = document.getElementById("versionHistoryModal");
+  const modalInstance = bootstrap.Modal.getInstance(modalEl);
+  if (modalInstance) modalInstance.hide();
+
+  // Wait a bit to ensure the modal has fully closed (animation + DOM updates)
+  setTimeout(() => {
+    Swal.fire({
+      title: "Are you sure?",
+      text: "Do you want to revert to this version? ",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, revert it!",
+      cancelButtonText: "Cancel",
+      backdrop: true,
+      allowOutsideClick: false,
+      allowEscapeKey: true,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire({
+          title: "Reverting...",
+          text: "Please wait...",
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+          didOpen: () => {
+            Swal.showLoading();
+          },
+        });
+
+        fetch(`/files/${fileId}/revert-version/${versionId}/`, {
+          method: "POST",
+          headers: {
+            "X-CSRFToken": getCSRFToken(),
+          },
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            Swal.fire({
+              icon: "success",
+              title: "Reverted",
+              text: data.message || "Version reverted successfully.",
+              timer: 2000,
+              showConfirmButton: false,
+            }).then(() => {
+              location.reload();
+            });
+          })
+          .catch(() => {
+            Swal.fire({
+              icon: "error",
+              title: "Error",
+              text: "Failed to revert version. Please try again.",
+            });
+          });
+      }
+    });
+  }, 300); // Allow Bootstrap modal to close smoothly before SweetAlert
+}
+
+window.revertVersion = revertVersion;
+
+async function deleteFile(fileId) {
+  const confirmed = await Swal.fire({
+    title: "Are you sure?",
+    text: "This will permanently delete the file and all its versions.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#d33",
+    confirmButtonText: "Yes, delete it!",
+  });
+
+  if (confirmed.isConfirmed) {
+    try {
+      const response = await fetch(`/files/${fileId}/delete/`, {
+        method: "DELETE",
+        headers: {
+          "X-CSRFToken": getCookie("csrftoken"),
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.error || "Delete failed.");
+
+      Swal.fire({
+        icon: "success",
+        title: "Deleted",
+        text: data.message,
+        timer: 2000,
+        showConfirmButton: false,
+      });
+
+      setTimeout(() => location.reload(), 1000);
+    } catch (err) {
+      Swal.fire({
+        icon: "error",
+        title: "Failed to Delete",
+        text: err.message || "An error occurred.",
+      });
+    }
+  }
+}
+window.deleteFile = deleteFile;
+
+function addReminder(fileId) {
+  // Set fileId in hidden field
+  document.getElementById("reminder-file-id").value = fileId;
+
+  // Reset form
+  document.getElementById("reminder-form").reset();
+
+  // Show modal
+  const modal = new bootstrap.Modal(
+    document.getElementById("addReminderModal")
+  );
+  modal.show();
+}
+window.addReminder = addReminder;
+document
+  .getElementById("reminder-form")
+  .addEventListener("submit", function (e) {
+    e.preventDefault();
+
+    const fileId = document.getElementById("reminder-file-id").value;
+    const datetime = document.getElementById("reminder-datetime").value;
+    const note = document.getElementById("reminder-note").value;
+    const repeat = document.getElementById("reminder-repeat").value;
+    console.log(repeat);
+    const sendEmail = document.getElementById("reminder-send-email").checked;
+
+    const payload = {
+      file: fileId,
+      remind_at: datetime,
+      note: note,
+      repeat: repeat !== "none" ? repeat : "none",
+      send_email: sendEmail,
+    };
+    console.log(payload.repeat);
+    const modalElement = document.getElementById("addReminderModal");
+    const modalInstance = bootstrap.Modal.getInstance(modalElement);
+
+    // Close modal before showing SweetAlert to avoid UI conflict
+    if (modalInstance) {
+      modalInstance.hide();
+    }
+
+    fetch("/api/reminders/", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + localStorage.getItem("access_token"),
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCSRFToken(),
+      },
+      body: JSON.stringify(payload),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to add reminder.");
+        return res.json();
+      })
+      .then((data) => {
+        Swal.fire({
+          icon: "success",
+          title: "Reminder Added",
+          text: "You will be notified based on your schedule.",
+          timer: 3000,
+          showConfirmButton: false,
+        });
+
+        // Optional: Clear form after success
+        document.getElementById("reminder-form").reset();
+      })
+      .catch((err) => {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: err.message || "Something went wrong.",
+        });
+      });
+  });
+
+function fetchUpcomingReminders() {
+  fetch("/reminders/upcoming/", {
+    headers: {
+      Authorization: "Bearer " + localStorage.getItem("access_token"),
+    },
+  })
+    .then((res) => res.json())
+    .then((reminders) => {
+      const notifBadge = document.getElementById("reminder-count");
+      const notifList = document.getElementById("reminder-list");
+      const allRemindersList = document.getElementById("all-reminders-list");
+
+      const now = new Date();
+      const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000);
+      const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+
+      const upcomingOrMissed = reminders.filter((r) => {
+        const remindTime = new Date(r.remind_at);
+        return remindTime >= tenMinutesAgo && remindTime <= oneHourLater;
+      });
+
+      // Update notification badge
+      notifBadge.textContent = upcomingOrMissed.length;
+      notifBadge.style.display =
+        upcomingOrMissed.length > 0 ? "inline-block" : "none";
+
+      // Clear existing reminders
+      notifList.innerHTML = "";
+      allRemindersList.innerHTML = "";
+
+      if (upcomingOrMissed.length === 0) {
+        notifList.innerHTML = `
+            <div class='text-center text-muted p-3'>
+              No upcoming reminders
+            </div>`;
+        allRemindersList.innerHTML = `
+            <div class='text-center text-muted p-3'>
+              No upcoming reminders
+            </div>`;
+        return;
+      }
+
+      // Display up to 2 reminders in the dropdown
+      upcomingOrMissed.slice(0, 2).forEach((reminder) => {
+        const remindTime = new Date(reminder.remind_at);
+        const html = `
+            <a href="#" class="d-flex px-3 py-2 align-items-start text-decoration-none border-bottom">
+              <div class="notif-icon notif-info me-3">
+                <i class="fa fa-bell text-info fs-5"></i>
+              </div>
+              <div class="notif-content">
+                <span class="fw-semibold d-block">${
+                  reminder.note || "No note provided"
+                }</span>
+                <small class="text-muted">${remindTime.toLocaleString()}</small>
+              </div>
+            </a>`;
+        notifList.insertAdjacentHTML("beforeend", html);
+      });
+
+      // Display all reminders in the modal
+      upcomingOrMissed.forEach((reminder) => {
+        const remindTime = new Date(reminder.remind_at);
+        const html = `
+            <div class="d-flex px-3 py-2 align-items-start border-bottom">
+              <div class="notif-icon notif-info me-3">
+                <i class="fa fa-bell text-info fs-5"></i>
+              </div>
+              <div class="notif-content">
+                <span class="fw-semibold d-block">${
+                  reminder.note || "No note provided"
+                }</span>
+                <small class="text-muted">${remindTime.toLocaleString()}</small>
+              </div>
+            </div>`;
+        allRemindersList.insertAdjacentHTML("beforeend", html);
+      });
+    })
+    .catch((err) => {
+      console.error("Failed to fetch reminders:", err);
+    });
+}

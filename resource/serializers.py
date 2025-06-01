@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Category, UploadedFile, Folder, FileSharing, Tag
+from .models import Category, UploadedFile, Folder, FileSharing, Tag, FileVersion, Reminder
 
 User = get_user_model()
 
@@ -51,6 +51,7 @@ class UploadedFileSerializer(serializers.ModelSerializer):
     
     owner_email = serializers.SerializerMethodField()
     owner_first_name = serializers.SerializerMethodField()
+    is_owner = serializers.SerializerMethodField()
 
     meta_tags = TagSerializer(many=True, read_only=True)
     meta_tag_names = serializers.ListField(
@@ -59,7 +60,7 @@ class UploadedFileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UploadedFile
-        fields = ["id", "name", "file", "file_type", "file_size", "category", "category_id", "uploaded_at", 'folder', 'is_starred', 'is_archived', 'is_public', 'owner_email',  'owner_first_name', 'meta_tags', 'meta_tag_names']
+        fields = ["id", "name", "file", "file_type", "file_size", "category", "category_id", "uploaded_at", 'folder', 'is_starred', 'is_archived', 'is_public', 'owner_email',  'owner_first_name', 'meta_tags', 'meta_tag_names', 'is_owner']
 
     def get_owner_email(self, obj):
         if obj.owner:
@@ -69,7 +70,13 @@ class UploadedFileSerializer(serializers.ModelSerializer):
     def get_owner_first_name(self, obj):
         if obj.owner:
             return obj.owner.first_name
-        return None      
+        return None 
+
+    def get_is_owner(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        return obj.owner == request.user     
 
     def create(self, validated_data):
         tag_names = validated_data.pop('meta_tag_names', [])
@@ -115,3 +122,33 @@ class EmailShareSerializer(serializers.Serializer):
     )
     message = serializers.CharField()
     file_id = serializers.IntegerField()
+
+
+class FileVersionSerializer(serializers.ModelSerializer):
+    uploaded_by_name = serializers.SerializerMethodField()
+    uploaded_file_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = FileVersion
+        fields = [
+            'id',
+            'version_number',
+            'uploaded_by_name',
+            'uploaded_at',
+            'change_note',
+            'uploaded_file_url',
+        ]
+
+    def get_uploaded_by_name(self, obj):
+        return obj.uploaded_by.get_full_name() if obj.uploaded_by else "Unknown"
+
+    def get_uploaded_file_url(self, obj):
+        return obj.file.url if obj.file else ""
+  
+
+class ReminderSerializer(serializers.ModelSerializer):
+    repeat_display = serializers.CharField(source='get_repeat_display', read_only=True)
+
+    class Meta:
+        model = Reminder
+        fields = ['id', 'file', 'note', 'remind_at', 'repeat', 'repeat_display']    

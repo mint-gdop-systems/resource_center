@@ -426,7 +426,7 @@
                 </li>
                 <li class="nav-item topbar-icon dropdown hidden-caret">
                   <a
-                    class="nav-link dropdown-toggle"
+                    class="nav-link dropdown-toggle position-relative"
                     href="#"
                     id="notifDropdown"
                     role="button"
@@ -434,10 +434,36 @@
                     aria-haspopup="true"
                     aria-expanded="false"
                   >
-                    <i class="fa fa-bell"></i>
-                    <span class="notification">4</span>
+                    <i class="fa fa-bell fs-5"></i>
+                    <span id="reminder-count" class="notification bg-danger rounded-circle text-white fw-bold">0</span>
                   </a>
+                  <ul
+                    class="dropdown-menu notif-box animated fadeIn shadow-sm border-0 rounded-3"
+                    aria-labelledby="notifDropdown"
+                    style="width: 320px; max-height: 420px; overflow-y: auto;"
+                  >
+                    <li>
+                      <div class="dropdown-title bg-light p-3 fw-semibold border-bottom">
+                        Upcoming Reminders
+                      </div>
+                    </li>
+                    <li>
+                      <div class="notif-scroll">
+                        <div class="notif-center" id="reminder-list">
+                          <!-- Reminder items will be inserted here via JS -->
+                        </div>
+                      </div>
+                    </li>
+                    <li>
+                      <a class="see-all d-block text-center p-2 text-primary" href="#" data-bs-toggle="modal" data-bs-target="#allRemindersModal">
+                        View All Reminders <i class="fa fa-angle-right"></i>
+                      </a>
+                    </li>
+                  </ul>
                 </li>
+                
+                
+                
 
                 <li class="nav-item topbar-user dropdown hidden-caret">
                   <a
@@ -865,6 +891,149 @@
 </div>
 
 
+<!-- Upload New Version Modal -->
+<div class="modal fade" id="uploadVersionModal" tabindex="-1" aria-labelledby="uploadVersionModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="uploadVersionModalLabel">Upload New Version</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="upload-version-form" method="POST" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label for="newVersionFile" class="form-label">Select Updated File</label>
+            <input type="file" class="form-control" id="newVersionFile" name="file" required>
+          </div>
+          <div class="mb-3">
+            <label for="changeNote" class="form-label">Change Note (optional)</label>
+            <textarea class="form-control" id="changeNote" name="change_note" rows="3" placeholder="Briefly describe what changed in this version..."></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" form="upload-version-form" class="btn btn-primary">Upload Version</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Version History Modal -->
+<div class="modal fade" id="versionHistoryModal" tabindex="-1" aria-labelledby="versionHistoryModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content shadow-lg border-0 rounded-4">
+      <div class="modal-header bg-light border-bottom-0" >
+        <h5 class="modal-title fw-semibold text-dark px-5">📜 Version History</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body px-0 py-3"> <!-- removed px-4 to make full-width -->
+        <div class="table-responsive px-4"> <!-- keep inner horizontal padding -->
+          <table class="table table-hover w-100 align-middle mb-0"> <!-- enforce full width -->
+            <thead class="table-light text-secondary fw-semibold">
+              <tr>
+                <th scope="col">Version</th>
+                <th scope="col">Name</th>
+                <th scope="col">Date</th>
+                <th scope="col" style="width: 200px;">Note</th>
+                <th scope="col"  style="width: 250px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="version-history-table-body" class="table-group-divider text-sm"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer bg-light border-top-0 px-4 py-3">
+        <button class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Add Reminder Modal -->
+<div class="modal fade" id="addReminderModal" tabindex="-1" aria-labelledby="addReminderLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content shadow rounded-4 border-0">
+      <div class="modal-header bg-primary text-white rounded-top-4">
+        <h5 class="modal-title" id="addReminderLabel">
+          <i class="fa fa-bell me-2"></i> Add Reminder
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="reminder-form">
+          <input type="hidden" id="reminder-file-id">
+
+          <!-- Date & Time -->
+          <div class="mb-3">
+            <label for="reminder-datetime" class="form-label">
+              <i class="fa fa-calendar-alt me-1"></i> Date & Time
+            </label>
+            <input type="datetime-local" id="reminder-datetime" class="form-control rounded-pill" required>
+          </div>
+
+          <!-- Note -->
+          <div class="mb-3">
+            <label for="reminder-note" class="form-label">
+              <i class="fa fa-sticky-note me-1"></i> Note (Optional)
+            </label>
+            <textarea id="reminder-note" class="form-control rounded-3" rows="2" placeholder="Add a note for this reminder..."></textarea>
+          </div>
+
+          <!-- Repeat -->
+          <div class="mb-3">
+            <label for="reminder-repeat" class="form-label">
+              <i class="fa fa-sync-alt me-1"></i> Repeat
+            </label>
+            <select id="reminder-repeat" class="form-select rounded-pill">
+              <option value="none">One-time</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="yearly">Yearly</option>
+            </select>
+          </div>
+
+          <!-- Send Email -->
+          <div class="form-check mb-4">
+            <input class="form-check-input" type="checkbox" value="" id="reminder-send-email">
+            <label class="form-check-label" for="reminder-send-email">
+              <i class="fa fa-envelope me-1"></i> Send Email Notification
+            </label>
+          </div>
+
+          <!-- Submit -->
+          <button type="submit" class="btn btn-success w-100 rounded-pill">
+            <i class="fa fa-save me-2"></i> Save Reminder
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- All Reminders Modal -->
+<div class="modal fade" id="allRemindersModal" tabindex="-1" aria-labelledby="allRemindersModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="allRemindersModalLabel">All Reminders</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="all-reminders-list">
+        <!-- All reminders will be inserted here via JS -->
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
 
 <!-- Edit modal -->
 <div class="modal fade" id="editFileModal" tabindex="-1" aria-labelledby="editFileModalLabel" aria-hidden="true">
@@ -966,6 +1135,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.9.3/dropzone.min.js"></script>
     
     <script type="module"  src="{% static 'js/base.js' %}"></script>
+    
 
 
 <script>
