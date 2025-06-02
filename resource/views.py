@@ -22,6 +22,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils.timezone import now
 from datetime import timedelta
 from django.utils import timezone
+from decouple import config
 
 
 # Create your views here.
@@ -497,7 +498,7 @@ class ToggleArchivedView(APIView):
 
 def logout_view(request):
     logout(request)
-    redirect_uri = "http://localhost:8000/"  
+    redirect_uri = config("REDIRCET_URI")  
     logout_url = f"{settings.OIDC_OP_LOGOUT_ENDPOINT}?{urlencode({'post_logout_redirect_uri': redirect_uri, 'client_id': settings.OIDC_RP_CLIENT_ID})}"
     return redirect(logout_url)
 
