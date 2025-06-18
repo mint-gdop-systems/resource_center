@@ -36,7 +36,7 @@ pipeline {
                   
                     steps {
                         
-                            sh "docker build -t $IMAGE_NAME -f docker-compose-new.yml ."                        
+                            sh "docker build -t $IMAGE_NAME  ."                        
                     }            
         }
 
