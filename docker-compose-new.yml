@@ -50,4 +50,4 @@ volumes:
   postgres_data_new:
 networks:
   rc_network_new:
-    driver: bridge
+    external: true;
