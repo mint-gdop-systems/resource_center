@@ -69,9 +69,9 @@ pipeline {
             agent { label 'agent-56' }          
             steps {
                 script {
-                    
+                    // docker stack rm rc_new || true
+
                     sh '''
-                    docker stack rm rc_new || true
                     docker stack deploy -c docker-compose-new.yml rc_new
                     '''
                 }
