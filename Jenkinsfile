@@ -59,7 +59,7 @@ pipeline {
            agent { label 'agent-56' }  
             steps {
                 sh '''
-                   docker tag $IMAGE_NAME $IMAGE_NAME
+                   docker tag rc:latest $IMAGE_NAME
                    docker push $IMAGE_NAME
                 '''
             }              
