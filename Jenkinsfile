@@ -4,7 +4,7 @@ pipeline {
     environment {
         DOCKER_REPO = 'rc'
        
-        IMAGE_NAME = "${DOCKER_REPO}:latest
+        IMAGE_NAME = "${DOCKER_REPO}:latest"
         DOCKER_CREDENTIALS_ID = 'tselot24_docker'
     }
 
