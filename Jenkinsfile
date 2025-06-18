@@ -2,7 +2,7 @@ pipeline {
     agent none
 
     environment {
-        DOCKER_REPO = 'rc'
+        DOCKER_REPO = 'tselot24/rc'
        
         IMAGE_NAME = "${DOCKER_REPO}:latest"
         DOCKER_CREDENTIALS_ID = 'tselot24_docker'
