@@ -12,7 +12,7 @@ pipeline {
         stage('Clone Monorepo') {
             agent { label 'master' }
             steps {
-                git branch: 'main', credentialsId: 'gdop_github', url: 'git@github.com/mint-gdop-systems/resource_center.git'
+                git branch: 'main', credentialsId: 'gdop_github', url: 'git@github.com:mint-gdop-systems/resource_center.git'
             }
         }
 
