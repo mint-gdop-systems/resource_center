@@ -55,15 +55,15 @@ pipeline {
         }
 
         
-        stage('Push ') {
-           agent { label 'agent-56' }  
-            steps {
-                sh '''
-                   docker tag rc:latest $IMAGE_NAME
-                   docker push $IMAGE_NAME
-                '''
-            }              
-        }
+        // stage('Push ') {
+        //    agent { label 'agent-56' }  
+        //     steps {
+        //         sh '''
+        //            docker tag rc:latest $IMAGE_NAME
+        //            docker push $IMAGE_NAME
+        //         '''
+        //     }              
+        // }
 
       stage('Deploy') {
             agent { label 'agent-56' }          
