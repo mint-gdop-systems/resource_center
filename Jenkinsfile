@@ -82,21 +82,21 @@ pipeline {
      post {
         success {
             echo 'Deployment Successful!'
-            emailext(
-                subject: "Deployment Successful - RC App",
-                body: "The RC application has been successfully deployed.",
-                to: "$EMAIL_RECIPIENTS",
-                 attachLog: true
-            )
+            // emailext(
+            //     subject: "Deployment Successful - RC App",
+            //     body: "The RC application has been successfully deployed.",
+            //     to: "$EMAIL_RECIPIENTS",
+            //      attachLog: true
+            // )
         }
         failure {
             echo 'Deployment Failed. Check logs.'
-            emailext(
-                subject: "Deployment Failed - RC App",
-                body: "The deployment has failed. Please check the Jenkins logs for details.",
-                to: "$EMAIL_RECIPIENTS",
-                attachLog: true
-            )
+            // emailext(
+            //     subject: "Deployment Failed - RC App",
+            //     body: "The deployment has failed. Please check the Jenkins logs for details.",
+            //     to: "$EMAIL_RECIPIENTS",
+            //     attachLog: true
+            // )
         }
     }
 }
