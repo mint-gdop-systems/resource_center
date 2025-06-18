@@ -50,7 +50,7 @@ pipeline {
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
                     sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
-                }
+                }$REGISTRY$REGISTRY
             }
         }
 
@@ -58,7 +58,10 @@ pipeline {
         stage('Push ') {
            agent { label 'agent-56' }  
             steps {
-                sh "docker push $IMAGE_NAME"
+                sh '''
+                   docker tag $IMAGE_NAME $IMAGE_NAME
+                   docker push $IMAGE_NAME
+                '''
             }              
         }
 
