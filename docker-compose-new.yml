@@ -22,7 +22,7 @@ services:
           memory: 2G
     
   django:
-    build: .
+    image: tselot24/rc
     ports:
       - "5555:5000"
     volumes:
