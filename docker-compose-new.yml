@@ -22,7 +22,7 @@ services:
           memory: 2G
     
   django:
-    image: tselot24/rc:latest
+    image: resource_center-django:latest
     ports:
       - "5555:5000"
     # volumes:
