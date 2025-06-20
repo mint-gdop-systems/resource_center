@@ -25,8 +25,8 @@ services:
     image: tselot24/rc:latest
     ports:
       - "5555:5000"
-    volumes:
-      - .:/app/
+    # volumes:
+    #   - .:/app/
     networks:
       - rc_network_new
     depends_on:
