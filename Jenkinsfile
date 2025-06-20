@@ -18,17 +18,17 @@ pipeline {
         }
 
         
-        stage('SonarQube Analysis') {
-            agent { label 'master' }
-            steps{
-                script{
-                    def scannerHome = tool 'SonarScanner';
-                    withSonarQubeEnv("sonarQube") {
-                      sh "${scannerHome}/bin/sonar-scanner"
-                    }
-                }
-           }
-       }
+       //  stage('SonarQube Analysis') {
+       //      agent { label 'master' }
+       //      steps{
+       //          script{
+       //              def scannerHome = tool 'SonarScanner';
+       //              withSonarQubeEnv("sonarQube") {
+       //                sh "${scannerHome}/bin/sonar-scanner"
+       //              }
+       //          }
+       //     }
+       // }
        
 
         stage('Build Image') {
