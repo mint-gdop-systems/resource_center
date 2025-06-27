@@ -22,7 +22,7 @@ services:
           memory: 2G
     
   django:
-    image: resource_center-django:latest
+    image: rc:latest
     ports:
       - "5555:5000"
     # volumes:
