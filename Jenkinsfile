@@ -63,7 +63,7 @@ pipeline {
                    docker push $IMAGE_NAME
                 '''
             }              
-        // }
+        }
 
       stage('Deploy') {
             agent { label 'agent-56' }          
