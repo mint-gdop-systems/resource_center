@@ -812,7 +812,7 @@ function navigateToFolder(folderId, folderName) {
   updateBreadcrumbs();
   fetchFilesAndFolders(folderId);
 }
-
+window.navigateToFolder = navigateToFolder;
 function updateBreadcrumbs() {
   const breadcrumbs = document.getElementById("breadcrumbs");
   breadcrumbs.innerHTML = ""; // Clear previous breadcrumbs
@@ -846,7 +846,7 @@ function updateBreadcrumbs() {
     breadcrumbs.appendChild(li);
   });
 }
-
+window.updateBreadcrumbs = updateBreadcrumbs;
 function handleFolderClick(folderId, folderName) {
   navigateToFolder(folderId, folderName);
 }
@@ -1172,7 +1172,7 @@ function loadSharedWithMe() {
     })
     .catch((err) => console.error("Failed to load shared files:", err));
 }
-
+window.loadSharedWithMe = loadSharedWithMe;
 function updateSharedTable(sharedFiles) {
   const tableBody = document.getElementById("shared-with-me-table-body");
   tableBody.innerHTML = "";
@@ -1201,7 +1201,7 @@ function updateSharedTable(sharedFiles) {
     tableBody.innerHTML += row;
   });
 }
-
+window.updateSharedTable = updateSharedTable;
 function updateSharedNotificationCount() {
   fetch("/api/shared-with-me/unseen-count/")
     .then((res) => res.json())
@@ -1217,7 +1217,7 @@ function updateSharedNotificationCount() {
     })
     .catch((err) => console.error("Notification count fetch failed", err));
 }
-
+window.updateSharedNotificationCount = updateSharedNotificationCount;
 document.addEventListener("DOMContentLoaded", updateSharedNotificationCount);
 function markSharedFilesAsSeen() {
   fetch("/api/shared-with-me/mark-seen/", {
@@ -1239,7 +1239,7 @@ function markSharedFilesAsSeen() {
       console.error("Error marking shared files as seen:", err);
     });
 }
-
+window.markSharedFilesAsSeen = markSharedFilesAsSeen; 
 function editFile(fileId) {
   fetch("/get-categories/")
     .then((res) => res.json())
@@ -1908,3 +1908,23 @@ function fetchUpcomingReminders() {
       console.error("Failed to fetch reminders:", err);
     });
 }
+
+// new btn
+const gdNewBtn = document.getElementById('gd-new-btn');
+  const gdDropdown = document.getElementById('gd-dropdown-card');
+
+  // Toggle dropdown
+  gdNewBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    gdDropdown.classList.toggle('gd-show');
+  });
+
+  // Close dropdown when clicking outside
+  window.addEventListener('click', function () {
+    gdDropdown.classList.remove('gd-show');
+  });
+
+  // Prevent closing when clicking inside dropdown
+  gdDropdown.addEventListener('click', function (e) {
+    e.stopPropagation();
+  });
