@@ -901,3 +901,71 @@ body.modal-open {
   border-radius: 0.5rem;
   font-weight: 500;
 }
+
+/* gd-new-btn-container */
+.gd-new-btn-container {
+  position: relative;
+  display: inline-block;
+  margin-left: 25px;
+  margin-top: 20px;
+}
+
+#gd-new-btn {
+  background-color: #1a73e8;
+  border: none;
+  color: white;
+  font-weight: 500;
+  padding: 10px 24px;
+  font-size: 16px;
+  border-radius: 10px;
+  width: 120px;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 1px 3px rgba(60,64,67,.3), 0 4px 8px rgba(60,64,67,.15);
+}
+
+#gd-new-btn:hover {
+  background-color: #1669c1;
+}
+
+.gd-dropdown-card {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1000;
+  width: 260px;
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  padding: 0.5rem 0;
+  margin-top: 8px;
+}
+
+.gd-dropdown-card.gd-show {
+  display: block;
+}
+
+.gd-dropdown-card button {
+  width: 100%;
+  padding: 10px 16px;
+  font-size: 15px;
+  border: none;
+  background: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #202124;
+}
+
+.gd-dropdown-card button:hover {
+  background-color: #f1f3f4;
+  cursor: pointer;
+}
+
+.gd-dropdown-divider {
+  margin: 6px 0;
+  border-top: 1px solid #e0e0e0;
+}
