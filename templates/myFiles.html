@@ -68,6 +68,17 @@
           <!-- End Logo Header -->
         </div>
         <div class="sidebar-wrapper scrollbar scrollbar-inner">
+          <div class="gd-new-btn-container">
+            <button id="gd-new-btn">
+              <i class="fas fa-plus"></i> New
+            </button>
+          
+            <div id="gd-dropdown-card" class="gd-dropdown-card">
+              <button class="text-muted upload_card"><i class="fa fa-upload text-secondary"></i> File Upload</button>
+              <div class="gd-dropdown-divider"></div>
+              <button class="text-muted" type="button" data-bs-toggle="modal" data-bs-target="#cf-createFolderModal"><i class="fa fa-folder text-secondary"></i> Create Folder </button>
+            </div>
+          </div>
           <div class="sidebar-content">
             <ul class="nav nav-secondary">
               <!-- Home -->
@@ -124,7 +135,7 @@
                     </li>
 
                     <li class="nav-item">
-                      <a href="#">
+                      <a href="#" id="archive-button">
                         <i class="fas fa-archive"></i>
                         <p>Archived Files</p>
                       </a>
@@ -507,32 +518,11 @@
           <div class="page-inner">
             <div class="row d-flex justify-content-center align-items-center">
               <!-- Upload or Drop -->
-              <div class="col-6 col-sm-4 col-lg-2">
-                <button class="card-button upload_card">
-                  <div class="card-body">
-                    <i class="fa fa-upload fa-2x text-primary"></i>
-                    <div class="text-muted mt-2">Upload or Drop</div>
-                  </div>
-                </button>
-              </div>
+              
               <!-- New "Create" card -->
-    <div class="col-6 col-sm-4 col-lg-2">
-      <button class="card-button">
-        <div class="card-body">
-          <i class="fa fa-plus fa-2x text-primary"></i>
-          <div class="text-muted mt-2">Create</div>
-        </div>
-      </button>
-    </div>
+    
               <!-- Create Folder -->
-              <div class="col-6 col-sm-4 col-lg-2">
-                <button class="card-button" type="button" data-bs-toggle="modal" data-bs-target="#cf-createFolderModal">
-                  <div class="card-body">
-                    <i class="fa fa-folder fa-2x text-primary"></i>
-                    <div class="text-muted mt-2">Create Folder</div>
-                  </div>
-                </button>
-              </div>
+              
 
               <!-- Modal -->
             <div class="modal fade" id="cf-createFolderModal" tabindex="-1" aria-labelledby="cf-createFolderModalLabel" aria-hidden="true">
@@ -559,37 +549,9 @@
               </div>
             </div>
 
-              <!-- Share -->
-              <div class="col-6 col-sm-4 col-lg-2">
-                <button class="card-button">
-                  <div class="card-body">
-                    <i class="fa fa-share-alt fa-2x text-primary"></i>
-                    <div class="text-muted mt-2">Share</div>
-                  </div>
-                </button>
-              </div>
-              <!-- Transfer a Copy -->
-              <div class="col-6 col-sm-4 col-lg-2">
-                <button class="card-button">
-                  <div class="card-body">
-                    <i class="fa fa-copy fa-2x text-primary"></i>
-                    <div class="text-muted mt-2">Transfer a Copy</div>
-                  </div>
-                </button>
-              </div>
-              <div class="col-6 col-sm-4 col-lg-2">
-                <button class="card-button" id="archive-button">
-                  <div class="card-body">
-                    <i class="fa fa-archive fa-2x text-primary"></i> 
-                    <div class="text-muted mt-2">Archived</div> 
-                  </div>
-                </button>
-              </div>
             </div>
-            
-            <div id="alert-container" class="mt-3"></div>
 
-            <div class="row mt-5 mb-2">
+            <div class="row mt-2 mb-2">
             <div class="d-flex align-items-center file-header">
               <h2 class="file-header-title "><b>All files</b></h2>
               <button class="btn file-header-menu mb-1" aria-label="Menu">
@@ -1183,3 +1145,4 @@ function showErrorModal(title, message, details = "") {
 
 </body>
 </html>
+
