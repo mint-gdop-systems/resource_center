@@ -1,0 +1,554 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Resource Center - Ministry Document Management System</title>
+
+    <!-- Bootstrap 5 CDN -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css"
+    />
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="{% static 'css/home.css' %}" />
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav
+      class="navbar navbar-expand-lg navbar-light bg-white shadow-sm fixed-top"
+    > 
+      <div class="container">
+        <a class="navbar-brand d-flex align-items-center" href="#home">
+          <div class="ministry-logo me-3">
+            <i class="bi bi-shield-check text-primary"></i>
+          </div>
+          <div>
+            <span class="fw-bold text-primary"
+              >Ministry of Innovation and Technology</span
+            >
+            <small class="d-block text-muted">Resource Center</small>
+          </div>
+        </a>
+
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+              <a class="nav-link" href="#about">About</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#features">Features</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#how-it-works">How It Works</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#support">FAQ</a>
+            </li>
+            <li class="nav-item ms-2">
+              {% if user.is_authenticated %}
+                <div class="d-flex align-items-center">
+                  <span class="text-primary fw-light me-2 fs-6">Hi,</span>
+                  <span class="text-primary fw-semibold me-3 fs-6">{{ user.first_name }}</span>
+                  <a href="{% url 'logout' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-box-arrow-left me-2"></i>Logout
+                  </a>
+                </div>
+              {% else %}
+                <a href="{% url 'oidc_authentication_init' %}" class="btn btn-primary">
+                  <i class="bi bi-box-arrow-in-right me-2"></i>Login
+                </a>
+              {% endif %}
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero-section">
+      <div class="container">
+        <div class="row align-items-center min-vh-100 py-5">
+          <div class="col-lg-6">
+            <div class="hero-content">
+              <div class="hero-badge mb-4">
+                <i class="bi bi-shield-shaded me-2"></i>
+                Secure • Trusted • Efficient
+              </div>
+
+              <h1 class="hero-title mb-4">
+                Welcome to the
+                <span class="text-primary">Resource Center</span>
+              </h1>
+
+              <p class="hero-subtitle mb-5">
+                The unified internal Document Management System for the Ministry of Innovation and Technology, designed
+                 to streamline the sharing, retrieval, and governance of files across all departments.
+              </p>
+
+              <div class="hero-actions">
+                <a href="{% url 'myFiles' %}" class="btn btn-primary btn-lg me-3">
+                  <i class="bi bi-box-arrow-in-right me-2"></i>
+                  Access Resource Center
+                </a>
+                <a href="{% url 'show-resource' %}" class="btn btn-outline-primary btn-lg">
+                  <i class="bi bi-info-circle me-2"></i>
+                  Learn More
+                </a>
+              </div>
+
+              <div class="hero-stats mt-5">
+                <div class="row">
+                  <div class="col-4">
+                    <div class="stat-item">
+                      <div class="stat-number">15K+</div>
+                      <div class="stat-label">Documents</div>
+                    </div>
+                  </div>
+                  <div class="col-4">
+                    <div class="stat-item">
+                      <div class="stat-number">45</div>
+                      <div class="stat-label">Departments</div>
+                    </div>
+                  </div>
+                  <div class="col-4">
+                    <div class="stat-item">
+                      <div class="stat-number">99.9%</div>
+                      <div class="stat-label">Uptime</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-6">
+            <div class="hero-visual">
+              <div class="dashboard-mockup">
+                <div class="mockup-header">
+                  <div class="mockup-controls">
+                    <span class="control-dot red"></span>
+                    <span class="control-dot yellow"></span>
+                    <span class="control-dot green"></span>
+                  </div>
+                  <span class="mockup-title">Resource Center Dashboard</span>
+                </div>
+                <div class="mockup-content">
+                  <div class="mockup-sidebar">
+                    <div class="sidebar-item active">
+                      <i class="bi bi-folder"></i>
+                      <span>My Documents</span>
+                    </div>
+                    <div class="sidebar-item">
+                      <i class="bi bi-share"></i>
+                      <span>Shared Files</span>
+                    </div>
+                    <div class="sidebar-item">
+                      <i class="bi bi-clock"></i>
+                      <span>Recent</span>
+                    </div>
+                  </div>
+                  <div class="mockup-main">
+                    <div class="file-grid">
+                      <div class="file-item">
+                        <i class="bi bi-file-pdf text-danger"></i>
+                        <span>Policy.pdf</span>
+                      </div>
+                      <div class="file-item">
+                        <i class="bi bi-file-word text-primary"></i>
+                        <span>Report.docx</span>
+                      </div>
+                      <div class="file-item">
+                        <i class="bi bi-file-excel text-success"></i>
+                        <span>Budget.xlsx</span>
+                      </div>
+                      <div class="file-item">
+                        <i class="bi bi-folder text-warning"></i>
+                        <span>Projects</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="py-5 bg-light">
+      <div class="container">
+        <div class="row justify-content-center">
+          <div class="col-lg-8 text-center">
+            <h2 class="section-title mb-4">About the Resource Center</h2>
+            <p class="section-subtitle mb-5">
+            Our Document Management System serves as the central hub for all
+              MinT operations, ensuring secure access, efficient
+              collaboration, and comprehensive governance of critical
+              information.
+            </p>
+          </div>
+        </div>
+
+        <div class="row g-4">
+          <div class="col-md-4">
+            <div class="about-card">
+              <div class="about-icon">
+                <i class="bi bi-shield-lock text-primary"></i>
+              </div>
+              <h4>Secure by Design</h4>
+              <p>
+                Enterprise-grade security with role-based access controls,
+                encryption, and audit trails.
+              </p>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="about-card">
+              <div class="about-icon">
+                <i class="bi bi-people text-success"></i>
+              </div>
+              <h4>Cross-Department</h4>
+              <p>
+                Seamless collaboration across all departments with
+                intelligent sharing controls.
+              </p>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="about-card">
+              <div class="about-icon">
+                <i class="bi bi-lightning text-warning"></i>
+              </div>
+              <h4>Always Available</h4>
+              <p>
+                24/7 access to your documents from any device, anywhere within
+                the secure network.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-5">
+      <div class="container">
+        <div class="row justify-content-center">
+          <div class="col-lg-8 text-center">
+            <h2 class="section-title mb-4">Key Features</h2>
+            <p class="section-subtitle mb-5">
+              Designed to support efficient access, organization, and management of internal 
+              documents across all departments at the Ministry of Innovation and Technology.
+            </p>
+          </div>
+        </div>
+
+        <div class="row g-4">
+          <div class="col-lg-3 col-md-6">
+            <div class="feature-card">
+              <div class="feature-icon">
+                <i class="bi bi-search"></i>
+              </div>
+              <h4>Quick Search</h4>
+              <p>
+                Easily find files by name, category, or department with smart filtering options.
+              </p>
+              <div class="feature-highlight">
+                <i class="bi bi-check-circle text-success me-2"></i>
+                User-Friendly 
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-3 col-md-6">
+            <div class="feature-card">
+              <div class="feature-icon">
+                <i class="bi bi-shield-check"></i>
+              </div>
+              <h4>Secure Access</h4>
+              <p>
+                Role-based login and permission control integrated with Keycloak authentication.
+              </p>
+              <div class="feature-highlight">
+                <i class="bi bi-check-circle text-success me-2"></i>
+                Enterprise Security
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-3 col-md-6">
+            <div class="feature-card">
+              <div class="feature-icon">
+                <i class="bi bi-diagram-3"></i>
+              </div>
+              <h4>Easy Upload & Download</h4>
+              <p>
+                Upload files and preview or download them in one click.
+              </p>
+              <div class="feature-highlight">
+                <i class="bi bi-check-circle text-success me-2"></i>
+                Modern UI
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-3 col-md-6">
+            <div class="feature-card">
+              <div class="feature-icon">
+                <i class="bi bi-cloud"></i>
+              </div>
+              <h4>Favorites & Bookmarks</h4>
+              <p>
+                Quickly mark frequently used documents for faster access.
+              </p>
+              <div class="feature-highlight">
+                <i class="bi bi-check-circle text-success me-2"></i>
+                One-Click Bookmarking
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="py-5 bg-light">
+      <div class="container">
+        <div class="row justify-content-center">
+          <div class="col-lg-8 text-center">
+            <h2 class="section-title mb-4">How It Works</h2>
+            <p class="section-subtitle mb-5">
+              Get started with the Resource Center in three simple steps.
+            </p>
+          </div>
+        </div>
+
+        <div class="row g-4">
+          <div class="col-md-4">
+            <div class="process-step">
+              <div class="step-number">1</div>
+              <div class="step-content">
+                <h4>Login with Credentials</h4>
+                <p>
+                  Use your email and secure password to access your
+                  personalized dashboard.
+                </p>
+                <div class="step-features">
+                  <small class="text-muted">
+                    <i class="bi bi-check me-1"></i> Single Sign-On (SSO) </small
+                  ><br />
+                  <small class="text-muted">
+                    <i class="bi bi-check me-1"></i> Multi-Factor Authentication
+                  </small>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="process-step">
+              <div class="step-number">2</div>
+              <div class="step-content">
+                <h4>Upload & Organize</h4>
+                <p>
+                  Drag and drop files, create folders, and let our
+                  system categorize and tag your documents.
+                </p>
+                <div class="step-features">
+                  <small class="text-muted">
+                    <i class="bi bi-check me-1"></i> Bulk Upload Support </small
+                  ><br />
+                  <small class="text-muted">
+                    <i class="bi bi-check me-1"></i> Auto-Classification
+                  </small>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="process-step">
+              <div class="step-number">3</div>
+              <div class="step-content">
+                <h4>Collaborate Securely</h4>
+                <p>
+                  Share with colleagues, set permissions, and track document
+                  usage with comprehensive audit trails.
+                </p>
+                <div class="step-features">
+                  <small class="text-muted">
+                    <i class="bi bi-check me-1"></i> Version Control </small
+                  ><br />
+                  <small class="text-muted">
+                    <i class="bi bi-check me-1"></i> Real-time Collaboration
+                  </small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Call to Action Section -->
+    <section id="cta" class="py-5 bg-primary text-white">
+      <div class="container">
+        <div class="row justify-content-center text-center">
+          <div class="col-lg-8">
+            <h2 class="mb-4">Ready to Get Started?</h2>
+            <p class="lead mb-5">
+              Join thousands of MinT staff already using the Resource Center
+              to streamline their document workflows.
+            </p>
+
+            <div class="cta-actions mb-5">
+              <a href="{% url 'oidc_authentication_init' %}" class="btn btn-light btn-lg me-3">
+                <i class="bi bi-box-arrow-in-right me-2"></i>
+                Login to Resource Center
+              </a>
+              <a href="#" class="btn btn-outline-light btn-lg">
+                <i class="bi bi-headset me-2"></i>
+                Get Support
+              </a>
+            </div>
+
+            <div class="cta-info">
+              <div class="row justify-content-center">
+                <div class="col-md-6">
+                  <div class="info-item">
+                    <i class="bi bi-telephone me-2"></i>
+                    <strong>IT Support:</strong> ext. 2847
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="info-item">
+                    <i class="bi bi-envelope me-2"></i>
+                    <strong>Help Desk:</strong> support@ministry.gov
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Support Section -->
+    <section id="support" class="py-5 bg-light">
+      <div class="container">
+        <div class="row justify-content-center">
+          <div class="col-lg-8 text-center">
+            <h2 class="section-title mb-4 fw-bold text-primary">Frequently Asked Questions</h2>
+            <p class="section-subtitle mb-5 text-muted fs-5">
+              Find quick answers to common questions about the Resource Center.
+            </p>
+          </div>
+        </div>
+
+        <div class="row justify-content-center">
+          <div class="col-lg-10">
+            <div class="accordion shadow-sm" id="faqAccordion">
+              <!-- FAQ Item 1 -->
+              <div class="accordion-item border-0 mb-3 rounded">
+                <h2 class="accordion-header" id="faq1">
+                  <button class="accordion-button bg-white text-dark fw-semibold border rounded" type="button" data-bs-toggle="collapse" data-bs-target="#collapse1" aria-expanded="true" aria-controls="collapse1">
+                    <i class="bi bi-question-circle me-3 text-primary fs-5"></i>
+                    How do I log in to the Resource Center?
+                  </button>
+                </h2>
+                <div id="collapse1" class="accordion-collapse collapse" aria-labelledby="faq1" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body bg-white border rounded-bottom p-4">
+                    <p class="mb-0 text-secondary">Click the "Login to Resource Center" button and use your  email and network credentials. Contact IT Support at ext. 2847 for login issues.</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- FAQ Item 2 -->
+              <div class="accordion-item border-0 mb-3 rounded">
+                <h2 class="accordion-header" id="faq2">
+                  <button class="accordion-button collapsed bg-white text-dark fw-semibold border rounded" type="button" data-bs-toggle="collapse" data-bs-target="#collapse2" aria-expanded="false" aria-controls="collapse2">
+                    <i class="bi bi-shield-check me-3 text-success fs-5"></i>
+                    Who can upload or edit documents?
+                  </button>
+                </h2>
+                <div id="collapse2" class="accordion-collapse collapse" aria-labelledby="faq2" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body bg-white border rounded-bottom p-4">
+                    <p class="mb-0 text-secondary">Most staff can upload to designated folders. Editing is restricted to document owners and authorized managers. Contact your department administrator for specific access.</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- FAQ Item 3 -->
+              <div class="accordion-item border-0 mb-3 rounded">
+                <h2 class="accordion-header" id="faq3">
+                  <button class="accordion-button collapsed bg-white text-dark fw-semibold border rounded" type="button" data-bs-toggle="collapse" data-bs-target="#collapse3" aria-expanded="false" aria-controls="collapse3">
+                    <i class="bi bi-folder2-open me-3 text-info fs-5"></i>
+                    What types of resources are available in the system?
+                  </button>
+                </h2>
+                <div id="collapse3" class="accordion-collapse collapse" aria-labelledby="faq3" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body bg-white border rounded-bottom p-4">
+                    <p class="mb-0 text-secondary">Policy manuals, procedure guides, templates, forms, training materials, and reference documents. Search by type, department, or keywords to find what you need.</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- FAQ Item 4 -->
+              <div class="accordion-item border-0 mb-3 rounded">
+                <h2 class="accordion-header" id="faq4">
+                  <button class="accordion-button collapsed bg-white text-dark fw-semibold border rounded" type="button" data-bs-toggle="collapse" data-bs-target="#collapse4" aria-expanded="false" aria-controls="collapse4">
+                    <i class="bi bi-tools me-3 text-warning fs-5"></i>
+                    How can I request access or report an issue?
+                  </button>
+                </h2>
+                <div id="collapse4" class="accordion-collapse collapse" aria-labelledby="faq4" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body bg-white border rounded-bottom p-4">
+                    <p class="mb-0 text-secondary">Email support@ministry.gov for access requests or technical issues. Call IT Support at ext. 2847 during business hours. Include detailed information for faster resolution.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white py-4">
+      <div class="container">
+        <div class="row align-items-center">
+          <div class="col-md-12">
+            <p class="mb-0 text-center">
+              Copyright ©2024 Ministry of Innovation and Technology. All Rights Reserved. 
+            </p>
+          </div>  
+        </div>
+      </div>
+    </footer>
+
+    <!-- Bootstrap 5 JS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Custom Scripts -->
+          <script src="{% static 'js/home.js' %}"></script>
+  </body>
+</html>

@@ -1,0 +1,728 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>GDOP Resource Center</title>
+    <meta
+      content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
+      name="viewport"
+    />
+    <link
+      href="{% static 'img/miii_logo.jpg' %}"
+      rel="icon"
+      type="image/x-icon"
+    />
+    <script src="{% static 'assets/js/plugin/webfont/webfont.min.js' %}"></script>
+    <script>
+      WebFont.load({
+        google: { families: ["Public Sans:300,400,500,600,700"] },
+        custom: {
+          families: [
+            "Font Awesome 5 Solid",
+            "Font Awesome 5 Regular",
+            "Font Awesome 5 Brands",
+            "simple-line-icons",
+          ],
+          urls: ["{% static 'assets/css/fonts.min.css' %}"],
+        },
+        active: function () {
+          sessionStorage.fonts = true;
+        },
+      });
+    </script>
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="{% static 'assets/css/bootstrap.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/plugins.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/kaiadmin.min.css' %}" />
+    <link href="{% static 'css/main.css' %}" rel="stylesheet" />
+  </head>
+  <body>
+    <div class="wrapper">
+      <!-- Sidebar -->
+      <div class="sidebar" data-background-color="">
+        <div class="sidebar-logo">
+          <!-- Logo Header -->
+          <div class="logo-header">
+            <a href="index.html" class="logo">
+              <img
+                src="{% static 'img/mint_logo.png' %}"
+                alt="navbar brand"
+                class="navbar-brand"
+                height="25"
+              />
+            </a>
+            <div class="nav-toggle">
+              <button class="btn btn-toggle toggle-sidebar">
+                <i class="gg-menu-right"></i>
+              </button>
+              <button class="btn btn-toggle sidenav-toggler">
+                <i class="gg-menu-left"></i>
+              </button>
+            </div>
+            <button class="topbar-toggler more">
+              <i class="gg-more-vertical-alt"></i>
+            </button>
+          </div>
+          <!-- End Logo Header -->
+        </div>
+        <div class="sidebar-wrapper scrollbar scrollbar-inner">
+          <div class="sidebar-content">
+            <ul class="nav nav-secondary">
+              <!-- Home -->
+              <li class="nav-item active">
+                <a href="/">
+                  <i class="fas fa-home"></i>
+                  <p>Home</p>
+                </a>
+              </li>
+
+              <!-- My Resources -->
+              <li class="nav-item">
+                <a
+                  data-bs-toggle="collapse"
+                  data-bs-target="#my-workspace"
+                  aria-expanded="true"
+                  aria-controls="my-workspace"
+                  style="cursor: pointer"
+                >
+                  <i class="fas fa-box"></i>
+                  <p>My Resources</p>
+                  <span class="caret"></span>
+                </a>
+                <div class="collapse show" id="my-workspace">
+                  <ul class="nav nav-collapse">
+                    <li class="nav-item">
+                      <a href="my-files">
+                        <i class="fas fa-folder-open"></i>
+                        <p>My Files</p>
+                        <span class="badge bg-primary">2</span>
+                      </a>
+                    </li>
+
+                    <li class="nav-item">
+                      <a href="#">
+                        <i class="fas fa-clock"></i>
+                        <p>Recent Files</p>
+                      </a>
+                    </li>
+
+                    <li class="nav-item">
+                      <a href="#" id="sharedWithMeLink">
+                        <i class="fas fa-users"></i>
+                        <p>Shared With Me</p>
+                        <span
+                          class="badge bg-warning"
+                          id="sharedWithMeCount"
+                        ></span>
+                      </a>
+                    </li>
+
+                    <li class="nav-item">
+                      <a href="#">
+                        <i class="fas fa-star"></i>
+                        <p>Starred Files</p>
+                      </a>
+                    </li>
+
+                    <li class="nav-item">
+                      <a href="#">
+                        <i class="fas fa-archive"></i>
+                        <p>Archived Files</p>
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </li>
+
+              <!-- Projects Section -->
+
+              <!-- <li class="nav-item">
+                <a
+                  data-bs-toggle="collapse"
+                  data-bs-target="#project-documents"
+                  aria-expanded="false"
+                  aria-controls="project-documents"
+                  style="cursor: pointer"
+                >
+                  <i class="fas fa-folder"></i>
+                  <p>Project-Specific Documents</p>
+                  <span class="caret"></span>
+                </a>
+                <div class="collapse" id="project-documents">
+                  <ul class="nav nav-collapse">
+                    <li class="nav-item">
+                      <a
+                        data-bs-toggle="collapse"
+                        data-bs-target="#visitors"
+                        aria-expanded="false"
+                        aria-controls="visitors"
+                        style="cursor: pointer"
+                      >
+                        <i class="fas fa-user-check"></i>
+                        <p>Visitors Management</p>
+                        <span class="caret"></span>
+                      </a>
+                      <div class="collapse" id="visitors">
+                        <ul class="nav nav-collapse">
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Overview</span></a
+                            >
+                          </li>
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Reports</span></a
+                            >
+                          </li>
+                        </ul>
+                      </div>
+                    </li>
+
+                    <li class="nav-item">
+                      <a
+                        data-bs-toggle="collapse"
+                        data-bs-target="#monitoring"
+                        aria-expanded="false"
+                        aria-controls="monitoring"
+                        style="cursor: pointer"
+                      >
+                        <i class="fas fa-chart-line"></i>
+                        <p>Monitoring & Evaluation</p>
+                        <span class="caret"></span>
+                      </a>
+                      <div class="collapse" id="monitoring">
+                        <ul class="nav nav-collapse">
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Dashboard</span></a
+                            >
+                          </li>
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Reports</span></a
+                            >
+                          </li>
+                        </ul>
+                      </div>
+                    </li>
+
+                    <li class="nav-item">
+                      <a
+                        data-bs-toggle="collapse"
+                        data-bs-target="#documents"
+                        aria-expanded="false"
+                        aria-controls="documents"
+                        style="cursor: pointer"
+                      >
+                        <i class="fas fa-file-alt"></i>
+                        <p>Document Management</p>
+                        <span class="caret"></span>
+                      </a>
+                      <div class="collapse" id="documents">
+                        <ul class="nav nav-collapse">
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Upload Documents</span></a
+                            >
+                          </li>
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Archive</span></a
+                            >
+                          </li>
+                        </ul>
+                      </div>
+                    </li>
+
+                    <li class="nav-item">
+                      <a
+                        data-bs-toggle="collapse"
+                        data-bs-target="#contact"
+                        aria-expanded="false"
+                        aria-controls="contact"
+                        style="cursor: pointer"
+                      >
+                        <i class="fas fa-address-book"></i>
+                        <p>Contact Management</p>
+                        <span class="caret"></span>
+                      </a>
+                      <div class="collapse" id="contact">
+                        <ul class="nav nav-collapse">
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Contact List</span></a
+                            >
+                          </li>
+                          <li>
+                            <a href="#"><span class="sub-item">Groups</span></a>
+                          </li>
+                        </ul>
+                      </div>
+                    </li>
+
+                    <li class="nav-item">
+                      <a
+                        data-bs-toggle="collapse"
+                        data-bs-target="#transport"
+                        aria-expanded="false"
+                        aria-controls="transport"
+                        style="cursor: pointer"
+                      >
+                        <i class="fas fa-car"></i>
+                        <p>Transport Management</p>
+                        <span class="caret"></span>
+                      </a>
+                      <div class="collapse" id="transport">
+                        <ul class="nav nav-collapse">
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Schedule</span></a
+                            >
+                          </li>
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Requests</span></a
+                            >
+                          </li>
+                        </ul>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+              </li> -->
+
+              <!-- Resources -->
+              <!-- <li class="nav-section">
+                <span class="sidebar-mini-icon">
+                  <i class="fa fa-book"></i>
+                </span>
+                <h4 class="text-section">Resources</h4>
+              </li> -->
+
+              <!-- Resource Categories -->
+
+              <!-- <li class="nav-item">
+                <a href="#">
+                  <i class="fas fa-file-alt"></i>
+                  <p>Policies & Guidelines</p>
+                </a>
+              </li> -->
+
+              <!-- <li class="nav-item">
+                <a href="#">
+                  <i class="fas fa-graduation-cap"></i>
+                  <p>Trainings & User Guides</p>
+                </a>
+              </li> -->
+
+              <!-- <li class="nav-item">
+                <a href="#">
+                  <i class="fas fa-clipboard"></i>
+                  <p>Forms & Templates</p>
+                </a>
+              </li> -->
+
+              <!-- <li class="nav-item">
+                <a href="#">
+                  <i class="fas fa-chart-line"></i>
+                  <p>Reports & Analysis</p>
+                </a>
+              </li> -->
+
+              <!-- <li class="nav-item">
+                <a href="#">
+                  <i class="fas fa-paperclip"></i>
+                  <p>Submitted Reports</p>
+                </a>
+              </li> -->
+
+              <!-- Settings -->
+              <!-- <li class="nav-section">
+                <span class="sidebar-mini-icon">
+                  <i class="fa fa-cog"></i>
+                </span>
+                <h4 class="text-section">Settings</h4>
+              </li> -->
+
+              <!-- <li class="nav-item">
+                <a href="#">
+                  <i class="fas fa-user"></i>
+                  <p>Profile</p>
+                </a>
+              </li> -->
+
+              <!-- <li class="nav-item">
+                <a href="#">
+                  <i class="fas fa-question-circle"></i>
+                  <p>Help & Support</p>
+                </a>
+              </li> -->
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- End Sidebar -->
+
+      <div class="main-panel">
+        <div class="main-header">
+          <!-- Navbar Header -->
+          <nav
+            class="navbar navbar-header navbar-header-transparent navbar-expand-lg border-bottom"
+          >
+            <div class="search-bar">
+              <!-- Search Icon -->
+              <span class="search-icon">
+                <i class="fa fa-search search-icon"></i>
+              </span>
+              <!-- Search Input -->
+              <input
+                type="text"
+                id="searchInput"
+                class="search-input"
+                placeholder="Search ..."
+                aria-label="Search"
+              />
+            </div>
+            <div class="container-fluid">
+              <nav
+                class="navbar navbar-header-left navbar-expand-lg navbar-form nav-search p-0 d-none d-lg-flex"
+              ></nav>
+
+              <ul class="navbar-nav topbar-nav ms-md-auto align-items-center">
+                <li
+                  class="nav-item topbar-icon dropdown hidden-caret d-flex d-lg-none"
+                >
+                  <a
+                    class="nav-link dropdown-toggle"
+                    data-bs-toggle="dropdown"
+                    href="#"
+                    role="button"
+                    aria-expanded="false"
+                    aria-haspopup="true"
+                  >
+                    <i class="fa fa-search"></i>
+                  </a>
+                  <ul class="dropdown-menu dropdown-search animated fadeIn">
+                    <form class="navbar-left navbar-form nav-search">
+                      <div class="input-group">
+                        <input
+                          type="text"
+                          placeholder="Search ..."
+                          class="form-control"
+                        />
+                      </div>
+                    </form>
+                  </ul>
+                </li>
+                {% if first_name %}
+                <li class="nav-item topbar-icon dropdown hidden-caret">
+                  <a
+                    class="nav-link dropdown-toggle"
+                    href="#"
+                    id="messageDropdown"
+                    role="button"
+                    data-bs-toggle="dropdown"
+                    aria-haspopup="true"
+                    aria-expanded="false"
+                  >
+                    <i class="fa fa-envelope"></i>
+                  </a>
+                </li>
+                <li class="nav-item topbar-icon dropdown hidden-caret">
+                  <a
+                    class="nav-link dropdown-toggle"
+                    href="#"
+                    id="notifDropdown"
+                    role="button"
+                    data-bs-toggle="dropdown"
+                    aria-haspopup="true"
+                    aria-expanded="false"
+                  >
+                    <i class="fa fa-bell"></i>
+                    <span class="notification">4</span>
+                  </a>
+                </li>
+
+                <li class="nav-item topbar-user dropdown hidden-caret">
+                  <a
+                    class="dropdown-toggle profile-pic"
+                    data-bs-toggle="dropdown"
+                    href="#"
+                    aria-expanded="false"
+                  >
+                    <div class="avatar-sm">
+                      <img
+                        src="{% static 'img/no-pp.jpg' %}"
+                        alt="..."
+                        class="avatar-img rounded-circle"
+                      />
+                    </div>
+                    <span class="profile-username">
+                      <span class="op-7">Hi,</span>
+                      <span class="fw-bold">{{ first_name }}</span>
+                    </span>
+                  </a>
+                  <ul class="dropdown-menu dropdown-user animated fadeIn">
+                    <div class="dropdown-user-scroll scrollbar-outer">
+                      <li>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item" href="#">My Profile</a>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item" href="{% url 'logout' %}"
+                          >Logout</a
+                        >
+                      </li>
+                    </div>
+                  </ul>
+                </li>
+                {% else %}
+                <li class="nav-item topbar-icon dropdown hidden-caret">
+                  <a
+                    href="{% url 'oidc_authentication_init' %}"
+                    class="btn btn-primary"
+                    style="margin-right: 30px"
+                    >Login</a
+                  >
+                </li>
+                {% endif %}
+              </ul>
+            </div>
+          </nav>
+          <!-- End Navbar -->
+        </div>
+
+        <div class="container">
+          <div class="page-inner">
+            <div
+              class="d-flex align-items-left align-items-md-center flex-column flex-md-row pt-2 pb-4"
+            >
+              <div>
+                <h2 class="fw-bold mb-3">MInT Resource Center</h2>
+                <h6 class="op-7 mb-2">
+                  Find essential documents, templates, and guides to support
+                  your work.
+                </h6>
+              </div>
+              <div class="ms-md-auto py-2 py-md-0">
+                <!-- <a href="#" class="btn btn-label-info btn-round me-2">Manage</a> -->
+                <!-- <a href="#" class="btn btn-primary btn-round">Upload</a> -->
+              </div>
+            </div>
+            <div class="row">
+              <!-- Visitors Management -->
+              <div class="col-sm-6 col-md-3">
+                <div class="card card-stats card-round">
+                  <div class="card-body">
+                    <div class="row align-items-center">
+                      <div class="col-icon">
+                        <div
+                          class="icon-big text-center icon-primary bubble-shadow-small"
+                        >
+                          <i class="fas fa-id-badge"></i>
+                          <!-- Icon Updated -->
+                        </div>
+                      </div>
+                      <div class="col col-stats ms-3 ms-sm-0">
+                        <div class="numbers">
+                          <p class="card-category">Visitors Registered</p>
+                          <h4 class="card-title">90</h4>
+                          <!-- Dynamic Count -->
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Document Management -->
+              <div class="col-sm-6 col-md-3">
+                <div class="card card-stats card-round">
+                  <div class="card-body">
+                    <div class="row align-items-center">
+                      <div class="col-icon">
+                        <div
+                          class="icon-big text-center icon-primary bubble-shadow-small"
+                        >
+                          <i class="fas fa-users"></i>
+                          <!-- Icon Updated -->
+                        </div>
+                      </div>
+                      <div class="col col-stats ms-3 ms-sm-0">
+                        <div class="numbers">
+                          <p class="card-category">Active <br />Users</p>
+                          <h4 class="card-title">45</h4>
+                          <!-- Dynamic Count -->
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Monitoring & Evaluation -->
+              <div class="col-sm-6 col-md-3">
+                <div class="card card-stats card-round">
+                  <div class="card-body">
+                    <div class="row align-items-center">
+                      <div class="col-icon">
+                        <div
+                          class="icon-big text-center icon-primary bubble-shadow-small"
+                        >
+                          <i class="fas fa-chart-line"></i>
+                          <!-- Icon Updated -->
+                        </div>
+                      </div>
+                      <div class="col col-stats ms-3 ms-sm-0">
+                        <div class="numbers">
+                          <p class="card-category">Reports <br />Generated</p>
+                          <h4 class="card-title">32</h4>
+                          <!-- Dynamic Count -->
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Transport Management -->
+              <div class="col-sm-6 col-md-3">
+                <div class="card card-stats card-round">
+                  <div class="card-body">
+                    <div class="row align-items-center">
+                      <div class="col-icon">
+                        <div
+                          class="icon-big text-center icon-primary bubble-shadow-small"
+                        >
+                          <i class="fas fa-bus"></i>
+                          <!-- Icon Updated -->
+                        </div>
+                      </div>
+                      <div class="col col-stats ms-3 ms-sm-0">
+                        <div class="numbers">
+                          <p class="card-category">Transport Requests</p>
+                          <h4 class="card-title">23</h4>
+                          <!-- Dynamic Count -->
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row row-card-no-pd">
+              <!-- Total Documents -->
+              <div class="col-12 col-sm-6 col-md-6 col-xl-3">
+                <div class="card text-center">
+                  <div class="card-body">
+                    <i class="fas fa-file-alt text-primary fa-3x mb-3"></i>
+                    <h6><b>Total Documents</b></h6>
+                    <p class="text-muted">Uploaded in the System</p>
+                    <h4 class="text-primary fw-bold">34</h4>
+                    <a href="/files" class="text-muted"
+                      >View All <i class="fas fa-arrow-right"></i
+                    ></a>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Recently Uploaded Documents -->
+              <div class="col-12 col-sm-6 col-md-6 col-xl-3">
+                <div class="card text-center">
+                  <div class="card-body">
+                    <i
+                      class="fas fa-cloud-upload-alt text-primary fa-3x mb-3"
+                    ></i>
+                    <h6><b>Recently Uploaded</b></h6>
+                    <p class="text-muted">Latest Additions</p>
+                    <h4 class="text-primary fw-bold">24 New</h4>
+                    <a href="#" class="text-muted"
+                      >View Recent <i class="fas fa-arrow-right"></i
+                    ></a>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Most Downloaded Documents -->
+              <div class="col-12 col-sm-6 col-md-6 col-xl-3">
+                <div class="card text-center">
+                  <div class="card-body">
+                    <i class="fas fa-download text-primary fa-3x mb-3"></i>
+                    <h6><b>Most Downloaded</b></h6>
+                    <p class="text-muted">Top Accessed Files</p>
+                    <h4 class="text-primary fw-bold">18 Times</h4>
+                    <a href="#" class="text-muted"
+                      >View Popular <i class="fas fa-arrow-right"></i
+                    ></a>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Fourth Card: Most Accessed Category -->
+              <div class="col-12 col-sm-6 col-md-6 col-xl-3">
+                <div class="card text-center">
+                  <div class="card-body">
+                    <i class="fas fa-folder-open text-primary fa-3x mb-3"></i>
+                    <h6><b>Most Accessed Category</b></h6>
+                    <p class="text-muted">Top Used Section</p>
+                    <h4 class="text-primary fw-bold">HR Policies</h4>
+                    <a href="#" class="text-muted"
+                      >View Category <i class="fas fa-arrow-right"></i
+                    ></a>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6">
+                <div class="card">
+                  <div class="card-header">
+                    <div class="card-title">Resource Usage Overview</div>
+                  </div>
+                  <div class="card-body">
+                    <div class="chart-container">
+                      <canvas
+                        id="myPieChart"
+                        style="width: 50%; height: 50%"
+                      ></canvas>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="card">
+                  <div class="card-header">
+                    <div class="card-title">Document Access by Department</div>
+                  </div>
+                  <div class="card-body">
+                    <div class="chart-container">
+                      <canvas id="myBarChart"></canvas>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <footer class="footer">
+          <div class="container-fluid d-flex justify-content-center">
+            <div class="copyright text-center">
+              Copyright ©2024 Ministry of Innovation and Technology. All Rights
+              Reserved.
+            </div>
+          </div>
+        </footer>
+      </div>
+    </div>
+    <script src="{% static 'assets/js/core/jquery-3.7.1.min.js' %}"></script>
+    <script src="{% static 'assets/js/core/popper.min.js' %}"></script>
+    <script src="{% static 'assets/js/core/bootstrap.min.js' %}"></script>
+    <script src="{% static 'assets/js/plugin/chart.js/chart.min.js' %}"></script>
+    <script src="{% static 'assets/js/plugin/chart-circle/circles.min.js' %}"></script>
+    <script src="{% static 'assets/js/kaiadmin.min.js' %}"></script>
+    <script src="{% static 'js/main.js' %}"></script>
+  </body>
+</html>

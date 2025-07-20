@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /**
+   * Tailwind CSS theme
+   * tailwind.config.ts expects the following color variables to be expressed as HSL values.
+   * A different format will require also updating the theme in tailwind.config.ts.
+  */
+  :root {
+    /* MINT Professional Color Scheme */
+    --background: 220 13% 97%; /* #f9fafb */
+    --foreground: 222.2 84% 4.9%; /* #111827 */
+
+    --card: 0 0% 100%; /* #ffffff */
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 217.2 91.2% 59.8%; /* MINT Blue #2563eb */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 13% 91%; /* Light gray */
+    --secondary-foreground: 215.4 16.3% 46.9%;
+
+    --muted: 220 13% 91%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 217.2 91.2% 94%; /* Light blue accent */
+    --accent-foreground: 217.2 91.2% 59.8%;
+
+    --destructive: 0 84.2% 60.2%; /* Error red */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 217.2 91.2% 59.8%;
+
+    --radius: 0.75rem;
+
+    /* MINT Sidebar Colors */
+    --sidebar-background: 0 0% 100%; /* White sidebar */
+    --sidebar-foreground: 215.4 16.3% 46.9%;
+    --sidebar-primary: 217.2 91.2% 59.8%; /* MINT Blue */
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217.2 91.2% 94%;
+    --sidebar-accent-foreground: 217.2 91.2% 59.8%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Success, Warning, Error for MINT */
+    --success: 142 71% 45%; /* #10b981 */
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%; /* #f59e0b */
+    --warning-foreground: 0 0% 100%;
+    --error: 0 84% 60%; /* #ef4444 */
+    --error-foreground: 0 0% 100%;
+  }
+
+  .dark {
+    /* MINT Dark Mode (Optional) */
+    --background: 222.2 84% 4.9%; /* #111827 */
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 7%; /* Slightly lighter dark */
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 217.2 91.2% 59.8%; /* Keep MINT Blue */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 84% 60%; /* Keep consistent error red */
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 217.2 91.2% 59.8%;
+
+    /* Dark sidebar */
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 217.2 91.2% 59.8%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Dark mode variations */
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --error: 0 84% 60%;
+    --error-foreground: 0 0% 100%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}

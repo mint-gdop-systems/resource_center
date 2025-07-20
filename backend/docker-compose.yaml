@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: "rc-db"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+    networks:
+      - rc_network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    env_file:
+      - .env
+  django:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app/
+    networks:
+      - rc_network
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    env_file:
+      - .env
+volumes:
+  postgres_data:
+networks:
+  rc_network:
+    driver: bridge

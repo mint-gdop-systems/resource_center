@@ -1,0 +1,1196 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>GDOP Resource Center</title>
+    <meta
+      content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
+      name="viewport"
+    />
+    <link
+      href="{% static 'img/miii_logo.jpg' %}"
+      rel="icon"
+      type="image/x-icon"
+    />
+    <script src="{% static 'assets/js/plugin/webfont/webfont.min.js' %}"></script>
+    <script>
+      WebFont.load({
+        google: { families: ["Public Sans:300,400,500,600,700"] },
+        custom: {
+          families: [
+            "Font Awesome 5 Solid",
+            "Font Awesome 5 Regular",
+            "Font Awesome 5 Brands",
+            "simple-line-icons",
+          ],
+          urls: ["{% static 'assets/css/fonts.min.css' %}"],
+        },
+        active: function () {
+          sessionStorage.fonts = true;
+        },
+      });
+    </script>
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.9.3/dropzone.min.css">
+    <link rel="stylesheet" href="{% static 'assets/css/bootstrap.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/plugins.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/kaiadmin.min.css' %}" />
+    <link href="{% static 'css/base.css' %}"rel="stylesheet" />
+  </head>
+  <body>
+    <div class="wrapper">
+      <!-- Sidebar -->
+      <div class="sidebar" data-background-color="">
+        <div class="sidebar-logo">
+          <!-- Logo Header -->
+          <div class="logo-header">
+            <a href="index.html" class="logo">
+              <img
+              src="{% static 'img/mint_logo.png' %}"
+                alt="navbar brand"
+                class="navbar-brand"
+                height="25"
+              />
+            </a>
+            <div class="nav-toggle">
+              <button class="btn btn-toggle toggle-sidebar">
+                <i class="gg-menu-right"></i>
+              </button>
+              <button class="btn btn-toggle sidenav-toggler">
+                <i class="gg-menu-left"></i>
+              </button>
+            </div>
+            <button class="topbar-toggler more">
+              <i class="gg-more-vertical-alt"></i>
+            </button>
+          </div>
+          <!-- End Logo Header -->
+        </div>
+        <div class="sidebar-wrapper scrollbar scrollbar-inner">
+          <div class="gd-new-btn-container">
+            <button id="gd-new-btn">
+              <i class="fas fa-plus"></i> New
+            </button>
+          
+            <div id="gd-dropdown-card" class="gd-dropdown-card">
+              <button class="text-muted upload_card"><i class="fa fa-upload text-secondary"></i> File Upload</button>
+              <div class="gd-dropdown-divider"></div>
+              <button class="text-muted" type="button" data-bs-toggle="modal" data-bs-target="#cf-createFolderModal"><i class="fa fa-folder text-secondary"></i> Create Folder </button>
+            </div>
+          </div>
+          <div class="sidebar-content">
+            <ul class="nav nav-secondary">
+              <!-- Home -->
+              <li class="nav-item">
+                <a href="/">
+                  <i class="fas fa-home"></i>
+                  <p>Home</p>
+                </a>
+              </li>
+
+              <!-- My Resources -->
+              <li class="nav-item">
+                <a
+                  data-bs-toggle="collapse"
+                  data-bs-target="#my-workspace"
+                  aria-expanded="true"
+                  aria-controls="my-workspace"
+                  style="cursor: pointer"
+                >
+                <i class="fas fa-box"></i>
+                <p>My Resources</p>
+                  <span class="caret"></span>
+                </a>
+                <div class="collapse show" id="my-workspace">
+                  <ul class="nav nav-collapse">
+                    <li class="nav-item active">
+                      <a href="my-files">
+                        <i class="fas fa-folder-open"></i>
+                        <p>My Files</p>
+                        <span class="badge bg-primary" id="myFilesCount"></span>
+                      </a>
+                    </li>
+
+                    <li class="nav-item">
+                      <a href="#">
+                        <i class="fas fa-clock"></i>
+                        <p>Recent Files</p>
+                      </a>
+                    </li>
+
+                    <li class="nav-item">
+                      <a href="#" id="sharedWithMeLink">
+                        <i class="fas fa-users"></i>
+                        <p>Shared With Me</p>
+                        <span class="badge bg-warning" id="sharedWithMeCount"></span>
+                      </a>
+                    </li>
+                                                                                         
+                    <li class="nav-item">
+                      <a href="#" id="starred-button">
+                        <i class="fas fa-star"></i>
+                        <p>Starred Files</p>
+                      </a>
+                    </li>
+
+                    <li class="nav-item">
+                      <a href="#">
+                        <i class="fas fa-archive"></i>
+                        <p>Archived Files</p>
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </li>
+
+              <!-- Projects Section -->
+
+              <!-- <li class="nav-item">
+                <a
+                  data-bs-toggle="collapse"
+                  data-bs-target="#project-documents"
+                  aria-expanded="false"
+                  aria-controls="project-documents"
+                  style="cursor: pointer"
+                >
+                  <i class="fas fa-folder"></i>
+                  <p>Project-Specific Documents</p>
+                  <span class="caret"></span>
+                </a>
+                <div class="collapse" id="project-documents">
+                  <ul class="nav nav-collapse">
+                    <li class="nav-item">
+                      <a
+                        data-bs-toggle="collapse"
+                        data-bs-target="#visitors"
+                        aria-expanded="false"
+                        aria-controls="visitors"
+                        style="cursor: pointer"
+                      >
+                        <i class="fas fa-user-check"></i>
+                        <p>Visitors Management</p>
+                        <span class="caret"></span>
+                      </a>
+                      <div class="collapse" id="visitors">
+                        <ul class="nav nav-collapse">
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Overview</span></a
+                            >
+                          </li>
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Reports</span></a
+                            >
+                          </li>
+                        </ul>
+                      </div>
+                    </li>
+
+                    <li class="nav-item">
+                      <a
+                        data-bs-toggle="collapse"
+                        data-bs-target="#monitoring"
+                        aria-expanded="false"
+                        aria-controls="monitoring"
+                        style="cursor: pointer"
+                      >
+                        <i class="fas fa-chart-line"></i>
+                        <p>Monitoring & Evaluation</p>
+                        <span class="caret"></span>
+                      </a>
+                      <div class="collapse" id="monitoring">
+                        <ul class="nav nav-collapse">
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Dashboard</span></a
+                            >
+                          </li>
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Reports</span></a
+                            >
+                          </li>
+                        </ul>
+                      </div>
+                    </li>
+
+                    <li class="nav-item">
+                      <a
+                        data-bs-toggle="collapse"
+                        data-bs-target="#documents"
+                        aria-expanded="false"
+                        aria-controls="documents"
+                        style="cursor: pointer"
+                      >
+                        <i class="fas fa-file-alt"></i>
+                        <p>Document Management</p>
+                        <span class="caret"></span>
+                      </a>
+                      <div class="collapse" id="documents">
+                        <ul class="nav nav-collapse">
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Upload Documents</span></a
+                            >
+                          </li>
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Archive</span></a
+                            >
+                          </li>
+                        </ul>
+                      </div>
+                    </li>
+
+                    <li class="nav-item">
+                      <a
+                        data-bs-toggle="collapse"
+                        data-bs-target="#contact"
+                        aria-expanded="false"
+                        aria-controls="contact"
+                        style="cursor: pointer"
+                      >
+                        <i class="fas fa-address-book"></i>
+                        <p>Contact Management</p>
+                        <span class="caret"></span>
+                      </a>
+                      <div class="collapse" id="contact">
+                        <ul class="nav nav-collapse">
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Contact List</span></a
+                            >
+                          </li>
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Groups</span></a
+                            >
+                          </li>
+                        </ul>
+                      </div>
+                    </li>
+
+                    <li class="nav-item">
+                      <a
+                        data-bs-toggle="collapse"
+                        data-bs-target="#transport"
+                        aria-expanded="false"
+                        aria-controls="transport"
+                        style="cursor: pointer"
+                      >
+                        <i class="fas fa-car"></i>
+                        <p>Transport Management</p>
+                        <span class="caret"></span>
+                      </a>
+                      <div class="collapse" id="transport">
+                        <ul class="nav nav-collapse">
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Schedule</span></a
+                            >
+                          </li>
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Requests</span></a
+                            >
+                          </li>
+                        </ul>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+              </li> -->
+
+              <!-- Resources -->
+              <!-- <li class="nav-section">
+                <span class="sidebar-mini-icon">
+                  <i class="fa fa-book"></i>
+                </span>
+                <h4 class="text-section">Resources</h4>
+              </li> -->
+
+              <!-- Resource Categories -->
+             
+
+              <!-- <li class="nav-item">
+                <a href="#">
+                  <i class="fas fa-file-alt"></i>
+                  <p>Policies & Guidelines</p>
+                </a>
+              </li> -->
+
+              <!-- <li class="nav-item">
+                <a href="#">
+                  <i class="fas fa-graduation-cap"></i>
+                  <p>Trainings & User Guides</p>
+                </a>
+              </li> -->
+
+              <!-- <li class="nav-item">
+                <a href="#">
+                  <i class="fas fa-clipboard"></i>
+                  <p>Forms & Templates</p>
+                </a>
+              </li> -->
+
+              <!-- <li class="nav-item">
+                <a href="#">
+                  <i class="fas fa-chart-line"></i>
+                  <p>Reports & Analysis</p>
+                </a>
+              </li> -->
+
+              <!-- <li class="nav-item">
+                <a href="#">
+                  <i class="fas fa-paperclip"></i>
+                  <p>Submitted Reports</p>
+                </a>
+              </li> -->
+                               
+              <!-- Settings -->
+              <!-- <li class="nav-section">
+                <span class="sidebar-mini-icon">
+                  <i class="fa fa-cog"></i>
+                </span>
+                <h4 class="text-section">Settings</h4>
+              </li> -->
+
+              <!-- <li class="nav-item">
+                <a href="#">
+                  <i class="fas fa-user"></i>
+                  <p>Profile</p>
+                </a>
+              </li> -->
+
+              <!-- <li class="nav-item">
+                <a href="#">
+                  <i class="fas fa-question-circle"></i>
+                  <p>Help & Support</p>
+                </a>
+              </li> -->
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- End Sidebar -->
+
+      <div class="main-panel">
+        <div class="main-header">
+          <!-- Navbar Header -->
+          <nav
+            class="navbar navbar-header navbar-header-transparent navbar-expand-lg border-bottom"
+          ><div class="search-bar">
+            <!-- Search Icon -->
+            <span class="search-icon">
+              <i class="fa fa-search search-icon"></i>
+            </span>
+            <!-- Search Input -->
+            <input type="text" id="searchInput" class="search-input" placeholder="Search ..." aria-label="Search">
+          </div>
+            <div class="container-fluid">
+              <nav
+                class="navbar navbar-header-left navbar-expand-lg navbar-form nav-search p-0 d-none d-lg-flex"
+              >
+              </nav>
+
+              <ul class="navbar-nav topbar-nav ms-md-auto align-items-center">
+                <li
+                  class="nav-item topbar-icon dropdown hidden-caret d-flex d-lg-none"
+                >
+                  <a
+                    class="nav-link dropdown-toggle"
+                    data-bs-toggle="dropdown"
+                    href="#"
+                    role="button"
+                    aria-expanded="false"
+                    aria-haspopup="true"
+                  >
+                    <i class="fa fa-search"></i>
+                  </a>
+                  <ul class="dropdown-menu dropdown-search animated fadeIn">
+                    <form class="navbar-left navbar-form nav-search">
+                      <div class="input-group">
+                        <input
+                          type="text"
+                          placeholder="Search ..."
+                          class="form-control"
+                        />
+                      </div>
+                    </form>
+                  </ul>
+                </li>
+                <li class="nav-item topbar-icon dropdown hidden-caret">
+                  <a
+                    class="nav-link dropdown-toggle"
+                    href="#"
+                    id="messageDropdown"
+                    role="button"
+                    data-bs-toggle="dropdown"
+                    aria-haspopup="true"
+                    aria-expanded="false"
+                  >
+                    <i class="fa fa-envelope"></i>
+                  </a>
+                </li>
+                <li class="nav-item topbar-icon dropdown hidden-caret">
+                  <a
+                    class="nav-link dropdown-toggle position-relative"
+                    href="#"
+                    id="notifDropdown"
+                    role="button"
+                    data-bs-toggle="dropdown"
+                    aria-haspopup="true"
+                    aria-expanded="false"
+                  >
+                    <i class="fa fa-bell fs-5"></i>
+                    <span id="reminder-count" class="notification bg-danger rounded-circle text-white fw-bold">0</span>
+                  </a>
+                  <ul
+                    class="dropdown-menu notif-box animated fadeIn shadow-sm border-0 rounded-3"
+                    aria-labelledby="notifDropdown"
+                    style="width: 320px; max-height: 420px; overflow-y: auto;"
+                  >
+                    <li>
+                      <div class="dropdown-title bg-light p-3 fw-semibold border-bottom">
+                        Upcoming Reminders
+                      </div>
+                    </li>
+                    <li>
+                      <div class="notif-scroll">
+                        <div class="notif-center" id="reminder-list">
+                          <!-- Reminder items will be inserted here via JS -->
+                        </div>
+                      </div>
+                    </li>
+                    <li>
+                      <a class="see-all d-block text-center p-2 text-primary" href="#" data-bs-toggle="modal" data-bs-target="#allRemindersModal">
+                        View All Reminders <i class="fa fa-angle-right"></i>
+                      </a>
+                    </li>
+                  </ul>
+                </li>
+                
+                
+                
+
+                <li class="nav-item topbar-user dropdown hidden-caret">
+                  <a
+                    class="dropdown-toggle profile-pic"
+                    data-bs-toggle="dropdown"
+                    href="#"
+                    aria-expanded="false"
+                  >
+                    <div class="avatar-sm">
+                      <img
+                      src="{% static 'img/no-pp.jpg' %}"
+                        alt="..."
+                        class="avatar-img rounded-circle"
+                      />
+                    </div>
+                    <span class="profile-username">
+                      <span class="op-7">Hi,</span>
+                      <span class="fw-bold" id="user-name" style="text-transform: capitalize"></span>
+                    </span>
+                  </a>
+                  <ul class="dropdown-menu dropdown-user animated fadeIn">
+                    <div class="dropdown-user-scroll scrollbar-outer">
+                      
+                      <li>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item" href="#">My Profile</a>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item" href="{% url 'logout' %}">Logout</a>
+                      </li>
+                    </div>
+                  </ul>
+                </li>
+              </ul>
+            </div>
+          </nav>
+          <!-- End Navbar -->
+        </div>
+
+        <!-- Main Content -->
+        <div class="container">
+          <div class="page-inner">
+            <div class="row d-flex justify-content-center align-items-center">
+              <!-- Upload or Drop -->
+              <div class="col-6 col-sm-4 col-lg-2">
+                <button class="card-button upload_card">
+                  <div class="card-body">
+                    <i class="fa fa-upload fa-2x text-primary"></i>
+                    <div class="text-muted mt-2">Upload or Drop</div>
+                  </div>
+                </button>
+              </div>
+              <!-- New "Create" card -->
+    <div class="col-6 col-sm-4 col-lg-2">
+      <button class="card-button">
+        <div class="card-body">
+          <i class="fa fa-plus fa-2x text-primary"></i>
+          <div class="text-muted mt-2">Create</div>
+        </div>
+      </button>
+    </div>
+              <!-- Create Folder -->
+              <div class="col-6 col-sm-4 col-lg-2">
+                <button class="card-button" type="button" data-bs-toggle="modal" data-bs-target="#cf-createFolderModal">
+                  <div class="card-body">
+                    <i class="fa fa-folder fa-2x text-primary"></i>
+                    <div class="text-muted mt-2">Create Folder</div>
+                  </div>
+                </button>
+              </div>
+
+              <!-- Modal -->
+            <div class="modal fade" id="cf-createFolderModal" tabindex="-1" aria-labelledby="cf-createFolderModalLabel" aria-hidden="true">
+              <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content cf-modal-content">
+                  <div class="modal-header cf-modal-header">
+                    <h5 class="modal-title cf-modal-title">
+                      <i class="fa fa-folder" aria-hidden="true" id="cf-folderIcon"></i> Create folder
+                    </h5>
+                    <button type="button" class="btn-close cf-close-btn" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  
+                  <div class="modal-body cf-modal-body">
+                    <form id="cf-createFolderForm">
+                      <label for="cf-folderName" class="form-label cf-form-label">Name</label>
+                      <input type="text" class="form-control cf-form-control" id="cf-folderName" placeholder="Folder name" required>
+                    </form>
+                  </div>
+                  <div class="modal-footer cf-modal-footer">
+                    <button type="button" class="btn cf-cancel-btn" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" form="cf-createFolderForm" class="btn cf-create-btn" id="cf-createButton" disabled>Create</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+              <!-- Share -->
+              <div class="col-6 col-sm-4 col-lg-2">
+                <button class="card-button">
+                  <div class="card-body">
+                    <i class="fa fa-share-alt fa-2x text-primary"></i>
+                    <div class="text-muted mt-2">Share</div>
+                  </div>
+                </button>
+              </div>
+              <!-- Transfer a Copy -->
+              <div class="col-6 col-sm-4 col-lg-2">
+                <button class="card-button">
+                  <div class="card-body">
+                    <i class="fa fa-copy fa-2x text-primary"></i>
+                    <div class="text-muted mt-2">Transfer a Copy</div>
+                  </div>
+                </button>
+              </div>
+              <div class="col-6 col-sm-4 col-lg-2">
+                <button class="card-button" id="archive-button">
+                  <div class="card-body">
+                    <i class="fa fa-archive fa-2x text-primary"></i> 
+                    <div class="text-muted mt-2">Archived</div> 
+                  </div>
+                </button>
+              </div>
+            </div>
+            
+            <div id="alert-container" class="mt-3"></div>
+
+            <div class="row mt-5 mb-2">
+            <div class="d-flex align-items-center file-header">
+              <h2 class="file-header-title "><b>All files</b></h2>
+              <button class="btn file-header-menu mb-1" aria-label="Menu">
+                  <i class="fas fa-ellipsis-v"></i>
+              </button>
+              <ul id="breadcrumbs" class="breadcrumbs mx-5">
+                <li class="nav-home">
+                    <a href="#" onclick="navigateToFolder(null)">
+                        <i class="icon-home"></i>
+                    </a>
+                </li>
+                <!-- Dynamic breadcrumb items will be added here -->
+            </ul>
+            
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center mt-2 file-controls">
+            <div class="d-flex">
+                <button class="btn btn-light border me-2 file-control-button">
+                    <i class="fas fa-clock me-1"></i> Recents
+                </button>
+                <button class="btn btn-light border me-2 file-control-button" id="starred-button">
+                    <i class="fas fa-star me-1"></i> Starred
+                </button>
+            </div>
+            <div class="d-flex">
+                <button id="toggleTableView" class="btn btn-light border me-2 file-view-toggle" aria-label="List view">
+                    <i class="fas fa-list"></i>
+                </button>
+                <button id="toggleGridView" class="btn btn-light border file-view-toggle" aria-label="Grid view">
+                    <i class="fas fa-th"></i>
+                </button>
+            </div>
+        </div>
+          </div>
+
+          
+
+<!-- Category Selection Modal -->
+<div class="modal fade" id="categoryModal" tabindex="-1" aria-labelledby="categoryModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="categoryModalLabel">Select a Category</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- The category list will be inserted here by JavaScript -->
+        <form id="category-form" method="POST" enctype="multipart/form-data">
+            <!-- CSRF Token -->
+            {% csrf_token %}
+            <!-- Dynamic Category Checkboxes will go here -->
+            <div id="category-checkboxes">
+                <!-- Dynamically populated categories will be inserted here -->
+            </div>
+        </form>
+    </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="uploadButton">Upload</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+ {% if files_exist or folders_exist%}
+    <style>
+        #upload-section {
+            display: none;
+        }
+        #file-table-section {
+            display: block;
+        }
+    </style>
+    {% else %}
+    <style>
+      #upload-section {
+          display: block;
+      }
+      #file-table-section {
+          display: none;
+      }
+  </style>
+{% endif %}    
+<div id="upload-section" >
+  <div class="upload-area d-flex justify-content-center align-items-center" id="dropZoneArea">
+    <form action="/file-upload/" class="dropzone dragging" id="myDropzone"  enctype="multipart/form-data"></form>
+      <div class="upload-box text-center">
+          <i class="fa fa-upload upload-icon mb-3"></i>
+          <p class="upload-text mb-2">Drop files here to upload</p>
+          <button class="btn upload-button" id="uploadBtn" type="button">Upload</button>
+      </div>
+      <div class="progress mt-3">
+        <div id="progress-bar" class="progress-bar" style="width: 0%;">0%</div>
+    </div>
+  </div>
+</div>
+<!-- popup -->
+<div id="actionBar" class="action-bar d-flex align-items-center">
+  <i class="fas fa-times clear-selection" title="Clear Selection"></i>
+  <span class="selected-text" id="selected-count">0 selected</span>
+  <div class="action-icons">
+    <button class="action-btn" title="Share">
+      <i class="fa fa-user-plus" aria-hidden="true"></i>
+    </button>
+    <button class="action-btn download-btn" title="Download">
+      <i class="fas fa-download"></i>
+    <button class="action-btn" title="Preview">
+      <i class="fa fa-eye"></i>
+    </button>
+    <button class="action-btn" title="Delete">
+      <i class="fas fa-trash"></i>
+    </button>
+    <button class="action-btn" title="Copy link">
+      <i class="fas fa-link"></i>
+    </button>
+    <div class="dropdown" id="fileActionDropdown">
+      
+    </button>
+    <button class="action-btn" title="More" data-bs-toggle="dropdown"
+    aria-expanded="false"
+    data-bs-boundary="viewport">
+      <i class="fas fa-ellipsis-v"></i>
+    </button>
+    <ul
+      class="dropdown-menu dropdown-menu-end file-action-dropdown"
+    >
+      <li>
+        <a class="dropdown-item" href="#"
+          ><i class="fa fa-eye mx-2"></i> View</a
+        >
+      </li>
+      <li>
+        <a class="dropdown-item" href="#"
+          ><i class="fa fa-pen mx-2"></i> Edit</a
+        >
+      </li>
+      <li>
+        <a class="dropdown-item" href="#"
+          ><i class="fa fa-download mx-2"></i>
+          Download</a
+        >
+      </li>
+      <li>
+        <a class="dropdown-item" href="#"
+          ><i class="fa fa-share-alt mx-2"></i>
+          Share</a
+        >
+      </li>
+
+      <li>
+        <a class="dropdown-item" href="#"
+          ><i class="fa fa-bookmark mx-2"></i>
+          Favorite</a
+        >
+      </li>
+      <li>
+        <a class="dropdown-item" href="#"
+          ><i class="fa fa-upload mx-2"></i> Upload
+          New Version</a
+        >
+      </li>
+      <li>
+        <a class="dropdown-item" href="#"
+          ><i class="fa fa-history mx-2"></i>
+          Version History</a
+        >
+      </li>
+      <li>
+        <a class="dropdown-item" href="#"
+          ><i class="fa fa-comment mx-2"></i>
+          Comment</a
+        >
+      </li>
+      <li>
+        <a class="dropdown-item" href="#"
+          ><i class="fa fa-bell mx-2"></i> Add
+          Reminder</a
+        >
+      </li>
+      <li>
+        <a class="dropdown-item" href="#"
+          ><i class="fa fa-envelope mx-2"></i> Send
+          Email</a
+        >
+      </li>
+      <li>
+        <a class="dropdown-item" href="#"
+          ><i class="fa fa-archive mx-2"></i>
+          Archive</a
+        >
+      </li>
+      <li>
+        <a
+          class="dropdown-item text-danger"
+          href="#"
+          ><i class="fa fa-trash mx-2"></i>
+          Delete</a
+        >
+      </li>
+    </ul>
+  </div>
+  </div>
+</div>
+
+
+
+
+<!-- File Table (Initially Hidden) -->
+<div id="file-table-section" >
+  <div class="table-responsive ">
+      <table>
+          <thead>
+              <tr>
+                  <th>Name</th>
+                  <th></th>
+                  <th>Owner</th>
+                  <th style="width: 15%;">Category</th>
+                  <th style="width: 12%;">Modified</th>
+                  <th style="width: 12%;">File size</th>
+                  <th></th>
+                  <th></th>
+              </tr>
+          </thead>
+          <tbody id="file-table-body"></tbody> 
+      </table>
+  </div>
+</div>
+
+<div id="shared-with-me-section" style="display: none;">
+  <div class="table-responsive">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Shared By</th>
+          <th>Shared Date</th>
+          <th>Message</th>
+        </tr>
+      </thead>
+      <tbody id="shared-with-me-table-body"></tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- send email modal -->
+<!-- <div id="customModalOverlay" class="custom-modal-overlay">
+  <div class="custom-modal-card">
+      <div class="custom-modal-header">
+          <h2 class="custom-modal-title">Send your transfer using email</h2>
+      </div>
+      <div class="custom-modal-body">
+          <form>
+              <input type="email" id="email" class="custom-modal-input" placeholder="Add email or name" required>
+              <textarea class="custom-modal-input" id="message" placeholder="Add a message" rows="4" required></textarea>
+          </form>
+      </div>
+      <div class="custom-modal-footer">
+          <button class="custom-modal-button cancel" onclick="closeCustomModal()">Cancel</button>
+          <button class="custom-modal-button send" onclick="sendEmail()">Send</button>
+      </div>
+  </div>
+</div> -->
+
+
+<!-- Share Modal -->
+<div id="customModalOverlay" class="custom-modal-overlay">
+  <div class="custom-modal-card">
+    <div class="custom-modal-header">
+      <h2 class="custom-modal-title">Share with Resource Center</h2>
+    </div>
+    <form id="shareForm" class="custom-modal-body">
+      <input type="text" id="email" class="custom-modal-input" placeholder="Recipient emails (comma-separated)" required>
+      <textarea id="message" class="custom-modal-input" placeholder="Add a message" rows="4" required></textarea>
+      <div class="custom-modal-footer">
+        <button type="button" class="custom-modal-button cancel" onclick="closeCustomModal()">Cancel</button>
+        <button type="submit" class="custom-modal-button send">Send</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<!-- Email Share Modal -->
+<div id="emailShareModal" class="custom-modal-overlay">
+  <div class="custom-modal-card">
+    <div class="custom-modal-header">
+      <h2 class="custom-modal-title">Share via Email</h2>
+    </div>
+    <form id="emailShareForm" class="custom-modal-body">
+      <input type="text" id="email_send" class="custom-modal-input" placeholder="Recipient emails (comma separated)" required>
+      <textarea id="emailMessage" class="custom-modal-input" placeholder="Add a message" rows="4" required></textarea>
+      <div class="custom-modal-footer">
+        <button type="button" class="custom-modal-button cancel" onclick="closeModal('emailShareModal')">Cancel</button>
+        <button type="submit" class="custom-modal-button send">Send</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<!-- Upload New Version Modal -->
+<div class="modal fade" id="uploadVersionModal" tabindex="-1" aria-labelledby="uploadVersionModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="uploadVersionModalLabel">Upload New Version</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="upload-version-form" method="POST" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label for="newVersionFile" class="form-label">Select Updated File</label>
+            <input type="file" class="form-control" id="newVersionFile" name="file" required>
+          </div>
+          <div class="mb-3">
+            <label for="changeNote" class="form-label">Change Note (optional)</label>
+            <textarea class="form-control" id="changeNote" name="change_note" rows="3" placeholder="Briefly describe what changed in this version..."></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" form="upload-version-form" class="btn btn-primary">Upload Version</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Version History Modal -->
+<div class="modal fade" id="versionHistoryModal" tabindex="-1" aria-labelledby="versionHistoryModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content shadow-lg border-0 rounded-4">
+      <div class="modal-header bg-light border-bottom-0" >
+        <h5 class="modal-title fw-semibold text-dark px-5">📜 Version History</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body px-0 py-3"> <!-- removed px-4 to make full-width -->
+        <div class="table-responsive px-4"> <!-- keep inner horizontal padding -->
+          <table class="table table-hover w-100 align-middle mb-0"> <!-- enforce full width -->
+            <thead class="table-light text-secondary fw-semibold">
+              <tr>
+                <th scope="col">Version</th>
+                <th scope="col">Name</th>
+                <th scope="col">Date</th>
+                <th scope="col" style="width: 200px;">Note</th>
+                <th scope="col"  style="width: 250px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="version-history-table-body" class="table-group-divider text-sm"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer bg-light border-top-0 px-4 py-3">
+        <button class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Add Reminder Modal -->
+<div class="modal fade" id="addReminderModal" tabindex="-1" aria-labelledby="addReminderLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content shadow rounded-4 border-0">
+      <div class="modal-header bg-primary text-white rounded-top-4">
+        <h5 class="modal-title" id="addReminderLabel">
+          <i class="fa fa-bell me-2"></i> Add Reminder
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="reminder-form">
+          <input type="hidden" id="reminder-file-id">
+
+          <!-- Date & Time -->
+          <div class="mb-3">
+            <label for="reminder-datetime" class="form-label">
+              <i class="fa fa-calendar-alt me-1"></i> Date & Time
+            </label>
+            <input type="datetime-local" id="reminder-datetime" class="form-control rounded-pill" required>
+          </div>
+
+          <!-- Note -->
+          <div class="mb-3">
+            <label for="reminder-note" class="form-label">
+              <i class="fa fa-sticky-note me-1"></i> Note (Optional)
+            </label>
+            <textarea id="reminder-note" class="form-control rounded-3" rows="2" placeholder="Add a note for this reminder..."></textarea>
+          </div>
+
+          <!-- Repeat -->
+          <div class="mb-3">
+            <label for="reminder-repeat" class="form-label">
+              <i class="fa fa-sync-alt me-1"></i> Repeat
+            </label>
+            <select id="reminder-repeat" class="form-select rounded-pill">
+              <option value="none">One-time</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="yearly">Yearly</option>
+            </select>
+          </div>
+
+          <!-- Send Email -->
+          <div class="form-check mb-4">
+            <input class="form-check-input" type="checkbox" value="" id="reminder-send-email">
+            <label class="form-check-label" for="reminder-send-email">
+              <i class="fa fa-envelope me-1"></i> Send Email Notification
+            </label>
+          </div>
+
+          <!-- Submit -->
+          <button type="submit" class="btn btn-success w-100 rounded-pill">
+            <i class="fa fa-save me-2"></i> Save Reminder
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- All Reminders Modal -->
+<div class="modal fade" id="allRemindersModal" tabindex="-1" aria-labelledby="allRemindersModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="allRemindersModalLabel">All Reminders</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="all-reminders-list">
+        <!-- All reminders will be inserted here via JS -->
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+
+<!-- Edit modal -->
+<div class="modal fade" id="editFileModal" tabindex="-1" aria-labelledby="editFileModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      
+      <div class="modal-header">
+        <h5 class="modal-title" id="editFileModalLabel">Edit Document</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      
+      <div class="modal-body">
+        <form id="edit-file-form" method="POST">
+          {% csrf_token %}
+
+          <!-- Name -->
+          <div class="mb-3">
+            <label for="edit-name" class="form-label">Name</label>
+            <input type="text" class="form-control" id="edit-name" name="name">
+          </div>
+
+          <!-- Category (dropdown) -->
+          <div class="mb-3">
+            <label for="edit-category" class="form-label">Category</label>
+            <select class="form-select" id="edit-category" name="category_id">
+              <!-- Categories will be dynamically inserted -->
+            </select>
+          </div>
+
+          <!-- Meta Tags (comma separated input) -->
+          <div class="mb-3">
+            <label for="edit-tags" class="form-label">Meta Tags</label>
+            <input type="text" class="form-control" id="edit-tags" name="meta_tag_names" placeholder="e.g. login, module1">
+          </div>
+
+          <!-- is_public (checkbox) -->
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" value="" id="edit-is-public" name="is_public">
+            <label class="form-check-label" for="edit-is-public">
+              Public
+            </label>
+          </div>
+
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="save-edit-btn">Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<div id="upload-notification" class="upload_notification notify">
+  <i class="fas fa-check-circle success-icon"></i>
+  <span class="message" id="notification-message"></span>
+  <!-- <button class="close-btn" id="close-btn-notification">&times;</button> -->
+</div>
+
+<!-- Error Modal -->
+<!-- Error Modal -->
+<div class="modal fade error-modal" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+      <div class="modal-content">
+          <div class="modal-header">
+              <i class="fas fa-exclamation-circle error-icon"></i>
+              <h5 class="modal-title" id="errorModalTitle">Error Title</h5> <!-- Dynamic Title -->
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+              <p id="errorModalMessage">Default error message</p> <!-- Dynamic Message -->
+              <div class="error-details" id="errorModalDetails">
+                  <!-- Dynamic Details -->
+              </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-danger btn-sm" data-bs-dismiss="modal">Retry</button>
+          </div>
+      </div>
+  </div>
+</div>
+   
+
+
+          
+            
+        </div>
+      </div>
+    </div>
+    <!--   Core JS Files   -->
+    <script src="{% static 'assets/js/core/jquery-3.7.1.min.js' %}"></script>
+    <script src="{% static 'assets/js/core/popper.min.js' %}"></script>
+    <script src="{% static 'assets/js/core/bootstrap.min.js' %}"></script>
+    <script src="{% static 'assets/js/plugin/jquery-scrollbar/jquery.scrollbar.min.js' %}"></script>
+    <!-- Kaiadmin JS -->
+    <script src="{% static 'assets/js/kaiadmin.min.js' %}"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.9.3/dropzone.min.js"></script>
+    
+    <script type="module"  src="{% static 'js/base.js' %}"></script>
+    
+
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const folderNameInput = document.getElementById("cf-folderName");
+    const createButton = document.getElementById("cf-createButton");
+  
+  
+    folderNameInput.addEventListener("input", function () {
+      if (folderNameInput.value.trim() !== "") {
+        createButton.classList.add("active");
+        createButton.removeAttribute("disabled");
+      } else {
+        createButton.classList.remove("active");
+        createButton.setAttribute("disabled", "true");
+      }
+    });
+  });
+
+  // Function to show error modal with dynamic content
+function showErrorModal(title, message, details = "") {
+    // Get modal elements
+    const modalTitle = document.getElementById('errorModalTitle');
+    const modalMessage = document.getElementById('errorModalMessage');
+    const modalDetails = document.getElementById('errorModalDetails');
+
+    // Update modal content
+    modalTitle.textContent = title;
+    modalMessage.textContent = message;
+
+    // Update details (if provided)
+    if (details) {
+        modalDetails.innerHTML = details;
+        modalDetails.style.display = 'block'; // Show details
+    } else {
+        modalDetails.style.display = 'none'; // Hide details
+    }
+
+    // Show the modal
+    const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+    errorModal.show();
+}
+  
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,1117 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>GDOP Resource Center</title>
+    <meta
+      content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
+      name="viewport"
+    />
+    <link
+      href="{% static 'img/miii_logo.jpg' %}"
+      rel="icon"
+      type="image/x-icon"
+    />
+    <script src="{% static 'assets/js/plugin/webfont/webfont.min.js' %}"></script>
+    <script>
+      WebFont.load({
+        google: { families: ["Public Sans:300,400,500,600,700"] },
+        custom: {
+          families: [
+            "Font Awesome 5 Solid",
+            "Font Awesome 5 Regular",
+            "Font Awesome 5 Brands",
+            "simple-line-icons",
+          ],
+          urls: ["{% static 'assets/css/fonts.min.css' %}"],
+        },
+        active: function () {
+          sessionStorage.fonts = true;
+        },
+      });
+    </script>
+    <!-- CSS Files -->
+    
+    <link rel="stylesheet" href="{% static 'assets/css/bootstrap.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/plugins.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/kaiadmin.min.css' %}" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
+      rel="stylesheet"
+    />
+    <link href="{% static 'css/main.css' %}"rel="stylesheet" />
+    
+  </head>
+  <body>
+    <div class="wrapper">
+      <!-- Sidebar -->
+      <div class="sidebar" data-background-color="">
+        <div class="sidebar-logo">
+          <!-- Logo Header -->
+          <div class="logo-header">
+            <a href="index.html" class="logo">
+                <img
+                src="{% static 'img/mint_logo.png' %}"
+                alt="navbar brand"
+                class="navbar-brand"
+                height="25"
+              />
+            </a>
+            <div class="nav-toggle">
+              <button class="btn btn-toggle toggle-sidebar">
+                <i class="gg-menu-right"></i>
+              </button>
+              <button class="btn btn-toggle sidenav-toggler">
+                <i class="gg-menu-left"></i>
+              </button>
+            </div>
+            <button class="topbar-toggler more">
+              <i class="gg-more-vertical-alt"></i>
+            </button>
+          </div>
+          <!-- End Logo Header -->
+        </div>
+        <div class="sidebar-wrapper scrollbar scrollbar-inner">
+          <div class="sidebar-content">
+            <ul class="nav nav-secondary">
+              <!-- Home -->
+              <li class="nav-item">
+                <a href="/">
+                  <i class="fas fa-home"></i>
+                  <p>Home</p>
+                </a>
+              </li>
+
+              <!-- My Resources -->
+              <li class="nav-item">
+                <a
+                  data-bs-toggle="collapse"
+                  data-bs-target="#my-workspace"
+                  aria-expanded="true"
+                  aria-controls="my-workspace"
+                  style="cursor: pointer"
+                >
+                <i class="fas fa-box"></i>
+                <p>My Resources</p>
+                  <span class="caret"></span>
+                </a>
+                <div class="collapse show" id="my-workspace">
+                  <ul class="nav nav-collapse">
+                    <li class="nav-item active">
+                      <a href="my-files">
+                        <i class="fas fa-folder-open"></i>
+                        <p>My Files</p>
+                        <span class="badge bg-primary">2</span>
+                      </a>
+                    </li>
+
+                    <li class="nav-item">
+                      <a href="#">
+                        <i class="fas fa-clock"></i>
+                        <p>Recent Files</p>
+                      </a>
+                    </li>
+
+                    <li class="nav-item">
+                      <a href="#">
+                        <i class="fas fa-users"></i>
+                        <p>Shared With Me</p>
+                        <span class="badge bg-warning">5</span>
+                      </a>
+                    </li>
+                                                                                         
+                    <li class="nav-item">
+                      <a href="#">
+                        <i class="fas fa-star"></i>
+                        <p>Starred Files</p>
+                      </a>
+                    </li>
+                    <li class="nav-item">
+                      <a href="#">
+                        <i class="fas fa-archive"></i>
+                        <p>Archived Files</p>
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </li>
+
+              <!-- Projects Section -->
+
+              <li class="nav-item">
+                <a
+                  data-bs-toggle="collapse"
+                  data-bs-target="#project-documents"
+                  aria-expanded="false"
+                  aria-controls="project-documents"
+                  style="cursor: pointer"
+                >
+                  <i class="fas fa-folder"></i>
+                  <p>Project-Specific Documents</p>
+                  <span class="caret"></span>
+                </a>
+                <div class="collapse" id="project-documents">
+                  <ul class="nav nav-collapse">
+                    <li class="nav-item">
+                      <a
+                        data-bs-toggle="collapse"
+                        data-bs-target="#visitors"
+                        aria-expanded="false"
+                        aria-controls="visitors"
+                        style="cursor: pointer"
+                      >
+                        <i class="fas fa-user-check"></i>
+                        <p>Visitors Management</p>
+                        <span class="caret"></span>
+                      </a>
+                      <div class="collapse" id="visitors">
+                        <ul class="nav nav-collapse">
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Overview</span></a
+                            >
+                          </li>
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Reports</span></a
+                            >
+                          </li>
+                        </ul>
+                      </div>
+                    </li>
+
+                    <li class="nav-item">
+                      <a
+                        data-bs-toggle="collapse"
+                        data-bs-target="#monitoring"
+                        aria-expanded="false"
+                        aria-controls="monitoring"
+                        style="cursor: pointer"
+                      >
+                        <i class="fas fa-chart-line"></i>
+                        <p>Monitoring & Evaluation</p>
+                        <span class="caret"></span>
+                      </a>
+                      <div class="collapse" id="monitoring">
+                        <ul class="nav nav-collapse">
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Dashboard</span></a
+                            >
+                          </li>
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Reports</span></a
+                            >
+                          </li>
+                        </ul>
+                      </div>
+                    </li>
+
+                    <li class="nav-item">
+                      <a
+                        data-bs-toggle="collapse"
+                        data-bs-target="#documents"
+                        aria-expanded="false"
+                        aria-controls="documents"
+                        style="cursor: pointer"
+                      >
+                        <i class="fas fa-file-alt"></i>
+                        <p>Document Management</p>
+                        <span class="caret"></span>
+                      </a>
+                      <div class="collapse" id="documents">
+                        <ul class="nav nav-collapse">
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Upload Documents</span></a
+                            >
+                          </li>
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Archive</span></a
+                            >
+                          </li>
+                        </ul>
+                      </div>
+                    </li>
+
+                    <li class="nav-item">
+                      <a
+                        data-bs-toggle="collapse"
+                        data-bs-target="#contact"
+                        aria-expanded="false"
+                        aria-controls="contact"
+                        style="cursor: pointer"
+                      >
+                        <i class="fas fa-address-book"></i>
+                        <p>Contact Management</p>
+                        <span class="caret"></span>
+                      </a>
+                      <div class="collapse" id="contact">
+                        <ul class="nav nav-collapse">
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Contact List</span></a
+                            >
+                          </li>
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Groups</span></a
+                            >
+                          </li>
+                        </ul>
+                      </div>
+                    </li>
+
+                    <li class="nav-item">
+                      <a
+                        data-bs-toggle="collapse"
+                        data-bs-target="#transport"
+                        aria-expanded="false"
+                        aria-controls="transport"
+                        style="cursor: pointer"
+                      >
+                        <i class="fas fa-car"></i>
+                        <p>Transport Management</p>
+                        <span class="caret"></span>
+                      </a>
+                      <div class="collapse" id="transport">
+                        <ul class="nav nav-collapse">
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Schedule</span></a
+                            >
+                          </li>
+                          <li>
+                            <a href="#"
+                              ><span class="sub-item">Requests</span></a
+                            >
+                          </li>
+                        </ul>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+              </li>
+
+              <!-- Resources -->
+              <li class="nav-section">
+                <span class="sidebar-mini-icon">
+                  <i class="fa fa-book"></i>
+                </span>
+                <h4 class="text-section">Resources</h4>
+              </li>
+
+              <!-- Resource Categories -->
+             
+              <li class="nav-item">
+                <a href="#">
+                  <i class="fas fa-file-alt"></i>
+                  <p>Policies & Guidelines</p>
+                </a>
+              </li>
+
+              <li class="nav-item">
+                <a href="#">
+                  <i class="fas fa-graduation-cap"></i>
+                  <p>Trainings & User Guides</p>
+                </a>
+              </li>
+
+              <li class="nav-item">
+                <a href="#">
+                  <i class="fas fa-clipboard"></i>
+                  <p>Forms & Templates</p>
+                </a>
+              </li>
+
+              <li class="nav-item">
+                <a href="#">
+                  <i class="fas fa-chart-line"></i>
+                  <p>Reports & Analysis</p>
+                </a>
+              </li>
+
+              <li class="nav-item">
+                <a href="#">
+                  <i class="fas fa-paperclip"></i>
+                  <p>Submitted Reports</p>
+                </a>
+              </li>
+                               
+              <!-- Settings -->
+              <li class="nav-section">
+                <span class="sidebar-mini-icon">
+                  <i class="fa fa-cog"></i>
+                </span>
+                <h4 class="text-section">Settings</h4>
+              </li>
+
+              <li class="nav-item">
+                <a href="#">
+                  <i class="fas fa-user"></i>
+                  <p>Profile</p>
+                </a>
+              </li>
+
+              <li class="nav-item">
+                <a href="#">
+                  <i class="fas fa-question-circle"></i>
+                  <p>Help & Support</p>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- End Sidebar -->
+
+      <div class="main-panel">
+        <div class="main-header">
+          <!-- Navbar Header -->
+          <nav
+          class="navbar navbar-header navbar-header-transparent navbar-expand-lg border-bottom"
+        >
+          <div class="search-bar">
+            <!-- Search Icon -->
+            <span class="search-icon">
+              <i class="fa fa-search search-icon"></i>
+            </span>
+            <!-- Search Input -->
+            <input
+              type="text"
+              id="searchInput"
+              class="search-input"
+              placeholder="Search ..."
+              aria-label="Search"
+            />
+          </div>
+          <div class="container-fluid">
+            <nav
+              class="navbar navbar-header-left navbar-expand-lg navbar-form nav-search p-0 d-none d-lg-flex"
+            ></nav>
+
+            <ul class="navbar-nav topbar-nav ms-md-auto align-items-center">
+              <li
+                class="nav-item topbar-icon dropdown hidden-caret d-flex d-lg-none"
+              >
+                <a
+                  class="nav-link dropdown-toggle"
+                  data-bs-toggle="dropdown"
+                  href="#"
+                  role="button"
+                  aria-expanded="false"
+                  aria-haspopup="true"
+                >
+                  <i class="fa fa-search"></i>
+                </a>
+                <ul class="dropdown-menu dropdown-search animated fadeIn">
+                  <form class="navbar-left navbar-form nav-search">
+                    <div class="input-group">
+                      <input
+                        type="text"
+                        placeholder="Search ..."
+                        class="form-control"
+                      />
+                    </div>
+                  </form>
+                </ul>
+              </li>
+              <li class="nav-item topbar-icon dropdown hidden-caret">
+                <a
+                  class="nav-link dropdown-toggle"
+                  href="#"
+                  id="messageDropdown"
+                  role="button"
+                  data-bs-toggle="dropdown"
+                  aria-haspopup="true"
+                  aria-expanded="false"
+                >
+                  <i class="fa fa-envelope"></i>
+                </a>
+              </li>
+              <li class="nav-item topbar-icon dropdown hidden-caret">
+                <a
+                  class="nav-link dropdown-toggle"
+                  href="#"
+                  id="notifDropdown"
+                  role="button"
+                  data-bs-toggle="dropdown"
+                  aria-haspopup="true"
+                  aria-expanded="false"
+                >
+                  <i class="fa fa-bell"></i>
+                  <span class="notification">4</span>
+                </a>
+              </li>
+
+              <li class="nav-item topbar-user dropdown hidden-caret">
+                <a
+                  class="dropdown-toggle profile-pic"
+                  data-bs-toggle="dropdown"
+                  href="#"
+                  aria-expanded="false"
+                >
+                  <div class="avatar-sm">
+                    <img
+                      src="{% static 'img/no-pp.jpg' %}"
+                      alt="..."
+                      class="avatar-img rounded-circle"
+                    />
+                  </div>
+                  <span class="profile-username">
+                    <span class="op-7">Hi,</span>
+                    <span class="fw-bold">Hussen</span>
+                  </span>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </nav>
+          <!-- End Navbar -->
+        </div>
+
+        <div class="container">
+          <div class="page-inner">
+            <div class="page-header">
+              <h3 class="fw-bold mb-3">MInT Resource Center</h3>
+            </div>
+            <div class="row">
+              <div class="col-md-12">
+                <div class="card">
+                  <div class="card-header">
+                    <div class="d-flex align-items-center">
+                      <h4 class="card-title">All Uploaded Resources</h4>
+                    </div>
+                  </div>
+                  <div class="card-body">
+                    <!-- Modal -->
+                    <div
+                      class="modal fade"
+                      id="addRowModal"
+                      tabindex="-1"
+                      role="dialog"
+                      aria-hidden="true"
+                    >
+                      
+                    </div>
+
+                    <div class="table-responsive">
+                      <!-- popup -->
+                      <div id="actionBar" class="action-bar d-flex align-items-center ">
+                        <i class="fas fa-times clear-selection" title="Clear Selection"></i>
+                        <span class="selected-text" id="selected-count">0 selected</span>
+                        <div class="action-icons">
+                          <button class="action-btn" title="Share">
+                            <i class="fa fa-user-plus" aria-hidden="true"></i>
+                          </button>
+                          <button class="action-btn" title="Download">
+                            <i class="fas fa-download"></i>
+                          </button>
+                          <button class="action-btn" title="Preview">
+                            <i class="fa fa-eye"></i>
+                          </button>
+                          <button class="action-btn" title="Delete">
+                            <i class="fas fa-trash"></i>
+                          </button>
+                          <button class="action-btn" title="Copy link">
+                            <i class="fas fa-link"></i>
+                          </button>
+                          <div class="dropdown" id="fileActionDropdown">
+                            
+                          </button>
+                          <button class="action-btn" title="More" data-bs-toggle="dropdown"
+                          aria-expanded="false"
+                          data-bs-boundary="viewport">
+                            <i class="fas fa-ellipsis-v"></i>
+                          </button>
+                          <ul
+                            class="dropdown-menu dropdown-menu-end file-action-dropdown"
+                          >
+                            <li>
+                              <a class="dropdown-item" href="#"
+                                ><i class="fa fa-eye mx-2"></i> View</a
+                              >
+                            </li>
+                            <li>
+                              <a class="dropdown-item" href="#"
+                                ><i class="fa fa-pen mx-2"></i> Edit</a
+                              >
+                            </li>
+                            <li>
+                              <a class="dropdown-item" href="#"
+                                ><i class="fa fa-download mx-2"></i>
+                                Download</a
+                              >
+                            </li>
+                            <li>
+                              <a class="dropdown-item" href="#"
+                                ><i class="fa fa-share-alt mx-2"></i>
+                                Share</a
+                              >
+                            </li>
+
+                            <li>
+                              <a class="dropdown-item" href="#"
+                                ><i class="fa fa-bookmark mx-2"></i>
+                                Favorite</a
+                              >
+                            </li>
+                            <li>
+                              <a class="dropdown-item" href="#"
+                                ><i class="fa fa-upload mx-2"></i> Upload
+                                New Version</a
+                              >
+                            </li>
+                            <li>
+                              <a class="dropdown-item" href="#"
+                                ><i class="fa fa-history mx-2"></i>
+                                Version History</a
+                              >
+                            </li>
+                            <li>
+                              <a class="dropdown-item" href="#"
+                                ><i class="fa fa-comment mx-2"></i>
+                                Comment</a
+                              >
+                            </li>
+                            <li>
+                              <a class="dropdown-item" href="#"
+                                ><i class="fa fa-bell mx-2"></i> Add
+                                Reminder</a
+                              >
+                            </li>
+                            <li>
+                              <a class="dropdown-item" href="#"
+                                ><i class="fa fa-envelope mx-2"></i> Send
+                                Email</a
+                              >
+                            </li>
+                            <li>
+                              <a class="dropdown-item" href="#"
+                                ><i class="fa fa-archive mx-2"></i>
+                                Archive</a
+                              >
+                            </li>
+                            <li>
+                              <a
+                                class="dropdown-item text-danger"
+                                href="#"
+                                ><i class="fa fa-trash mx-2"></i>
+                                Delete</a
+                              >
+                            </li>
+                          </ul>
+                        </div>
+                        </div>
+                      </div>
+                      
+<!-- popup closed -->
+
+                      <table
+                        id="google-drive-style"
+                        class="display table table-sm align-middle"
+                      >
+                        <thead>
+                          <tr class="table-secondary">
+                            <th></th>
+                            <th style="width: 300px">File Name</th>
+                            <th>Category</th>
+                            <th>Department</th>
+                            <th style="width: 15%">Date Uploaded</th>
+                            <th style="width: 10%">File Size</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tfoot>
+                          <tr>
+                            <th></th>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Department</th>
+                            <th>
+                              <input
+                                type="text"
+                                id="date-filter"
+                                placeholder="Date"
+                                class="form-control"
+                              />
+                            </th>
+                            <th>File Size</th>
+                            <th>Actions</th>
+                          </tr>
+                        </tfoot>
+                        <tbody>
+                          
+                          <tr data-id="1">
+                          <td>
+                            <i class="fa fa-file-pdf text-danger"></i>
+                          </td>
+                          <td>Project Report Q1 2024.pdf</td>
+                            <td>Report</td>
+                            <td>IT Department</td>
+                            <td>Jan 10, 2024</td>
+                            <td>1.2 MB</td>
+                            <td class="position-relative">
+                              <div class="dropdown" id="fileActionDropdown">
+                                <button
+                                  class="btn btn-light btn-sm"
+                                  data-bs-toggle="dropdown"
+                                  aria-expanded="false"
+                                  data-bs-boundary="viewport"
+                                >
+                                  <i class="fa fa-ellipsis-v"></i>
+                                </button>
+                                <ul
+                                  class="dropdown-menu dropdown-menu-end file-action-dropdown"
+                                >
+                                  <li>
+                                    <a class="dropdown-item" href="#"
+                                      ><i class="fa fa-eye mx-2"></i> View</a
+                                    >
+                                  </li>
+                                  <li>
+                                    <a class="dropdown-item" href="#"
+                                      ><i class="fa fa-pen mx-2"></i> Edit</a
+                                    >
+                                  </li>
+                                  <li>
+                                    <a class="dropdown-item" href="#"
+                                      ><i class="fa fa-download mx-2"></i>
+                                      Download</a
+                                    >
+                                  </li>
+                                  <li>
+                                    <a class="dropdown-item" href="#"
+                                      ><i class="fa fa-share-alt mx-2"></i>
+                                      Share</a
+                                    >
+                                  </li>
+
+                                  <li>
+                                    <a class="dropdown-item" href="#"
+                                      ><i class="fa fa-bookmark mx-2"></i>
+                                      Favorite</a
+                                    >
+                                  </li>
+                                  <li>
+                                    <a class="dropdown-item" href="#"
+                                      ><i class="fa fa-upload mx-2"></i> Upload
+                                      New Version</a
+                                    >
+                                  </li>
+                                  <li>
+                                    <a class="dropdown-item" href="#"
+                                      ><i class="fa fa-history mx-2"></i>
+                                      Version History</a
+                                    >
+                                  </li>
+                                  <li>
+                                    <a class="dropdown-item" href="#"
+                                      ><i class="fa fa-comment mx-2"></i>
+                                      Comment</a
+                                    >
+                                  </li>
+                                  <li>
+                                    <a class="dropdown-item" href="#"
+                                      ><i class="fa fa-bell mx-2"></i> Add
+                                      Reminder</a
+                                    >
+                                  </li>
+                                  <li>
+                                    <a class="dropdown-item" href="#"
+                                      ><i class="fa fa-envelope mx-2"></i> Send
+                                      Email</a
+                                    >
+                                  </li>
+                                  <li>
+                                    <a class="dropdown-item" href="#"
+                                      ><i class="fa fa-archive mx-2"></i>
+                                      Archive</a
+                                    >
+                                  </li>
+                                  <li>
+                                    <a
+                                      class="dropdown-item text-danger"
+                                      href="#"
+                                      ><i class="fa fa-trash mx-2"></i>
+                                      Delete</a
+                                    >
+                                  </li>
+                                </ul>
+                              </div>
+                            </td>
+                          </tr>
+                          <tr data-id="2">
+                            <td>
+                              <i class="fa fa-file-word text-primary"></i>
+                            </td>
+                            <td>Digital Transformation Strategy.docx</td>
+                            <td>Policy</td>
+                            <td>Strategy Department</td>
+                            <td>Mar 19, 2023</td>
+                            <td>850 KB</td>
+                            <td class="position-relative">
+                              <div class="dropdown" id="fileActionDropdown">
+                                <button
+                                  class="btn btn-light btn-sm"
+                                  data-bs-toggle="dropdown"
+                                  aria-expanded="false"
+                                  data-bs-boundary="viewport"
+                                >
+                                  <i class="fa fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end file-action-dropdown">
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-eye mx-2"></i> View</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-pen mx-2"></i> Edit</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-download mx-2"></i> Download</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-share-alt mx-2"></i> Share</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-bookmark mx-2"></i> Favorite</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-upload mx-2"></i> Upload New Version</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-history mx-2"></i> Version History</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-comment mx-2"></i> Comment</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-bell mx-2"></i> Add Reminder</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-envelope mx-2"></i> Send Email</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-archive mx-2"></i> Archive</a></li>
+                                  <li><a class="dropdown-item text-danger" href="#"><i class="fa fa-trash mx-2"></i> Delete</a></li>
+                                </ul>
+                              </div>
+                            </td>
+                          </tr>
+                          <tr data-id="3">
+                            <td>
+                              <i class="fa fa-file-pdf text-danger"></i>
+                            </td>
+                            <td>Cybersecurity Guidelines.pdf</td>
+                            <td>Guideline</td>
+                            <td>Cybersecurity Division</td>
+                            <td>Dec 12, 2024</td>
+                            <td>2.3 MB</td>
+                            <td class="position-relative">
+                              <div class="dropdown" id="fileActionDropdown">
+                                <button
+                                  class="btn btn-light btn-sm"
+                                  data-bs-toggle="dropdown"
+                                  aria-expanded="false"
+                                  data-bs-boundary="viewport"
+                                >
+                                  <i class="fa fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end file-action-dropdown">
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-eye mx-2"></i> View</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-pen mx-2"></i> Edit</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-download mx-2"></i> Download</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-share-alt mx-2"></i> Share</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-bookmark mx-2"></i> Favorite</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-upload mx-2"></i> Upload New Version</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-history mx-2"></i> Version History</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-comment mx-2"></i> Comment</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-bell mx-2"></i> Add Reminder</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-envelope mx-2"></i> Send Email</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-archive mx-2"></i> Archive</a></li>
+                                  <li><a class="dropdown-item text-danger" href="#"><i class="fa fa-trash mx-2"></i> Delete</a></li>
+                                </ul>
+                              </div>
+                            </td>
+                          </tr>
+                          <tr data-id="4">
+                            <td>
+                              <i class="fa fa-file-excel text-success"></i>
+                            </td>
+                            <td>Annual Budget 2024.xlsx</td>
+                            <td>Finance</td>
+                            <td>Accounting</td>
+                            <td>May 10, 2023</td>
+                            <td>1.5 MB</td>
+                            <td class="position-relative">
+                              <div class="dropdown" id="fileActionDropdown">
+                                <button
+                                  class="btn btn-light btn-sm"
+                                  data-bs-toggle="dropdown"
+                                  aria-expanded="false"
+                                  data-bs-boundary="viewport"
+                                >
+                                  <i class="fa fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end file-action-dropdown">
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-eye mx-2"></i> View</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-pen mx-2"></i> Edit</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-download mx-2"></i> Download</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-share-alt mx-2"></i> Share</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-bookmark mx-2"></i> Favorite</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-upload mx-2"></i> Upload New Version</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-history mx-2"></i> Version History</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-comment mx-2"></i> Comment</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-bell mx-2"></i> Add Reminder</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-envelope mx-2"></i> Send Email</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-archive mx-2"></i> Archive</a></li>
+                                  <li><a class="dropdown-item text-danger" href="#"><i class="fa fa-trash mx-2"></i> Delete</a></li>
+                                </ul>
+                              </div>
+                            </td>
+                          </tr>
+                          <tr data-id="5">
+                            <td>
+                              <i class="fa fa-file-pdf text-danger"></i>
+                            </td>
+                            <td>AI Research Whitepaper.pdf</td>
+                            <td>Research</td>
+                            <td>R&D</td>
+                            <td>Apr 12, 2024</td>
+                            <td>4.5 MB</td>
+                            <td class="position-relative">
+                              <div class="dropdown" id="fileActionDropdown">
+                                <button
+                                  class="btn btn-light btn-sm"
+                                  data-bs-toggle="dropdown"
+                                  aria-expanded="false"
+                                  data-bs-boundary="viewport"
+                                >
+                                  <i class="fa fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end file-action-dropdown">
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-eye mx-2"></i> View</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-pen mx-2"></i> Edit</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-download mx-2"></i> Download</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-share-alt mx-2"></i> Share</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-bookmark mx-2"></i> Favorite</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-upload mx-2"></i> Upload New Version</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-history mx-2"></i> Version History</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-comment mx-2"></i> Comment</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-bell mx-2"></i> Add Reminder</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-envelope mx-2"></i> Send Email</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-archive mx-2"></i> Archive</a></li>
+                                  <li><a class="dropdown-item text-danger" href="#"><i class="fa fa-trash mx-2"></i> Delete</a></li>
+                                </ul>
+                              </div>
+                            </td>
+                          </tr>
+                          <tr data-id="6">
+                            <td>
+                              <i class="fa fa-file-pdf text-danger"></i>
+                            </td>
+                            <td>Ministry Annual Report 2023.pdf</td>
+                            <td>Report</td>
+                            <td>Executive Office</td>
+                            <td>Jan 20, 2024</td>
+                            <td>3.8 MB</td>
+                            <td class="position-relative">
+                              <div class="dropdown" id="fileActionDropdown">
+                                <button
+                                  class="btn btn-light btn-sm"
+                                  data-bs-toggle="dropdown"
+                                  aria-expanded="false"
+                                  data-bs-boundary="viewport"
+                                >
+                                  <i class="fa fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end file-action-dropdown">
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-eye mx-2"></i> View</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-pen mx-2"></i> Edit</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-download mx-2"></i> Download</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-share-alt mx-2"></i> Share</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-bookmark mx-2"></i> Favorite</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-upload mx-2"></i> Upload New Version</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-history mx-2"></i> Version History</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-comment mx-2"></i> Comment</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-bell mx-2"></i> Add Reminder</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-envelope mx-2"></i> Send Email</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-archive mx-2"></i> Archive</a></li>
+                                  <li><a class="dropdown-item text-danger" href="#"><i class="fa fa-trash mx-2"></i> Delete</a></li>
+                                </ul>
+                              </div>
+                            </td>
+                          </tr>
+                          <tr data-id="7">
+                            <td>
+                              <i class="fa fa-file-pdf text-danger"></i>
+                            </td>
+                            <td>Employee Training Manual.pdf</td>
+                            <td>Training</td>
+                            <td>Human Resources</td>
+                            <td>Mar 15, 2023</td>
+                            <td>5.1 MB</td>
+                            <td class="position-relative">
+                              <div class="dropdown" id="fileActionDropdown">
+                                <button
+                                  class="btn btn-light btn-sm"
+                                  data-bs-toggle="dropdown"
+                                  aria-expanded="false"
+                                  data-bs-boundary="viewport"
+                                >
+                                  <i class="fa fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end file-action-dropdown">
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-eye mx-2"></i> View</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-pen mx-2"></i> Edit</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-download mx-2"></i> Download</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-share-alt mx-2"></i> Share</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-bookmark mx-2"></i> Favorite</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-upload mx-2"></i> Upload New Version</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-history mx-2"></i> Version History</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-comment mx-2"></i> Comment</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-bell mx-2"></i> Add Reminder</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-envelope mx-2"></i> Send Email</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-archive mx-2"></i> Archive</a></li>
+                                  <li><a class="dropdown-item text-danger" href="#"><i class="fa fa-trash mx-2"></i> Delete</a></li>
+                                </ul>
+                              </div>
+                            </td>
+                          </tr>
+                          <tr data-id="8">
+                            <td>
+                              <i class="fa fa-file-word text-primary"></i>
+                            </td>
+                            <td>Public Procurement Guidelines.docx</td>
+                            <td>Policy</td>
+                            <td>Legal Affairs</td>
+                            <td>Sep 10, 2024</td>
+                            <td>720 KB</td>
+                            <td class="position-relative">
+                              <div class="dropdown" id="fileActionDropdown">
+                                <button
+                                  class="btn btn-light btn-sm"
+                                  data-bs-toggle="dropdown"
+                                  aria-expanded="false"
+                                  data-bs-boundary="viewport"
+                                >
+                                  <i class="fa fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end file-action-dropdown">
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-eye mx-2"></i> View</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-pen mx-2"></i> Edit</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-download mx-2"></i> Download</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-share-alt mx-2"></i> Share</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-bookmark mx-2"></i> Favorite</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-upload mx-2"></i> Upload New Version</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-history mx-2"></i> Version History</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-comment mx-2"></i> Comment</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-bell mx-2"></i> Add Reminder</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-envelope mx-2"></i> Send Email</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-archive mx-2"></i> Archive</a></li>
+                                  <li><a class="dropdown-item text-danger" href="#"><i class="fa fa-trash mx-2"></i> Delete</a></li>
+                                </ul>
+                              </div>
+                            </td>
+                          </tr>
+                          <tr data-id="9">
+                            <td>
+                              <i class="fa fa-file-pdf text-danger"></i>
+                            </td>
+                            <td>Ministry Annual Report 2023.pdf</td>
+                            <td>Report</td>
+                            <td>Executive Office</td>
+                            <td>Feb 2, 2024</td>
+                            <td>3.8 MB</td>
+                            <td class="position-relative">
+                              <div class="dropdown" id="fileActionDropdown">
+                                <button
+                                  class="btn btn-light btn-sm"
+                                  data-bs-toggle="dropdown"
+                                  aria-expanded="false"
+                                  data-bs-boundary="viewport"
+                                >
+                                  <i class="fa fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end file-action-dropdown">
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-eye mx-2"></i> View</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-pen mx-2"></i> Edit</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-download mx-2"></i> Download</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-share-alt mx-2"></i> Share</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-bookmark mx-2"></i> Favorite</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-upload mx-2"></i> Upload New Version</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-history mx-2"></i> Version History</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-comment mx-2"></i> Comment</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-bell mx-2"></i> Add Reminder</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-envelope mx-2"></i> Send Email</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-archive mx-2"></i> Archive</a></li>
+                                  <li><a class="dropdown-item text-danger" href="#"><i class="fa fa-trash mx-2"></i> Delete</a></li>
+                                </ul>
+                              </div>
+                            </td>
+                          </tr>
+                          <tr data-id="10">
+                            <td>
+                              <i class="fa fa-file-pdf text-danger"></i>
+                            </td>
+                            <td>Employee Training Manual.pdf</td>
+                            <td>Training</td>
+                            <td>Human Resources</td>
+                            <td>Dec 10, 2023</td>
+                            <td>5.1 MB</td>
+                            <td class="position-relative">
+                              <div class="dropdown" id="fileActionDropdown">
+                                <button
+                                  class="btn btn-light btn-sm"
+                                  data-bs-toggle="dropdown"
+                                  aria-expanded="false"
+                                  data-bs-boundary="viewport"
+                                >
+                                  <i class="fa fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end file-action-dropdown">
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-eye mx-2"></i> View</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-pen mx-2"></i> Edit</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-download mx-2"></i> Download</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-share-alt mx-2"></i> Share</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-bookmark mx-2"></i> Favorite</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-upload mx-2"></i> Upload New Version</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-history mx-2"></i> Version History</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-comment mx-2"></i> Comment</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-bell mx-2"></i> Add Reminder</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-envelope mx-2"></i> Send Email</a></li>
+                                  <li><a class="dropdown-item" href="#"><i class="fa fa-archive mx-2"></i> Archive</a></li>
+                                  <li><a class="dropdown-item text-danger" href="#"><i class="fa fa-trash mx-2"></i> Delete</a></li>
+                                </ul>
+                              </div>
+                            </td>
+                          </tr>
+                          
+                                                    
+                        </tbody>
+                      </table>
+                    </div>
+
+                     
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <footer class="footer">
+          <div class="container-fluid d-flex justify-content-center">
+            <div class="copyright text-center">
+              Copyright ©2024 Ministry of Innovation and Technology. All Rights
+              Reserved.
+            </div>
+          </div>
+        </footer>
+      </div>
+    </div>
+    <!--   Core JS Files   -->
+    <script src="{% static 'assets/js/core/jquery-3.7.1.min.js' %}"></script>
+    <script src="{% static 'assets/js/core/popper.min.js' %}"></script>
+    <script src="{% static 'assets/js/core/bootstrap.min.js' %}"></script>
+    <!-- jQuery UI CSS -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.css"
+    />
+
+    <!-- jQuery Scrollbar -->
+    <script src="{% static 'assets/js/plugin/jquery-scrollbar/jquery.scrollbar.min.js' %}"></script>
+    <!-- Datatables -->
+    <script src="{% static 'assets/js/plugin/datatables/datatables.min.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <!-- Kaiadmin JS -->
+    <script src="{% static 'assets/js/kaiadmin.min.js' %}"></script>
+    <script src="{% static 'js/table.js' %}"></script>
+   
+  </body>
+</html>

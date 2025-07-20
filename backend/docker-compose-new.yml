@@ -1,0 +1,53 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: "rc-db"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+    ports:
+      - "5444:5432"
+    networks:
+      - rc_network_new
+    volumes:
+      - postgres_data_new:/var/lib/postgresql/data
+    env_file:
+      - .env
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+    
+  django:
+    image: tselot24/rc:latest
+    ports:
+      - "5555:5000"
+    # volumes:
+    #   - .:/app/
+    networks:
+      - rc_network_new
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    env_file:
+      - .env
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+      labels:
+        swarm.autoscaler: "true"
+        swarm.autoscaler.minimum: "1"
+        swarm.autoscaler.maximum: "5"
+    
+volumes:
+  postgres_data_new:
+networks:
+  rc_network_new:
+    driver: overlay
