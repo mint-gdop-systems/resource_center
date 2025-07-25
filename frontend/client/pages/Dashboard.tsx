@@ -2,9 +2,7 @@ import React, { useState } from "react";
 import {
   ViewColumnsIcon,
   ListBulletIcon,
-  PlusIcon,
   FunnelIcon,
-  CloudArrowUpIcon,
 } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
 import Breadcrumb from "../components/layout/Breadcrumb";
@@ -66,19 +64,6 @@ export default function Dashboard() {
           <p className="text-gray-600">
             Welcome back! Here's an overview of your files and recent activity.
           </p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-mint-500">
-            <PlusIcon className="h-4 w-4 mr-2" />
-            New Folder
-          </button>
-          <button
-            onClick={() => setShowUpload(true)}
-            className="inline-flex items-center px-4 py-2 bg-mint-600 text-white text-sm font-medium rounded-lg hover:bg-mint-700 focus:outline-none focus:ring-2 focus:ring-mint-500"
-          >
-            <CloudArrowUpIcon className="h-4 w-4 mr-2" />
-            Upload Files
-          </button>
         </div>
       </div>
 
