@@ -58,7 +58,7 @@ class KeycloakJWTAuthentication(authentication.BaseAuthentication):
                 token,
                 rsa_key,
                 algorithms=[unverified_header["alg"]],
-                audience=settings.OIDC_RP_CLIENT_ID,
+                audience='resource_center',
                 issuer=f"{settings.KEYCLOAK_URL}/realms/{settings.REALM}"
             )
             logger.debug(f"JWT payload: {payload}")

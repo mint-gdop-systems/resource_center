@@ -12,7 +12,6 @@ import FileGrid from "../components/files/FileGrid";
 import FileList from "../components/files/FileList";
 import QuickStats from "../components/dashboard/QuickStats";
 import RecentActivity from "../components/dashboard/RecentActivity";
-import { activityFeed } from "../data/mockData";
 import { ViewMode } from "../types";
 import { useFiles } from "../contexts/FileContext";
 import FileUpload from "../components/files/FileUpload";
@@ -210,7 +209,7 @@ export default function Dashboard() {
         </div>
 
         {/* Recent Activity */}
-        <RecentActivity activities={activityFeed} />
+        <RecentActivity activities={[]} />
       </div>
 
       {/* File Upload Modal */}

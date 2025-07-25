@@ -1,5 +1,5 @@
-import React from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import React, { useState } from "react";
+import { NavLink, useLocation, useParams } from "react-router-dom";
 import {
   HomeIcon,
   FolderIcon,
@@ -20,6 +20,10 @@ import {
   ArchiveBoxIcon as ArchiveBoxIconSolid,
 } from "@heroicons/react/24/solid";
 import { navigationItems, storageStats } from "../../data/mockData";
+import { toast } from "react-hot-toast";
+import { createFolder, getFiles } from "../../services/api";
+import { useAuth } from '../../services/auth';
+import FolderModal from "../ui/FolderModal";
 
 interface SidebarProps {
   open: boolean;
@@ -53,6 +57,36 @@ const solidIconMap: Record<
 
 export default function Sidebar({ open, onClose }: SidebarProps) {
   const location = useLocation();
+  const params = useParams();
+  const { initialized, authenticated } = useAuth();
+  const [showFolderModal, setShowFolderModal] = useState(false);
+  const [folders, setFolders] = useState<any[]>([]);
+  const [loadingFolders, setLoadingFolders] = useState(false);
+
+  const fetchFolders = async () => {
+    setLoadingFolders(true);
+    try {
+      const data = await getFiles();
+      setFolders(data.folders || []);
+    } catch (err) {
+      setFolders([]);
+    } finally {
+      setLoadingFolders(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (initialized && authenticated) {
+      fetchFolders();
+    }
+  }, [initialized, authenticated]);
+
+  const handleCreateFolder = async (name: string) => {
+    setLoadingFolders(true); // Show loading in the sidebar
+    await createFolder(name);
+    await fetchFolders(); // Only update after backend confirms
+    setLoadingFolders(false);
+  };
 
   const StorageIndicator = () => (
     <div className="px-4 py-6 border-t border-gray-200">
@@ -157,60 +191,8 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
             </NavLink>
           );
         })}
-
-        {/* Quick Actions */}
-        <div className="pt-6 mt-6 border-t border-gray-200">
-          <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-            Quick Actions
-          </h3>
-          <div className="space-y-1">
-            <button className="w-full group flex items-center px-3 py-2 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors">
-              <CloudArrowUpIcon className="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500" />
-              Upload Files
-            </button>
-            <button className="w-full group flex items-center px-3 py-2 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors">
-              <FolderIcon className="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500" />
-              New Folder
-            </button>
-          </div>
-        </div>
-
-        {/* Recent Files */}
-        <div className="pt-6 mt-6 border-t border-gray-200">
-          <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-            Recent Files
-          </h3>
-          <div className="space-y-2">
-            <div className="px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg cursor-pointer">
-              <div className="flex items-center space-x-2">
-                <div className="flex-shrink-0 w-4 h-4 bg-red-100 rounded flex items-center justify-center">
-                  <span className="text-xs text-red-600">PDF</span>
-                </div>
-                <span className="truncate">Annual Report.pdf</span>
-              </div>
-            </div>
-            <div className="px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg cursor-pointer">
-              <div className="flex items-center space-x-2">
-                <div className="flex-shrink-0 w-4 h-4 bg-blue-100 rounded flex items-center justify-center">
-                  <span className="text-xs text-blue-600">DOC</span>
-                </div>
-                <span className="truncate">Strategy Plan.docx</span>
-              </div>
-            </div>
-            <div className="px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg cursor-pointer">
-              <div className="flex items-center space-x-2">
-                <div className="flex-shrink-0 w-4 h-4 bg-green-100 rounded flex items-center justify-center">
-                  <span className="text-xs text-green-600">XLS</span>
-                </div>
-                <span className="truncate">Budget Analysis.xlsx</span>
-              </div>
-            </div>
-          </div>
-        </div>
       </nav>
-
-      {/* Storage indicator */}
-      <StorageIndicator />
+      <FolderModal open={showFolderModal} onClose={() => setShowFolderModal(false)} onCreate={handleCreateFolder} />
     </div>
   );
 

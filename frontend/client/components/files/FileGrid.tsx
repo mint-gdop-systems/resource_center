@@ -7,10 +7,42 @@ import {
 } from "@heroicons/react/24/outline";
 import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
 import { FileItem, ViewMode } from "../../types";
-import { formatFileSize, formatDate } from "../../data/mockData";
+import { formatFileSize } from "../../lib/utils";
+import { fileTypeIcons } from "../../data/mockData";
 import FileActions from "./FileActions";
 import BulkActions from "./BulkActions";
 import { useFiles } from "../../contexts/FileContext";
+// FontAwesome imports
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faFilePdf,
+  faFileWord,
+  faFileExcel,
+  faFilePowerpoint,
+  faFileImage,
+  faFileAlt,
+  faFileArchive,
+  faFolder,
+  faFile,
+} from '@fortawesome/free-solid-svg-icons';
+// File type to FontAwesome icon mapping
+const fileTypeIconMap: Record<string, any> = {
+  pdf: faFilePdf,
+  doc: faFileWord,
+  docx: faFileWord,
+  xls: faFileExcel,
+  xlsx: faFileExcel,
+  ppt: faFilePowerpoint,
+  pptx: faFilePowerpoint,
+  jpg: faFileImage,
+  jpeg: faFileImage,
+  png: faFileImage,
+  gif: faFileImage,
+  txt: faFileAlt,
+  zip: faFileArchive,
+  rar: faFileArchive,
+  folder: faFolder,
+};
 
 interface FileGridProps {
   files: FileItem[];
@@ -33,37 +65,24 @@ export default function FileGrid({
     useFiles();
   const getFileIcon = (file: FileItem) => {
     if (file.type === "folder") {
-      return <FolderIcon className="h-8 w-8 text-mint-600" />;
+      return <FontAwesomeIcon icon={faFolder} className="text-yellow-500 h-8 w-8" />;
     }
-
-    const extensionColors: Record<string, string> = {
-      pdf: "text-red-600 bg-red-50",
-      doc: "text-blue-600 bg-blue-50",
-      docx: "text-blue-600 bg-blue-50",
-      xls: "text-green-600 bg-green-50",
-      xlsx: "text-green-600 bg-green-50",
-      ppt: "text-orange-600 bg-orange-50",
-      pptx: "text-orange-600 bg-orange-50",
-      jpg: "text-purple-600 bg-purple-50",
-      jpeg: "text-purple-600 bg-purple-50",
-      png: "text-purple-600 bg-purple-50",
-    };
-
-    const colorClass =
-      extensionColors[file.extension || ""] || "text-gray-600 bg-gray-50";
-
-    return (
-      <div
-        className={`w-12 h-12 rounded-lg flex items-center justify-center ${colorClass}`}
-      >
-        <DocumentIcon className="h-6 w-6" />
-      </div>
-    );
+    const icon = fileTypeIconMap[file.extension?.toLowerCase() || ""] || faFile;
+    // Color by type (optional, can adjust)
+    let colorClass = "text-blue-500";
+    if (icon === faFilePdf) colorClass = "text-red-600";
+    if (icon === faFileWord) colorClass = "text-blue-700";
+    if (icon === faFileExcel) colorClass = "text-green-600";
+    if (icon === faFilePowerpoint) colorClass = "text-orange-500";
+    if (icon === faFileImage) colorClass = "text-pink-500";
+    if (icon === faFileArchive) colorClass = "text-yellow-600";
+    if (icon === faFileAlt) colorClass = "text-gray-500";
+    return <FontAwesomeIcon icon={icon} className={`${colorClass} h-8 w-8`} />;
   };
 
   const handleFileClick = (file: FileItem) => {
     if (file.type === "folder") {
-      onNavigateToFolder?.(file.name);
+      onNavigateToFolder?.(file.id);
     } else {
       // Open file - in real app would open preview or download
       if (
@@ -137,6 +156,20 @@ export default function FileGrid({
         {files.map((file, index) => {
           const isSelected = selectedFiles.includes(file.id);
 
+          // Handler to prevent card click when clicking on interactive elements
+          const handleCardClick = (e: React.MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (
+              target.closest('button') ||
+              target.closest('input[type="checkbox"]') ||
+              target.closest('.file-actions-menu')
+            ) {
+              return;
+            }
+            // Toggle selection instead of opening file
+            toggleFileSelection(file.id);
+          };
+
           return (
             <motion.div
               key={file.id}
@@ -148,13 +181,14 @@ export default function FileGrid({
                   ? "border-mint-300 bg-mint-50 shadow-sm"
                   : "border-gray-200 hover:border-gray-300"
               }`}
-              onClick={() => handleFileClick(file)}
+              onClick={handleCardClick}
             >
               {/* Selection checkbox */}
-              <div className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="absolute top-3 left-3">
                 <input
                   type="checkbox"
                   checked={isSelected}
+                  onClick={e => e.stopPropagation()}
                   onChange={(e) => {
                     e.stopPropagation();
                     toggleFileSelection(file.id);
@@ -200,12 +234,18 @@ export default function FileGrid({
 
               {/* File info */}
               <div className="space-y-1">
-                <h3 className="text-sm font-medium text-gray-900 truncate">
+                <h3
+                  className="text-sm font-medium text-gray-900 truncate hover:underline cursor-pointer"
+                  onClick={e => {
+                    e.stopPropagation();
+                    handleFileClick(file);
+                  }}
+                >
                   {file.name}
                 </h3>
                 <div className="text-xs text-gray-500 space-y-0.5">
                   <div className="flex items-center justify-between">
-                    <span>{formatDate(file.updatedAt)}</span>
+                    <span>{new Date(file.updatedAt).toLocaleDateString()}</span>
                     {file.size && (
                       <span className="text-xs">
                         {formatFileSize(file.size)}

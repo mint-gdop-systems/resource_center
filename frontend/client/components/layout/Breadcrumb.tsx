@@ -11,9 +11,10 @@ interface BreadcrumbItem {
 interface BreadcrumbProps {
   items: BreadcrumbItem[];
   className?: string;
+  onNavigate?: (path: string) => void;
 }
 
-export default function Breadcrumb({ items, className = "" }: BreadcrumbProps) {
+export default function Breadcrumb({ items, className = "", onNavigate }: BreadcrumbProps) {
   return (
     <nav className={`flex ${className}`} aria-label="Breadcrumb">
       <ol className="flex items-center space-x-2">
@@ -39,12 +40,22 @@ export default function Breadcrumb({ items, className = "" }: BreadcrumbProps) {
                   {item.name}
                 </span>
               ) : (
+                onNavigate ? (
+                  <button
+                    type="button"
+                    className="text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors truncate max-w-xs bg-transparent border-none p-0 m-0 cursor-pointer"
+                    onClick={() => onNavigate(item.path)}
+                  >
+                    {item.name}
+                  </button>
+              ) : (
                 <Link
                   to={item.path}
                   className="text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors truncate max-w-xs"
                 >
                   {item.name}
                 </Link>
+                )
               )}
             </li>
           );

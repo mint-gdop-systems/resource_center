@@ -1,30 +1,27 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { FileItem } from "../types";
+import { useFiles } from "../contexts/FileContext";
 
 export function useFileNavigation(allFiles: FileItem[]) {
+  // currentPath is an array of folder IDs (as strings)
   const [currentPath, setCurrentPath] = useState<string[]>([]);
+  const { fetchFiles } = useFiles();
 
-  // Get files for current directory
-  const currentFiles = useMemo(() => {
-    if (currentPath.length === 0) {
-      // Root level - show files that are at root level
-      return allFiles.filter((file) => file.path.length === 1);
-    }
+  // Fetch files/folders for the current directory whenever currentPath changes
+  useEffect(() => {
+    const folderId = currentPath.length > 0 ? currentPath[currentPath.length - 1] : undefined;
+    fetchFiles(folderId);
+  }, [currentPath, fetchFiles]);
 
-    // Show files in current folder
-    const currentPathString = currentPath.join("/");
-    return allFiles.filter((file) => {
-      const filePathString = file.path.slice(0, -1).join("/");
-      return filePathString === currentPathString;
-    });
-  }, [allFiles, currentPath]);
+  // The context now always provides the current folder's files/folders
+  const currentFiles = allFiles;
 
-  // Navigate into a folder
-  const navigateToFolder = (folderName: string) => {
-    setCurrentPath((prev) => [...prev, folderName]);
+  // Navigate into a folder by ID
+  const navigateToFolder = (folderId: string) => {
+    setCurrentPath((prev) => [...prev, folderId]);
   };
 
-  // Navigate to a specific path
+  // Navigate to a specific path (array of IDs)
   const navigateToPath = (path: string[]) => {
     setCurrentPath(path);
   };

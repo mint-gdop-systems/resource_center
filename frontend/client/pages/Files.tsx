@@ -12,13 +12,15 @@ import Breadcrumb from "../components/layout/Breadcrumb";
 import FileGrid from "../components/files/FileGrid";
 import FileList from "../components/files/FileList";
 import FileUpload from "../components/files/FileUpload";
+import FolderModal from "../components/ui/FolderModal";
 import { ViewMode, SearchFilters } from "../types";
 import { useFiles } from "../contexts/FileContext";
 import { useFileNavigation } from "../hooks/useFileNavigation";
 import toast from "react-hot-toast";
+import { useCallback } from "react";
 
 export default function Files() {
-  const { files, createFolder } = useFiles();
+  const { files, createFolder, fetchFiles } = useFiles();
   const {
     currentPath,
     currentFiles: navigationFiles,
@@ -27,16 +29,18 @@ export default function Files() {
     navigateToRoot,
   } = useFileNavigation(files);
 
+  // Default: list view, sort by date (newest first)
   const [viewMode, setViewMode] = useState<ViewMode>({
-    type: "grid",
-    sortBy: "name",
-    sortOrder: "asc",
+    type: "list",
+    sortBy: "date",
+    sortOrder: "desc",
   });
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<SearchFilters>({});
+  const [showFolderModal, setShowFolderModal] = useState(false);
 
   // Search and filter files with proper logic
   const filteredFiles = useMemo(() => {
@@ -45,12 +49,22 @@ export default function Files() {
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (file) =>
-          file.name.toLowerCase().includes(query) ||
-          file.owner.name.toLowerCase().includes(query) ||
-          file.extension?.toLowerCase().includes(query),
-      );
+      filtered = filtered.filter((file) => {
+        // Name match
+        const nameMatch = file.name?.toLowerCase().includes(query);
+        // Category match (object with name, or string)
+        let categoryMatch = false;
+        if (file.category) {
+          if (typeof file.category === 'object' && file.category !== null && 'name' in file.category) {
+            categoryMatch = (file.category.name ?? '').toLowerCase().includes(query);
+          } else if (typeof file.category === 'string') {
+            categoryMatch = file.category.toLowerCase().includes(query);
+          }
+        }
+        // Extension match
+        const extMatch = file.extension?.toLowerCase().includes(query);
+        return nameMatch || categoryMatch || extMatch;
+      });
     }
 
     // Apply other filters
@@ -74,27 +88,54 @@ export default function Files() {
     return filtered;
   }, [navigationFiles, searchQuery, filters]);
 
-  // Sort files with proper typing
+  // Sort files with proper typing and correct logic for all options
   const sortedFiles = useMemo(() => {
-    return [...filteredFiles].sort((a, b) => {
-      const direction = viewMode.sortOrder === "asc" ? 1 : -1;
-
+    // Separate folders and files
+    const folders = filteredFiles.filter(f => f.type === 'folder');
+    const files = filteredFiles.filter(f => f.type !== 'folder');
+    const direction = viewMode.sortOrder === "asc" ? 1 : -1;
+    const sortFn = (a: any, b: any) => {
       switch (viewMode.sortBy) {
         case "name":
-          return direction * a.name.localeCompare(b.name);
-        case "date":
-          return direction * (a.updatedAt.getTime() - b.updatedAt.getTime());
+          return direction * a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+        case "date": {
+          // Folders: use createdAt, Files: use updatedAt
+          const aDate = a.type === 'folder' ? a.createdAt : a.updatedAt;
+          const bDate = b.type === 'folder' ? b.createdAt : b.updatedAt;
+          return direction * (aDate.getTime() - bDate.getTime());
+        }
         case "size":
           return direction * ((a.size || 0) - (b.size || 0));
         case "type":
-          return (
-            direction * (a.extension || "").localeCompare(b.extension || "")
-          );
+          return direction * ((a.extension || '').localeCompare(b.extension || '', undefined, { sensitivity: 'base' }));
         default:
           return 0;
       }
-    });
+    };
+    // Sort folders and files separately, then combine
+    const sortedFolders = [...folders].sort(sortFn);
+    const sortedFilesArr = [...files].sort(sortFn);
+    return [...sortedFolders, ...sortedFilesArr];
   }, [filteredFiles, viewMode.sortBy, viewMode.sortOrder]);
+
+  // Helper to reconstruct the full folder path (names) from current folder up to root
+  function getFolderPathNames(folderId: string, allFolders: any[]): { id: string, name: string }[] {
+    const path: { id: string, name: string }[] = [];
+    let current = allFolders.find(f => f.id === folderId);
+    while (current) {
+      path.unshift({ id: current.id, name: current.name });
+      current = current.parent ? allFolders.find(f => f.id === current.parent) : undefined;
+    }
+    return path;
+  }
+
+  // Find all folders in the current files list (should include parents and subfolders)
+  const allFolders = files.filter(f => f.type === 'folder');
+
+  // If in a folder, reconstruct the full path of folder names
+  const folderPath = currentPath.length > 0
+    ? getFolderPathNames(currentPath[currentPath.length - 1], allFolders)
+    : [];
 
   // Generate breadcrumb items with proper navigation
   const breadcrumbItems = [
@@ -103,12 +144,23 @@ export default function Files() {
       name: "My Files",
       path: "/files",
     },
-    ...currentPath.map((folder, index) => ({
-      id: `folder-${index}`,
-      name: folder,
-      path: `/files/${currentPath.slice(0, index + 1).join("/")}`,
+    ...folderPath.map((folder, index) => ({
+      id: folder.id,
+      name: folder.name,
+      path: `/files/${folderPath.slice(0, index + 1).map(f => f.id).join("/")}`,
     })),
   ];
+
+  // Handler for breadcrumb navigation
+  const handleBreadcrumbNavigate = useCallback((path: string) => {
+    if (path === "/files") {
+      navigateToRoot();
+    } else {
+      // Extract folder IDs from the path
+      const ids = path.replace(/^\/files\/?/, "").split("/").filter(Boolean);
+      navigateToPath(ids);
+    }
+  }, [navigateToRoot, navigateToPath]);
 
   const handleViewModeChange = (type: "grid" | "list") => {
     setViewMode((prev) => ({ ...prev, type }));
@@ -131,10 +183,19 @@ export default function Files() {
   };
 
   const handleCreateFolder = () => {
-    const folderName = prompt("Enter folder name:");
-    if (folderName && folderName.trim()) {
-      createFolder(folderName.trim(), currentPath);
-    }
+    setShowFolderModal(true);
+  };
+
+  const handleFolderModalCreate = async (name: string) => {
+    await createFolder(name, currentPath);
+    setShowFolderModal(false);
+    // Optionally, refresh the file list for the current folder
+    const parentId = currentPath.length > 0 ? currentPath[currentPath.length - 1] : undefined;
+    await fetchFiles(parentId);
+  };
+
+  const handleFolderModalClose = () => {
+    setShowFolderModal(false);
   };
 
   return (
@@ -142,11 +203,11 @@ export default function Files() {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
         <div>
-          <Breadcrumb items={breadcrumbItems} />
+          <Breadcrumb items={breadcrumbItems} onNavigate={handleBreadcrumbNavigate} />
           <h1 className="mt-2 text-2xl font-bold text-gray-900">
             {currentPath.length === 0
               ? "My Files"
-              : currentPath[currentPath.length - 1]}
+              : (folderPath.length > 0 ? folderPath[folderPath.length - 1].name : currentPath[currentPath.length - 1])}
           </h1>
           <p className="text-gray-600">
             {sortedFiles.length} item{sortedFiles.length !== 1 ? "s" : ""}
@@ -361,6 +422,7 @@ export default function Files() {
                 onSelectAll={handleSelectAll}
                 viewMode={viewMode}
                 onNavigateToFolder={navigateToFolder}
+                onShowUpload={() => setShowUpload(true)}
               />
             )}
           </motion.div>
@@ -375,6 +437,12 @@ export default function Files() {
           currentPath={currentPath}
         />
       )}
+      {/* Folder Modal */}
+      <FolderModal
+        open={showFolderModal}
+        onClose={handleFolderModalClose}
+        onCreate={handleFolderModalCreate}
+      />
     </div>
   );
 }

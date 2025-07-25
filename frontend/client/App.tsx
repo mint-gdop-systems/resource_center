@@ -41,7 +41,7 @@ function App() {
                   <Route element={<Layout />}>
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/files/*" element={<ProtectedRoutes><Files /></ProtectedRoutes>} />
-                    <Route path="/recent" element={<ProtectedRoutes><RecentFiles /></ProtectedRoutes>} />
+                    <Route path="/folders/:folderId" element={<ProtectedRoutes><Files /></ProtectedRoutes>} />
                     <Route path="/shared" element={<ProtectedRoutes><Shared /></ProtectedRoutes>} />
                     <Route path="/starred" element={<ProtectedRoutes><Starred /></ProtectedRoutes>} />
                     <Route path="/archive" element={<ProtectedRoutes><Archive /></ProtectedRoutes>} />
@@ -110,31 +110,6 @@ function ProtectedRoutes({ children }: { children: JSX.Element }) {
     );
   }
   return children;
-}
-
-// Recent Files component (placeholder)
-function RecentFiles() {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Recent Files</h1>
-        <p className="text-gray-600">Files you've accessed recently</p>
-      </div>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-        <div className="text-center py-16">
-          <div className="mx-auto h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center">
-            <span className="text-2xl">📁</span>
-          </div>
-          <h3 className="mt-4 text-lg font-medium text-gray-900">
-            Recent Files
-          </h3>
-          <p className="mt-2 text-gray-500 max-w-sm mx-auto">
-            Files you've opened recently will appear here for quick access.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 export default App;

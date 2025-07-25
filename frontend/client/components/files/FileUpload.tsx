@@ -92,7 +92,7 @@ export default function FileUpload({
             return uploadFile;
           }),
         );
-      } catch (error) {
+      } catch (error: any) {
         clearInterval(progressInterval);
         setUploadFiles((prev) =>
           prev.map((uploadFile) => {
@@ -100,7 +100,7 @@ export default function FileUpload({
               return {
                 ...uploadFile,
                 status: "error",
-                error: "Upload failed",
+                error: error?.message || "Upload failed",
               };
             }
             return uploadFile;
@@ -297,7 +297,10 @@ export default function FileUpload({
                             <CheckCircleIcon className="h-5 w-5 text-green-500" />
                           )}
                           {file.status === "error" && (
-                            <ExclamationCircleIcon className="h-5 w-5 text-red-500" />
+                            <span className="flex items-center text-xs text-red-600">
+                              <ExclamationCircleIcon className="h-4 w-4 mr-1" />
+                              {file.error || "Error"}
+                            </span>
                           )}
                           <button
                             onClick={() => removeFile(file.id)}

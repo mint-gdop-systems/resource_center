@@ -14,6 +14,7 @@ export interface FileItem {
   size?: number;
   mimeType?: string;
   extension?: string;
+  category?: string;
   createdAt: Date;
   updatedAt: Date;
   owner: User;

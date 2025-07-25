@@ -153,8 +153,10 @@ export const toggleFileArchive = async (fileId: string) => {
  * @param parentId Optional parent folder ID
  */
 export const createFolder = async (name: string, parentId?: string) => {
-  const url = parentId ? `/folders/${parentId}/` : '/folders/';
-  const response = await api.post(url, { name });
+  // Always POST to /folders/ with { name, parent } in the body
+  const data: any = { name };
+  if (parentId) data.parent = parentId;
+  const response = await api.post('/folders/', data);
   return response.data;
 };
 
@@ -165,6 +167,14 @@ export const createFolder = async (name: string, parentId?: string) => {
  */
 export const updateFile = async (fileId: string, data: { name?: string; category?: string; tags?: string[] }) => {
   const response = await api.patch(`/files-update/${fileId}/`, data);
+  return response.data;
+};
+
+/**
+ * Get all root-level folders
+ */
+export const getFolders = async () => {
+  const response = await api.get('/folders/');
   return response.data;
 };
 

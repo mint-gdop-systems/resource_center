@@ -9,10 +9,24 @@ import {
 } from "@heroicons/react/24/outline";
 import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
 import { FileItem, ViewMode } from "../../types";
-import { formatFileSize, formatDate } from "../../data/mockData";
+import { formatFileSize, formatDate } from "../../lib/utils";
+import { fileTypeIcons } from "../../data/mockData";
 import FileActions from "./FileActions";
 import BulkActions from "./BulkActions";
 import { useFiles } from "../../contexts/FileContext";
+// FontAwesome imports
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faFilePdf,
+  faFileWord,
+  faFileExcel,
+  faFilePowerpoint,
+  faFileImage,
+  faFileAlt,
+  faFileArchive,
+  faFolder,
+  faFile,
+} from '@fortawesome/free-solid-svg-icons';
 
 interface FileListProps {
   files: FileItem[];
@@ -21,7 +35,27 @@ interface FileListProps {
   onSelectAll: (selected: boolean) => void;
   viewMode: ViewMode;
   onNavigateToFolder?: (folderName: string) => void;
+  onShowUpload?: () => void; // Add this prop
 }
+
+// File type to FontAwesome icon mapping
+const fileTypeIconMap: Record<string, any> = {
+  pdf: faFilePdf,
+  doc: faFileWord,
+  docx: faFileWord,
+  xls: faFileExcel,
+  xlsx: faFileExcel,
+  ppt: faFilePowerpoint,
+  pptx: faFilePowerpoint,
+  jpg: faFileImage,
+  jpeg: faFileImage,
+  png: faFileImage,
+  gif: faFileImage,
+  txt: faFileAlt,
+  zip: faFileArchive,
+  rar: faFileArchive,
+  folder: faFolder,
+};
 
 export default function FileList({
   files,
@@ -30,36 +64,31 @@ export default function FileList({
   onSelectAll,
   viewMode,
   onNavigateToFolder,
+  onShowUpload,
 }: FileListProps) {
   const { deleteFiles, renameFile, moveFiles, toggleStar, starFiles } =
     useFiles();
 
   const getFileIcon = (file: FileItem) => {
     if (file.type === "folder") {
-      return <FolderIcon className="h-5 w-5 text-mint-600" />;
+      return <FontAwesomeIcon icon={faFolder} className="text-yellow-500 h-5 w-5" />;
     }
-
-    const extensionColors: Record<string, string> = {
-      pdf: "text-red-600",
-      doc: "text-blue-600",
-      docx: "text-blue-600",
-      xls: "text-green-600",
-      xlsx: "text-green-600",
-      ppt: "text-orange-600",
-      pptx: "text-orange-600",
-      jpg: "text-purple-600",
-      jpeg: "text-purple-600",
-      png: "text-purple-600",
-    };
-
-    const colorClass = extensionColors[file.extension || ""] || "text-gray-600";
-
-    return <DocumentIcon className={`h-5 w-5 ${colorClass}`} />;
+    const icon = fileTypeIconMap[file.extension?.toLowerCase() || ""] || faFile;
+    // Color by type (optional, can adjust)
+    let colorClass = "text-blue-500";
+    if (icon === faFilePdf) colorClass = "text-red-600";
+    if (icon === faFileWord) colorClass = "text-blue-700";
+    if (icon === faFileExcel) colorClass = "text-green-600";
+    if (icon === faFilePowerpoint) colorClass = "text-orange-500";
+    if (icon === faFileImage) colorClass = "text-pink-500";
+    if (icon === faFileArchive) colorClass = "text-yellow-600";
+    if (icon === faFileAlt) colorClass = "text-gray-500";
+    return <FontAwesomeIcon icon={icon} className={`${colorClass} h-5 w-5`} />;
   };
 
   const handleFileClick = (file: FileItem) => {
     if (file.type === "folder") {
-      onNavigateToFolder?.(file.name);
+      onNavigateToFolder?.(file.id);
     } else {
       // Open file - in real app would open preview or download
       if (
@@ -142,11 +171,14 @@ export default function FileList({
                 className="h-4 w-4 text-mint-600 focus:ring-mint-500 border-gray-300 rounded"
               />
             </div>
-            <div className="col-span-5">
+            <div className="col-span-3">
               <SortButton label="Name" sortKey="name" />
             </div>
             <div className="col-span-2">
               <SortButton label="Owner" sortKey="owner" />
+            </div>
+            <div className="col-span-2">
+              <SortButton label="Category" sortKey="category" />
             </div>
             <div className="col-span-2">
               <SortButton label="Modified" sortKey="date" />
@@ -164,9 +196,24 @@ export default function FileList({
         {files.map((file, index) => {
           const isSelected = selectedFiles.includes(file.id);
 
+          // Handler to prevent row click when clicking on interactive elements
+          const handleRowClick = (e: React.MouseEvent) => {
+            const target = e.target as HTMLElement;
+            // If the click is on a button, input, or inside FileActions, do nothing
+            if (
+              target.closest('button') ||
+              target.closest('input[type="checkbox"]') ||
+              target.closest('.file-actions-menu')
+            ) {
+              return;
+            }
+            // Toggle selection instead of opening file
+            toggleFileSelection(file.id);
+          };
+
           return (
             <motion.div
-              key={file.id}
+              key={`${file.type}-${file.id}`}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.2, delay: index * 0.03 }}
@@ -175,26 +222,37 @@ export default function FileList({
                   ? "bg-mint-50 border border-mint-200"
                   : "hover:bg-gray-50 border border-transparent"
               }`}
-              onClick={() => handleFileClick(file)}
+              onClick={handleRowClick}
+              tabIndex={0}
+              role="row"
+              aria-selected={isSelected}
             >
               {/* Checkbox */}
               <div className="col-span-1 flex items-center">
                 <input
                   type="checkbox"
                   checked={isSelected}
+                  onClick={e => e.stopPropagation()}
                   onChange={(e) => {
                     e.stopPropagation();
                     toggleFileSelection(file.id);
                   }}
-                  className="h-4 w-4 text-mint-600 focus:ring-mint-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-mint-600 focus:ring-mint-500 border-gray-300 rounded cursor-pointer"
+                  aria-label={`Select ${file.name}`}
                 />
               </div>
 
               {/* Name */}
-              <div className="col-span-5 flex items-center space-x-3 min-w-0">
+              <div className="col-span-3 flex items-center space-x-3 min-w-0">
                 {getFileIcon(file)}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
+                  <p
+                    className="text-sm font-medium text-gray-900 truncate hover:underline cursor-pointer"
+                    onClick={e => {
+                      e.stopPropagation();
+                      handleFileClick(file);
+                    }}
+                  >
                     {file.name}
                   </p>
                   {file.type === "folder" && (
@@ -216,19 +274,34 @@ export default function FileList({
                 <div className="flex items-center space-x-2">
                   <div className="h-6 w-6 bg-gray-200 rounded-full flex items-center justify-center">
                     <span className="text-xs font-medium text-gray-600">
-                      {file.owner.name.charAt(0)}
+                      {file.owner?.name?.charAt(0) ?? "?"}
                     </span>
                   </div>
                   <span className="text-sm text-gray-900 truncate">
-                    {file.owner.name}
+                    {file.owner?.name ?? "Unknown"}
                   </span>
                 </div>
+              </div>
+
+              {/* Category */}
+              <div className="col-span-2 flex items-center">
+                <span className="text-sm text-gray-500">
+                {file.type === "folder"
+                  ? "—"
+                  : file.category == null
+                    ? "—"
+                    : typeof file.category === 'object' && "name" in file.category
+                      ? (file.category.name ?? "—")
+                      : file.category}
+                </span>
               </div>
 
               {/* Modified */}
               <div className="col-span-2 flex items-center">
                 <span className="text-sm text-gray-500">
-                  {formatDate(file.updatedAt)}
+                  {file.type === 'folder' 
+                    ? formatDate(new Date(file.createdAt))
+                    : formatDate(new Date(file.uploaded_at))}
                 </span>
               </div>
 
@@ -241,7 +314,7 @@ export default function FileList({
 
               {/* Actions */}
               <div className="col-span-1 flex items-center justify-end">
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="file-actions-menu">
                   <FileActions
                     file={file}
                     onRename={renameFile}
@@ -267,7 +340,10 @@ export default function FileList({
             Get started by uploading a file or creating a folder.
           </p>
           <div className="mt-6">
-            <button className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-mint-600 hover:bg-mint-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-mint-500">
+            <button
+              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-mint-600 hover:bg-mint-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-mint-500"
+              onClick={onShowUpload}
+            >
               Upload your first file
             </button>
           </div>

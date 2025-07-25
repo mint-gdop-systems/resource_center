@@ -121,11 +121,7 @@ export default function RecentActivity({ activities }: RecentActivityProps) {
             </p>
           </div>
         )}
-        <div className="mt-6 text-center">
-          <button className="text-sm text-mint-600 hover:text-mint-700 font-medium">
-            View all activity
-          </button>
-        </div>
+        {/* Removed 'View all activity' button for now */}
       </div>
     </div>
   );

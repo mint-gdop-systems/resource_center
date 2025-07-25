@@ -105,7 +105,8 @@ class FileUploadView(APIView):
         files = request.FILES.getlist("files")  # Handle multiple files
         print("Files received:", [f.name for f in files])
 
-        folder_id = request.data.get("folder_id")
+        # Use folder_id from URL if present, else from form data
+        folder_id = folder_id or request.data.get("folder_id")
         if folder_id in [None, "None", "null", ""]:
             folder_id = None
 
@@ -116,6 +117,9 @@ class FileUploadView(APIView):
         folder_name = folder.name if folder else "Root"
 
         category_id = request.data.get("category_id")
+        # Coerce category_id to a single value if it's a list
+        if isinstance(category_id, list):
+            category_id = category_id[0]
         if category_id:
             category = Category.objects.filter(id=category_id).first()
         else:
@@ -318,12 +322,7 @@ class CreateFolderView(generics.CreateAPIView):
 
 # Get Folder Contents
 class FolderContentsView(generics.RetrieveAPIView):
-    # Re-enable authentication
-    # authentication_classes = []
-    # permission_classes = []
-    # Temporarily disable authentication for debugging
-    # authentication_classes = []
-    # permission_classes = []
+    permission_classes = [IsAuthenticated]
 
     # queryset = Folder.objects.all()
     # serializer_class = FolderSerializer    
@@ -333,10 +332,13 @@ class FolderContentsView(generics.RetrieveAPIView):
 
 
     def get(self, request, folder_id=None):
-        print('Authorization:', request.headers.get('Authorization'))
-        print('User:', request.user)
-        print('User is authenticated:', getattr(request.user, 'is_authenticated', None))
-        print('User email:', getattr(request.user, 'email', None))
+        # print('Authorization:', request.headers.get('Authorization'))
+        # print('User:', request.user)
+        # print('User is authenticated:', getattr(request.user, 'is_authenticated', None))
+        # print('User email:', getattr(request.user, 'email', None))
+        # print("FILES QUERYSET COUNT:", files.count())
+        # print("FILES OWNERS:", list(files.values_list("owner__email", flat=True)))
+        # print("FILES PUBLIC:", list(files.values_list("is_public", flat=True)))
         try:
             # Handle AnonymousUser properly
             if request.user.is_authenticated:
@@ -358,6 +360,10 @@ class FolderContentsView(generics.RetrieveAPIView):
                     files = UploadedFile.objects.filter(
                         Q(folder_id=folder_id) & (Q(owner=request.user) | Q(is_public=True))
                     ).order_by("-uploaded_at")
+                    print("if file first executed")
+                    print("FILES QUERYSET COUNT:", files.count())
+                    print("FILES OWNERS:", list(files.values_list("owner__email", flat=True)))
+                    print("FILES PUBLIC:", list(files.values_list("is_public", flat=True)))
 
                     subfolders = Folder.objects.filter(
                         Q(parent_id=folder_id) & (Q(owner=request.user) | Q(is_public=True))
@@ -367,7 +373,7 @@ class FolderContentsView(generics.RetrieveAPIView):
                     files = UploadedFile.objects.filter(
                         Q(folder_id=folder_id) & Q(is_public=True)
                     ).order_by("-uploaded_at")
-
+                    print("if file else executed")
                     subfolders = Folder.objects.filter(
                         Q(parent_id=folder_id) & Q(is_public=True)
                     ).order_by("-created_at")
@@ -377,7 +383,10 @@ class FolderContentsView(generics.RetrieveAPIView):
                     files = UploadedFile.objects.filter(
                         Q(folder__isnull=True) & (Q(owner=request.user) | Q(is_public=True))
                     ).order_by("-uploaded_at")
-
+                    print("if file or last executed")
+                    print("FILES QUERYSET COUNT:", files.count())
+                    print("FILES OWNERS:", list(files.values_list("owner__email", flat=True)))
+                    print("FILES PUBLIC:", list(files.values_list("is_public", flat=True)))
                     subfolders = Folder.objects.filter(
                         Q(parent__isnull=True) & (Q(owner=request.user) | Q(is_public=True))
                     ).order_by("-created_at")
@@ -386,6 +395,10 @@ class FolderContentsView(generics.RetrieveAPIView):
                     files = UploadedFile.objects.filter(
                         Q(folder__isnull=True) & Q(is_public=True)
                     ).order_by("-uploaded_at")
+                    print("if file else executed")
+                    print("FILES QUERYSET COUNT:", files.count())
+                    print("FILES OWNERS:", list(files.values_list("owner__email", flat=True)))
+                    print("FILES PUBLIC:", list(files.values_list("is_public", flat=True)))
 
                     subfolders = Folder.objects.filter(
                         Q(parent__isnull=True) & Q(is_public=True)
