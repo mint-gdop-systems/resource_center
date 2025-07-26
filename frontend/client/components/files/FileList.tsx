@@ -6,6 +6,7 @@ import {
   FolderIcon,
   ArrowUpIcon,
   ArrowDownIcon,
+  CloudArrowUpIcon,
 } from "@heroicons/react/24/outline";
 import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
 import { FileItem, ViewMode } from "../../types";
@@ -35,7 +36,8 @@ interface FileListProps {
   onSelectAll: (selected: boolean) => void;
   viewMode: ViewMode;
   onNavigateToFolder?: (folderName: string) => void;
-  onShowUpload?: () => void; // Add this prop
+  isAuthenticated?: boolean;
+  setShowUpload?: (show: boolean) => void;
 }
 
 // File type to FontAwesome icon mapping
@@ -64,7 +66,8 @@ export default function FileList({
   onSelectAll,
   viewMode,
   onNavigateToFolder,
-  onShowUpload,
+  isAuthenticated = true,
+  setShowUpload,
 }: FileListProps) {
   const { deleteFiles, renameFile, moveFiles, toggleStar, starFiles } =
     useFiles();
@@ -136,6 +139,44 @@ export default function FileList({
       )}
     </button>
   );
+
+  // Empty state
+  if (files.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <FolderIcon className="mx-auto h-12 w-12 text-gray-400" />
+        {isAuthenticated ? (
+          <>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No files</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Get started by uploading a file or creating a folder.
+            </p>
+            <div className="mt-6">
+              <button 
+                onClick={() => setShowUpload?.(true)}
+                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-mint-600 hover:bg-mint-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-mint-500"
+              >
+                <CloudArrowUpIcon className="h-4 w-4 mr-2" />
+                Upload your first file
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">Sign in to view files</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Please sign in to access and manage your files
+            </p>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // Only show file list if authenticated
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="space-y-4">
@@ -330,25 +371,6 @@ export default function FileList({
           );
         })}
       </div>
-
-      {/* Empty state */}
-      {files.length === 0 && (
-        <div className="text-center py-12">
-          <FolderIcon className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No files</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Get started by uploading a file or creating a folder.
-          </p>
-          <div className="mt-6">
-            <button
-              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-mint-600 hover:bg-mint-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-mint-500"
-              onClick={onShowUpload}
-            >
-              Upload your first file
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
