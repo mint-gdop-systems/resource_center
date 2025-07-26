@@ -33,7 +33,7 @@ pipeline {
 
         stage('Build Image') {
            
-                    agent { label 'agent-56' }
+                    agent { label 'master'  }
                   
                     steps {
                         
@@ -42,7 +42,7 @@ pipeline {
         }
 
         stage('Login to Docker Hub') {
-            agent { label 'agent-56' }  
+            agent { label 'master'  }  
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: "$DOCKER_CREDENTIALS_ID",
@@ -56,7 +56,7 @@ pipeline {
 
         
         stage('Push ') {
-           agent { label 'agent-56' }  
+           agent { label 'master'  }  
             steps {
                 sh '''
                    docker tag rc:latest $IMAGE_NAME
@@ -66,7 +66,7 @@ pipeline {
         }
 
       stage('Deploy') {
-            agent { label 'agent-56' }          
+            agent { label 'master'  }          
             steps {
                 script {
                     // docker stack rm rc_new || true
