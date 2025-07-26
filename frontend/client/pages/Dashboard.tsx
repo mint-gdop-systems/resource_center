@@ -13,9 +13,11 @@ import RecentActivity from "../components/dashboard/RecentActivity";
 import { ViewMode } from "../types";
 import { useFiles } from "../contexts/FileContext";
 import FileUpload from "../components/files/FileUpload";
+import { useAuth } from "../services/auth";
 
 export default function Dashboard() {
   const { files } = useFiles();
+  const { authenticated } = useAuth();
   const [viewMode, setViewMode] = useState<ViewMode>({
     type: "grid",
     sortBy: "name",
@@ -131,6 +133,8 @@ export default function Dashboard() {
                 onFileSelect={handleFileSelect}
                 onSelectAll={handleSelectAll}
                 viewMode={viewMode}
+                isAuthenticated={authenticated}
+                setShowUpload={setShowUpload}
               />
             ) : (
               <FileList
@@ -139,6 +143,8 @@ export default function Dashboard() {
                 onFileSelect={handleFileSelect}
                 onSelectAll={handleSelectAll}
                 viewMode={viewMode}
+                isAuthenticated={authenticated}
+                setShowUpload={setShowUpload}
               />
             )}
           </motion.div>
