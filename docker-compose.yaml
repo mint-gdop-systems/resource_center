@@ -1,0 +1,30 @@
+services:
+  django:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+    networks:
+      - rc_network
+    env_file:
+      - ./backend/.env
+
+  react:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      - django
+    networks:
+      - rc_network
+    env_file:
+      - ./frontend/.env
+    ports:
+      - "7000:80"
+
+networks:
+  rc_network:
+    driver: bridge
