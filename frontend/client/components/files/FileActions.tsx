@@ -9,7 +9,16 @@ import {
   DocumentDuplicateIcon,
   ShareIcon,
   StarIcon,
+  ArchiveBoxIcon,
+  EyeIcon,
+  CloudArrowUpIcon,
+  ClockIcon,
 } from "@heroicons/react/24/outline";
+import FolderSelectionModal from "./FolderSelectionModal";
+import EditFileModal from "./EditFileModal";
+import ShareModal from "./ShareModal";
+import UploadNewVersionModal from "./UploadNewVersionModal";
+import VersionHistoryModal from "./VersionHistoryModal";
 import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
 import { FileItem } from "../../types";
 import toast from "react-hot-toast";
@@ -17,9 +26,10 @@ import toast from "react-hot-toast";
 interface FileActionsProps {
   file: FileItem;
   onRename?: (fileId: string, newName: string) => void;
-  onDelete?: (fileId: string) => void;
+  onDelete?: (fileIds: string[]) => void;
   onMove?: (fileId: string, targetPath: string) => void;
   onStar?: (fileId: string, starred: boolean) => void;
+  onArchive?: (fileId: string, archived: boolean) => void;
   className?: string;
 }
 
@@ -29,35 +39,70 @@ export default function FileActions({
   onDelete,
   onMove,
   onStar,
+  onArchive,
   className = "",
 }: FileActionsProps) {
   const [showMenu, setShowMenu] = useState(false);
-  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showMoveModal, setShowMoveModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showCopyModal, setShowCopyModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [showUploadVersionModal, setShowUploadVersionModal] = useState(false);
+  const [showVersionHistoryModal, setShowVersionHistoryModal] = useState(false);
 
-  const handleDownload = () => {
-    // Simulate file download
-    toast.success(`Downloading ${file.name}...`);
+  const handleDownload = async () => {
+    try {
+      if (file.type === 'folder') {
+        // Import the downloadFolder API function
+        const { downloadFolder } = await import('../../services/api');
+        
+        // Download the folder as ZIP
+        await downloadFolder(file.id, file.name);
+        toast.success(`Downloading ${file.name}.zip...`);
+      } else {
+        // Import the downloadFile API function
+        const { downloadFile } = await import('../../services/api');
+        
+        // Download the file
+        await downloadFile(file.id, file.name);
+        toast.success(`Downloading ${file.name}...`);
+      }
+    } catch (error) {
+      console.error('Error downloading:', error);
+      toast.error(`Failed to download ${file.type}. Please try again.`);
+    }
+    
+    setShowMenu(false);
+  };
 
-    // In a real app, this would trigger actual download
-    const link = document.createElement("a");
-    link.href = "#"; // Would be actual file URL
-    link.download = file.name;
-    link.click();
-
+  const handleView = async () => {
+    if (file.type === 'folder') return;
+    
+    try {
+      // Import the viewFile API function
+      const { viewFile } = await import('../../services/api');
+      
+      // Use the API to get the file
+      const url = await viewFile(file.id);
+      window.open(url, '_blank');
+      
+      // Clean up the blob URL after a delay
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+    } catch (error) {
+      toast.error('Error viewing file');
+      console.error('Error viewing file:', error);
+    }
+    
     setShowMenu(false);
   };
 
   const handleCopy = () => {
-    // Simulate copying file
-    toast.success(`${file.name} copied to clipboard`);
+    setShowCopyModal(true);
     setShowMenu(false);
   };
 
   const handleShare = () => {
-    // Open share modal (would integrate with ShareModal component)
-    toast.success("Opening share options...");
+    setShowShareModal(true);
     setShowMenu(false);
   };
 
@@ -67,7 +112,28 @@ export default function FileActions({
     setShowMenu(false);
   };
 
+  const handleArchive = () => {
+    onArchive?.(file.id, !file.archived);
+    toast.success(file.archived ? "Moved out of archive" : "Archived");
+    setShowMenu(false);
+  };
+
+  const handleUploadNewVersion = () => {
+    setShowUploadVersionModal(true);
+    setShowMenu(false);
+  };
+
+  const handleViewVersionHistory = () => {
+    setShowVersionHistoryModal(true);
+    setShowMenu(false);
+  };
+
   const menuItems = [
+    ...(file.type !== 'folder' ? [{
+      icon: EyeIcon,
+      label: "View",
+      onClick: handleView,
+    }] : []),
     {
       icon: ArrowDownTrayIcon,
       label: "Download",
@@ -75,12 +141,27 @@ export default function FileActions({
     },
     {
       icon: PencilIcon,
-      label: "Rename",
+      label: "Edit",
       onClick: () => {
-        setShowRenameModal(true);
+        setShowEditModal(true);
         setShowMenu(false);
       },
     },
+    // Version management options (only for files, not folders)
+    ...(file.type !== 'folder' ? [
+      {
+        icon: CloudArrowUpIcon,
+        label: "Upload New Version",
+        onClick: handleUploadNewVersion,
+        className: "text-blue-600",
+      },
+      {
+        icon: ClockIcon,
+        label: "Version History",
+        onClick: handleViewVersionHistory,
+        className: "text-purple-600",
+      },
+    ] : []),
     {
       icon: FolderIcon,
       label: "Move",
@@ -106,10 +187,16 @@ export default function FileActions({
       className: file.starred ? "text-yellow-600" : "",
     },
     {
+      icon: ArchiveBoxIcon,
+      label: file.archived ? "Unarchive" : "Archive",
+      onClick: handleArchive,
+      className: file.archived ? "text-gray-700" : "",
+    },
+    {
       icon: TrashIcon,
       label: "Delete",
       onClick: () => {
-        setShowDeleteModal(true);
+        onDelete?.([file.id]);
         setShowMenu(false);
       },
       className: "text-red-600 hover:text-red-700",
@@ -170,255 +257,95 @@ export default function FileActions({
       </div>
 
       {/* Modals */}
-      <RenameModal
-        isOpen={showRenameModal}
-        onClose={() => setShowRenameModal(false)}
+      <EditFileModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
         file={file}
-        onRename={onRename}
+        onUpdate={(updatedFile) => {
+          // Trigger a refresh of the file list
+          window.dispatchEvent(new CustomEvent('files:refresh'));
+        }}
       />
 
-      <MoveModal
+      <FolderSelectionModal
         isOpen={showMoveModal}
         onClose={() => setShowMoveModal(false)}
-        file={file}
-        onMove={onMove}
+        title={`Move "${file.name}"`}
+        confirmText="Move Here"
+        excludeFolderIds={file.type === 'folder' ? [file.id] : []}
+        onSelect={async (folderId, folderName) => {
+          try {
+            if (file.type === 'file') {
+              const { moveFile } = await import('../../services/api');
+              await moveFile(file.id, folderId || undefined);
+            } else {
+              const { moveFolder } = await import('../../services/api');
+              await moveFolder(file.id, folderId || undefined);
+            }
+            toast.success(`${file.type === 'file' ? 'File' : 'Folder'} moved to ${folderName}`);
+            
+            // Refresh the current view
+            window.dispatchEvent(new CustomEvent('files:refresh'));
+          } catch (error: any) {
+            console.error('Error moving item:', error);
+            const errorMessage = error?.response?.data?.error || error?.message || 'Failed to move item';
+            toast.error(errorMessage);
+          }
+        }}
       />
 
-      <DeleteModal
-        isOpen={showDeleteModal}
-        onClose={() => setShowDeleteModal(false)}
-        file={file}
-        onDelete={onDelete}
+      <FolderSelectionModal
+        isOpen={showCopyModal}
+        onClose={() => setShowCopyModal(false)}
+        title={`Copy "${file.name}"`}
+        confirmText="Copy Here"
+        onSelect={async (folderId, folderName) => {
+          try {
+            const { copyFile } = await import('../../services/api');
+            await copyFile(file.id, folderId || undefined);
+            toast.success(`File copied to ${folderName}`);
+            
+            // Refresh the current view
+            window.dispatchEvent(new CustomEvent('files:refresh'));
+          } catch (error: any) {
+            console.error('Error copying file:', error);
+            const errorMessage = error?.response?.data?.error || error?.message || 'Failed to copy file';
+            toast.error(errorMessage);
+          }
+        }}
       />
+
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        files={file.type === 'file' ? [file] : []}
+        folders={file.type === 'folder' ? [file] : []}
+      />
+
+      {/* Version Management Modals - Only for files */}
+      {file.type !== 'folder' && (
+        <>
+          <UploadNewVersionModal
+            isOpen={showUploadVersionModal}
+            onClose={() => setShowUploadVersionModal(false)}
+            file={file}
+            onSuccess={() => {
+              // Refresh the file list to show updated file
+              window.dispatchEvent(new CustomEvent('files:refresh'));
+            }}
+          />
+
+          <VersionHistoryModal
+            isOpen={showVersionHistoryModal}
+            onClose={() => setShowVersionHistoryModal(false)}
+            file={file}
+            onSuccess={() => {
+              // Refresh the file list to show updated file
+              window.dispatchEvent(new CustomEvent('files:refresh'));
+            }}
+          />
+        </>
+      )}
     </>
-  );
-}
-
-// Rename Modal Component
-interface RenameModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  file: FileItem;
-  onRename?: (fileId: string, newName: string) => void;
-}
-
-function RenameModal({ isOpen, onClose, file, onRename }: RenameModalProps) {
-  const [newName, setNewName] = useState(file.name);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newName.trim() && newName !== file.name) {
-      onRename?.(file.id, newName.trim());
-      toast.success(`Renamed to "${newName}"`);
-      onClose();
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center">
-        <div
-          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-          onClick={onClose}
-        />
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="relative bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:max-w-lg sm:w-full"
-        >
-          <form onSubmit={handleSubmit}>
-            <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-              <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-                Rename {file.type === "folder" ? "Folder" : "File"}
-              </h3>
-              <input
-                type="text"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-mint-500"
-                autoFocus
-              />
-            </div>
-            <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-              <button
-                type="submit"
-                className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-mint-600 text-base font-medium text-white hover:bg-mint-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-mint-500 sm:ml-3 sm:w-auto sm:text-sm"
-              >
-                Rename
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-mint-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </motion.div>
-      </div>
-    </div>
-  );
-}
-
-// Move Modal Component
-interface MoveModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  file: FileItem;
-  onMove?: (fileId: string, targetPath: string) => void;
-}
-
-function MoveModal({ isOpen, onClose, file, onMove }: MoveModalProps) {
-  const [selectedPath, setSelectedPath] = useState("/");
-
-  const mockFolders = [
-    { id: "root", name: "My Files", path: "/" },
-    { id: "f1", name: "Strategic Plans", path: "/Strategic Plans" },
-    { id: "f2", name: "Digital Ethiopia 2025", path: "/Digital Ethiopia 2025" },
-    { id: "f3", name: "Budget Reports", path: "/Budget Reports" },
-  ];
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onMove?.(file.id, selectedPath);
-    toast.success(`Moved ${file.name} to ${selectedPath}`);
-    onClose();
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center">
-        <div
-          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-          onClick={onClose}
-        />
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="relative bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:max-w-lg sm:w-full"
-        >
-          <form onSubmit={handleSubmit}>
-            <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-              <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-                Move "{file.name}"
-              </h3>
-              <p className="text-sm text-gray-500 mb-4">
-                Select a destination folder:
-              </p>
-              <div className="space-y-2">
-                {mockFolders.map((folder) => (
-                  <label
-                    key={folder.id}
-                    className="flex items-center p-2 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer"
-                  >
-                    <input
-                      type="radio"
-                      name="destination"
-                      value={folder.path}
-                      checked={selectedPath === folder.path}
-                      onChange={(e) => setSelectedPath(e.target.value)}
-                      className="h-4 w-4 text-mint-600 focus:ring-mint-500 border-gray-300"
-                    />
-                    <FolderIcon className="h-5 w-5 text-mint-600 ml-3 mr-2" />
-                    <span className="text-sm text-gray-900">{folder.name}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-              <button
-                type="submit"
-                className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-mint-600 text-base font-medium text-white hover:bg-mint-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-mint-500 sm:ml-3 sm:w-auto sm:text-sm"
-              >
-                Move
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-mint-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </motion.div>
-      </div>
-    </div>
-  );
-}
-
-// Delete Modal Component
-interface DeleteModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  file: FileItem;
-  onDelete?: (fileId: string) => void;
-}
-
-function DeleteModal({ isOpen, onClose, file, onDelete }: DeleteModalProps) {
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onDelete?.(file.id);
-    toast.success(`${file.name} deleted successfully`);
-    onClose();
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center">
-        <div
-          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-          onClick={onClose}
-        />
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="relative bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:max-w-lg sm:w-full"
-        >
-          <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-            <div className="sm:flex sm:items-start">
-              <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                <TrashIcon className="h-6 w-6 text-red-600" />
-              </div>
-              <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">
-                  Delete {file.type === "folder" ? "Folder" : "File"}
-                </h3>
-                <div className="mt-2">
-                  <p className="text-sm text-gray-500">
-                    Are you sure you want to delete "{file.name}"? This action
-                    cannot be undone.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-            <button
-              onClick={handleSubmit}
-              className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm"
-            >
-              Delete
-            </button>
-            <button
-              onClick={onClose}
-              className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-mint-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-            >
-              Cancel
-            </button>
-          </div>
-        </motion.div>
-      </div>
-    </div>
   );
 }

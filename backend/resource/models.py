@@ -2,6 +2,16 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 
+class UserProfile(models.Model):
+    """
+    Extends the built-in User model with additional fields
+    """
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    last_shared_visit = models.DateTimeField(null=True, blank=True, help_text="Last time user visited 'Shared with me' page")
+    
+    def __str__(self):
+        return f"{self.user.username}'s profile"
+
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True, null=True, 
         blank=True,)
@@ -160,3 +170,81 @@ class Reminder(models.Model):
 
     def is_recurring(self):
         return self.repeat != 'none'
+
+
+class ShareLink(models.Model):
+    """
+    Public share links for files and folders - works without authentication
+    """
+    share_id = models.CharField(max_length=32, unique=True, db_index=True)
+    
+    # Either file OR folder (not both)
+    file = models.ForeignKey('UploadedFile', on_delete=models.CASCADE, null=True, blank=True)
+    folder = models.ForeignKey('Folder', on_delete=models.CASCADE, null=True, blank=True)
+    
+    # Metadata
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_share_links')
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(null=True, blank=True)  # Optional expiration
+    
+    # Usage tracking
+    download_count = models.PositiveIntegerField(default=0)
+    max_downloads = models.PositiveIntegerField(default=100)  # Limit downloads
+    is_active = models.BooleanField(default=True)
+    
+    # Optional password protection
+    password = models.CharField(max_length=128, blank=True, null=True)
+    
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(file__isnull=False) | models.Q(folder__isnull=False),
+                name='sharelink_has_file_or_folder'
+            )
+        ]
+        indexes = [
+            models.Index(fields=['share_id']),
+            models.Index(fields=['created_by', 'created_at']),
+        ]
+    
+    def __str__(self):
+        item_type = "File" if self.file else "Folder"
+        item_name = self.file.name if self.file else self.folder.name
+        return f"Share Link: {item_type} '{item_name}'"
+    
+    def is_valid(self):
+        """Check if share link is still valid"""
+        from django.utils import timezone
+        
+        if not self.is_active:
+            return False, "Link has been deactivated"
+            
+        if self.expires_at and timezone.now() > self.expires_at:
+            return False, "Link has expired"
+            
+        if self.download_count >= self.max_downloads:
+            return False, "Download limit reached"
+            
+        return True, "Valid"
+    
+    def get_item_name(self):
+        """Get the name of the shared item"""
+        return self.file.name if self.file else self.folder.name
+    
+    def get_item_type(self):
+        """Get the type of shared item"""
+        return "file" if self.file else "folder"
+    
+    @classmethod
+    def generate_share_id(cls):
+        """Generate a unique random share ID"""
+        import secrets
+        import string
+        
+        while True:
+            # Generate 32-character random string (letters + numbers)
+            share_id = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(32))
+            
+            # Ensure it's unique
+            if not cls.objects.filter(share_id=share_id).exists():
+                return share_id

@@ -211,7 +211,6 @@ export const navigationItems: NavigationItem[] = [
     icon: "UserGroupIcon",
     path: "/shared",
     count: 15,
-    badge: "new",
   },
   {
     id: "archive",

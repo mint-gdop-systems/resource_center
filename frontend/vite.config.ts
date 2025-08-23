@@ -4,8 +4,11 @@ import path from 'path';
 
 export default defineConfig({
   server: {
-    host: 'localhost',
-    port: 8090,
+    host: true, // Listen on all addresses
+    port: 7000,
+    watch: {
+      usePolling: true, // Enable polling for Docker volumes
+    },
   },
   plugins: [react()],
   resolve: {

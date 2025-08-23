@@ -31,7 +31,6 @@ const FolderModal: React.FC<FolderModalProps> = ({ open, onClose, onCreate }) =>
       setName("");
       setError(null);
       onClose();
-      toast.success("Folder created");
     } catch (err: any) {
       let msg = err?.response?.data?.error || err?.message || "Failed to create folder";
       if (msg.includes("already exists")) {

@@ -54,13 +54,24 @@ class KeycloakJWTAuthentication(authentication.BaseAuthentication):
                 raise exceptions.AuthenticationFailed('Public key not found in JWKS.')
                 
             logger.debug("Decoding JWT...")
-            payload = jwt.decode(
-                token,
-                rsa_key,
-                algorithms=[unverified_header["alg"]],
-                audience='resource_center',
-                issuer=f"{settings.KEYCLOAK_URL}/realms/{settings.REALM}"
-            )
+            try:
+                # Try with localhost URL first
+                payload = jwt.decode(
+                    token,
+                    rsa_key,
+                    algorithms=[unverified_header["alg"]],
+                    audience='resource_center',
+                    issuer=f"http://localhost:8080/realms/{settings.REALM}"
+                )
+            except JWTError:
+                # If that fails, try with keycloak URL
+                payload = jwt.decode(
+                    token,
+                    rsa_key,
+                    algorithms=[unverified_header["alg"]],
+                    audience='resource_center',
+                    issuer=f"{settings.KEYCLOAK_URL}/realms/{settings.REALM}"
+                )
             logger.debug(f"JWT payload: {payload}")
         except JWTError as e:
             logger.error(f"JWT validation error: {str(e)}")

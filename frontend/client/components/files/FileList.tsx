@@ -7,6 +7,8 @@ import {
   ArrowUpIcon,
   ArrowDownIcon,
   CloudArrowUpIcon,
+  ArchiveBoxIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
 import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
 import { FileItem, ViewMode } from "../../types";
@@ -15,6 +17,8 @@ import { fileTypeIcons } from "../../data/mockData";
 import FileActions from "./FileActions";
 import BulkActions from "./BulkActions";
 import { useFiles } from "../../contexts/FileContext";
+import FileIcon from "./FileIcon";
+
 // FontAwesome imports
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -25,22 +29,10 @@ import {
   faFileImage,
   faFileAlt,
   faFileArchive,
-  faFolder,
   faFile,
+  faFolder,
 } from '@fortawesome/free-solid-svg-icons';
 
-interface FileListProps {
-  files: FileItem[];
-  selectedFiles: string[];
-  onFileSelect: (fileId: string, selected: boolean) => void;
-  onSelectAll: (selected: boolean) => void;
-  viewMode: ViewMode;
-  onNavigateToFolder?: (folderName: string) => void;
-  isAuthenticated?: boolean;
-  setShowUpload?: (show: boolean) => void;
-}
-
-// File type to FontAwesome icon mapping
 const fileTypeIconMap: Record<string, any> = {
   pdf: faFilePdf,
   doc: faFileWord,
@@ -56,8 +48,24 @@ const fileTypeIconMap: Record<string, any> = {
   txt: faFileAlt,
   zip: faFileArchive,
   rar: faFileArchive,
-  folder: faFolder,
 };
+
+interface FileListProps {
+  files: any[];
+  selectedFiles: string[];
+  onFileSelect: (fileId: string, selected: boolean) => void;
+  onSelectAll: (selected: boolean) => void;
+  viewMode: ViewMode;
+  onNavigateToFolder?: (folderId: string) => void;
+  isAuthenticated?: boolean;
+  setShowUpload?: (show: boolean) => void;
+  onArchiveOverride?: (fileId: string) => void;
+  actionsMode?: "default" | "archive";
+  onDeleteOverride?: (fileId: string) => void;
+  showBulkActions?: boolean;
+}
+
+
 
 export default function FileList({
   files,
@@ -68,9 +76,34 @@ export default function FileList({
   onNavigateToFolder,
   isAuthenticated = true,
   setShowUpload,
+  onArchiveOverride,
+  actionsMode = "default",
+  onDeleteOverride,
+  showBulkActions = true,
 }: FileListProps) {
-  const { deleteFiles, renameFile, moveFiles, toggleStar, starFiles } =
+  const { deleteFiles, renameFile, moveFiles, toggleStar, starFiles, toggleArchive, downloadFiles } =
     useFiles();
+  const handleView = async (fileId: string) => {
+    const f = files.find(x => x.id === fileId);
+    if (f && f.type !== 'folder') {
+      try {
+        // Import the viewFile API function
+        const { viewFile } = await import('../../services/api');
+        
+        // Use the API to get the file
+        const url = await viewFile(fileId);
+        window.open(url, '_blank');
+        
+        // Clean up the blob URL after a delay
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+      } catch (error) {
+        console.error('Error viewing file:', error);
+        // Show user-friendly error message
+        const { default: toast } = await import('react-hot-toast');
+        toast.error('Failed to open file. Please try again.');
+      }
+    }
+  };
 
   const getFileIcon = (file: FileItem) => {
     if (file.type === "folder") {
@@ -89,23 +122,25 @@ export default function FileList({
     return <FontAwesomeIcon icon={icon} className={`${colorClass} h-5 w-5`} />;
   };
 
-  const handleFileClick = (file: FileItem) => {
+  const handleFileClick = async (file: FileItem) => {
     if (file.type === "folder") {
       onNavigateToFolder?.(file.id);
     } else {
-      // Open file - in real app would open preview or download
-      if (
-        file.extension === "pdf" ||
-        file.extension === "jpg" ||
-        file.extension === "png"
-      ) {
-        window.open(`#/preview/${file.id}`, "_blank");
-      } else {
-        // Trigger download
-        const link = document.createElement("a");
-        link.href = "#"; // Would be actual file URL
-        link.download = file.name;
-        link.click();
+      try {
+        // Import the viewFile API function
+        const { viewFile } = await import('../../services/api');
+        
+        // Use the API to get the file
+        const url = await viewFile(file.id);
+        window.open(url, '_blank');
+        
+        // Clean up the blob URL after a delay
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+      } catch (error) {
+        console.error('Error viewing file:', error);
+        // Show user-friendly error message
+        const { default: toast } = await import('react-hot-toast');
+        toast.error('Failed to open file. Please try again.');
       }
     }
   };
@@ -118,6 +153,9 @@ export default function FileList({
   const allSelected =
     files.length > 0 && files.every((file) => selectedFiles.includes(file.id));
   const someSelected = selectedFiles.length > 0 && !allSelected;
+
+  // Get selected items for copy operations
+  const selectedItems = files.filter(file => selectedFiles.includes(file.id));
 
   const SortButton = ({
     label,
@@ -173,22 +211,22 @@ export default function FileList({
     );
   }
 
-  // Only show file list if authenticated
-  if (!isAuthenticated) {
-    return null;
-  }
-
   return (
     <div className="space-y-4">
       {/* Bulk Actions */}
+      {showBulkActions && (
       <BulkActions
         selectedFiles={selectedFiles}
-        onDownload={(fileIds) => {
-          // Download implementation would go here
-          console.log("Bulk download:", fileIds);
-        }}
+        selectedItems={selectedItems}
+        onView={handleView}
+        onDownload={downloadFiles}
         onDelete={deleteFiles}
-        onMove={moveFiles}
+        onMove={(fileIds, targetPath) => {
+          // Convert old interface to new interface
+          const fileIdsArray = selectedItems.filter(item => item.type === 'file').map(item => item.id);
+          const folderIdsArray = selectedItems.filter(item => item.type === 'folder').map(item => item.id);
+          moveFiles(fileIdsArray, folderIdsArray);
+        }}
         onShare={(fileIds) => {
           // Share implementation would go here
           console.log("Bulk share:", fileIds);
@@ -196,6 +234,7 @@ export default function FileList({
         onStar={starFiles}
         onClearSelection={() => onSelectAll(false)}
       />
+      )}
 
       {/* Table header */}
       {files.length > 0 && (
@@ -289,9 +328,28 @@ export default function FileList({
                 <div className="flex-1 min-w-0">
                   <p
                     className="text-sm font-medium text-gray-900 truncate hover:underline cursor-pointer"
-                    onClick={e => {
+                    onClick={async (e) => {
                       e.stopPropagation();
-                      handleFileClick(file);
+                      if (file.type !== 'folder') {
+                        try {
+                          // Import the viewFile API function
+                          const { viewFile } = await import('../../services/api');
+                          
+                          // Use the API to get the file
+                          const url = await viewFile(file.id);
+                          window.open(url, '_blank');
+                          
+                          // Clean up the blob URL after a delay
+                          setTimeout(() => URL.revokeObjectURL(url), 100);
+                        } catch (error) {
+                          console.error('Error viewing file:', error);
+                          // Show user-friendly error message
+                          const { default: toast } = await import('react-hot-toast');
+                          toast.error('Failed to open file. Please try again.');
+                        }
+                      } else {
+                        await handleFileClick(file);
+                      }
                     }}
                   >
                     {file.name}
@@ -301,11 +359,26 @@ export default function FileList({
                   )}
                 </div>
                 <div className="flex items-center space-x-1">
-                  {file.starred && (
-                    <StarIconSolid className="h-4 w-4 text-yellow-500" />
-                  )}
+                  <button
+                    aria-label={file.starred ? 'Unstar' : 'Star'}
+                    title={file.starred ? 'Unstar' : 'Star'}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleStar(file.id);
+                    }}
+                    className={`p-1 rounded hover:bg-gray-100`}
+                  >
+                    {file.starred ? (
+                      <StarIconSolid className="h-4 w-4 text-yellow-500" />
+                    ) : (
+                      <StarIcon className="h-4 w-4 text-gray-400" />
+                    )}
+                  </button>
                   {file.shared && (
                     <div className="w-2 h-2 bg-mint-400 rounded-full" />
+                  )}
+                  {file.archived && (
+                    <span className="ml-1 text-[10px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">Archived</span>
                   )}
                 </div>
               </div>
@@ -315,11 +388,11 @@ export default function FileList({
                 <div className="flex items-center space-x-2">
                   <div className="h-6 w-6 bg-gray-200 rounded-full flex items-center justify-center">
                     <span className="text-xs font-medium text-gray-600">
-                      {file.owner?.name?.charAt(0) ?? "?"}
+                      {(file.owner_first_name || file.owner_email || file.uploaded_by_name || file.owner?.name || "Unknown").charAt(0)}
                     </span>
                   </div>
                   <span className="text-sm text-gray-900 truncate">
-                    {file.owner?.name ?? "Unknown"}
+                    {file.owner_first_name || file.owner_email || file.uploaded_by_name || file.owner?.name || "Unknown"}
                   </span>
                 </div>
               </div>
@@ -355,17 +428,39 @@ export default function FileList({
 
               {/* Actions */}
               <div className="col-span-1 flex items-center justify-end">
+                {actionsMode === "archive" ? (
+                  <div className="flex items-center gap-2">
+                    <button
+                      aria-label="Unarchive"
+                      title="Unarchive"
+                      onClick={(e) => { e.stopPropagation(); (onArchiveOverride ? onArchiveOverride(file.id) : toggleArchive(file.id)); }}
+                      className="p-2 rounded-md hover:bg-gray-100"
+                    >
+                      <ArchiveBoxIcon className="h-4 w-4 text-gray-600" />
+                    </button>
+                    <button
+                      aria-label="Delete"
+                      title="Delete"
+                      onClick={(e) => { e.stopPropagation(); onDeleteOverride ? onDeleteOverride(file.id) : deleteFiles([file.id]); }}
+                      className="p-2 rounded-md hover:bg-red-50"
+                    >
+                      <TrashIcon className="h-4 w-4 text-red-600" />
+                    </button>
+                  </div>
+                ) : (
                 <div className="file-actions-menu">
                   <FileActions
                     file={file}
                     onRename={renameFile}
-                    onDelete={(fileId) => deleteFiles([fileId])}
-                    onMove={(fileId, targetPath) =>
-                      moveFiles([fileId], targetPath)
-                    }
+                    onDelete={() => deleteFiles([file.id])}
+                    onMove={(fileId, targetPath) => {
+                      // This is handled by the FolderSelectionModal in FileActions now
+                    }}
                     onStar={(fileId) => toggleStar(fileId)}
+                    onArchive={(fileId) => (onArchiveOverride ? onArchiveOverride(fileId) : toggleArchive(fileId))}
                   />
                 </div>
+                )}
               </div>
             </motion.div>
           );

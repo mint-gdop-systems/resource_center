@@ -4,9 +4,9 @@ from rest_framework.response import Response
 from rest_framework import status, generics, viewsets
 from rest_framework.views import APIView
 from rest_framework.generics import RetrieveUpdateAPIView
-from .models import UploadedFile, Category, Folder, FileVersion, Reminder
+from .models import UploadedFile, Category, Folder, FileVersion, Reminder, ShareLink, Tag, FileSharing
 from .serializers import UploadedFileSerializer, FolderSerializer, FileVersionSerializer, ReminderSerializer
-from django.http import JsonResponse, FileResponse, Http404
+from django.http import JsonResponse, FileResponse, Http404, HttpResponse
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.conf import settings
 from django.core.files.storage import default_storage
@@ -23,6 +23,11 @@ from django.utils.timezone import now
 from datetime import timedelta
 from django.utils import timezone
 from decouple import config
+from django.db import transaction
+import zipfile
+import tempfile
+import os
+import mimetypes
 
 
 print("Resource views.py loaded")
@@ -39,6 +44,8 @@ class HomeView(TemplateView):
             context['first_name'] = None
 
         return context
+
+
 
 class ShowResourceView(TemplateView):
     template_name = 'show-resource.html'
@@ -131,8 +138,13 @@ class FileUploadView(APIView):
             file_type = file_obj.name.split(".")[-1].lower()
             file_size = file_obj.size
 
-            if UploadedFile.objects.filter(name=file_name, folder=folder).exists():
-                return Response({"error": f"File '{file_name}' already exists in this folder"}, status=status.HTTP_400_BAD_REQUEST)  
+            # Check if a file with the same name exists for the same user in the same folder
+            if UploadedFile.objects.filter(
+                name=file_name,
+                folder=folder,
+                owner=request.user
+            ).exists():
+                return Response({"error": f"You already have a file named '{file_name}' in this folder"}, status=status.HTTP_400_BAD_REQUEST)
 
             uploaded_file = UploadedFile(
                 name=file_name,
@@ -277,6 +289,42 @@ class TestAuthView(APIView):
     def get(self, request):
         return Response({"message": "Test view working", "user": str(request.user)})
 
+class RecentFilesView(APIView):
+    """
+    Return a list of recent files accessible to the current user, ordered by most recent upload.
+    Query params:
+      - limit: optional int (1..100), default 25
+      - include_archived: optional bool, default false
+    """
+    permission_classes = []
+
+    def get(self, request):
+        try:
+            try:
+                limit = int(request.GET.get("limit", 25))
+            except (TypeError, ValueError):
+                limit = 25
+            limit = max(1, min(100, limit))
+
+            include_archived = request.GET.get("include_archived", "false").lower() == "true"
+
+            if request.user.is_authenticated:
+                files = UploadedFile.objects.filter(
+                    Q(owner=request.user) | Q(is_public=True)
+                )
+            else:
+                files = UploadedFile.objects.filter(is_public=True)
+
+            if not include_archived:
+                files = files.filter(is_archived=False)
+
+            files = files.order_by("-uploaded_at")[:limit]
+
+            serializer = UploadedFileSerializer(files, many=True, context={"request": request})
+            return Response({"files": serializer.data}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 # Fetch Categories
 def get_categories(request):
     categories = Category.objects.all()
@@ -284,10 +332,185 @@ def get_categories(request):
     return JsonResponse({"categories": categories_list})
 
 
-class FileDetailView(RetrieveUpdateAPIView):
-    queryset = UploadedFile.objects.all()
-    serializer_class = UploadedFileSerializer
-    permission_classes = []
+class EditFileView(APIView):
+    """
+    API view to edit file properties (name, category, tags, visibility)
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, file_id):
+        """
+        Get file details for editing
+        """
+        try:
+            file_instance = get_object_or_404(UploadedFile, id=file_id)
+            
+            # Check permissions - user must be owner
+            if file_instance.owner != request.user:
+                return Response({"error": "Permission denied"}, status=403)
+            
+            # Serialize file data
+            serializer = UploadedFileSerializer(file_instance, context={'request': request})
+            
+            return Response({
+                "file": serializer.data
+            }, status=200)
+            
+        except Exception as e:
+            return Response({"error": f"Error retrieving file: {str(e)}"}, status=500)
+    
+    def patch(self, request, file_id):
+        """
+        Update file properties
+        """
+        try:
+            file_instance = get_object_or_404(UploadedFile, id=file_id)
+            
+            # Check permissions - user must be owner
+            if file_instance.owner != request.user:
+                return Response({"error": "Permission denied"}, status=403)
+            
+            # Get update data
+            name = request.data.get('name')
+            category_id = request.data.get('category_id')
+            meta_tag_names = request.data.get('meta_tag_names', [])
+            is_public = request.data.get('is_public')
+            
+            # Validate and update name
+            if name is not None:
+                name = name.strip()
+                if not name:
+                    return Response({"error": "File name cannot be empty"}, status=400)
+                
+                # Check if file with same name already exists in the same folder
+                existing_file = UploadedFile.objects.filter(
+                    name=name,
+                    folder=file_instance.folder,
+                    owner=request.user
+                ).exclude(id=file_instance.id).first()
+                
+                if existing_file:
+                    return Response({
+                        "error": f"A file named '{name}' already exists in this folder"
+                    }, status=409)
+                
+                file_instance.name = name
+            
+            # Validate and update category
+            if category_id is not None:
+                try:
+                    category = Category.objects.get(id=category_id)
+                    file_instance.category = category
+                except Category.DoesNotExist:
+                    return Response({"error": "Invalid category"}, status=400)
+            
+            # Update visibility
+            if is_public is not None:
+                file_instance.is_public = bool(is_public)
+            
+            # Save file changes
+            file_instance.save()
+            
+            # Update tags
+            if meta_tag_names is not None:
+                file_instance.meta_tags.clear()
+                for tag_name in meta_tag_names:
+                    tag_name = tag_name.strip()
+                    if tag_name:
+                        tag, created = Tag.objects.get_or_create(name=tag_name)
+                        file_instance.meta_tags.add(tag)
+            
+            # Serialize updated file
+            serializer = UploadedFileSerializer(file_instance, context={'request': request})
+            
+            return Response({
+                "message": "File updated successfully",
+                "file": serializer.data
+            }, status=200)
+            
+        except Exception as e:
+            return Response({"error": f"Error updating file: {str(e)}"}, status=500)
+
+
+class EditFolderView(APIView):
+    """
+    API view to edit folder properties (name, visibility)
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, folder_id):
+        """
+        Get folder details for editing
+        """
+        try:
+            folder_instance = get_object_or_404(Folder, id=folder_id)
+            
+            # Check permissions - user must be owner
+            if folder_instance.owner != request.user:
+                return Response({"error": "Permission denied"}, status=403)
+            
+            # Serialize folder data
+            serializer = FolderSerializer(folder_instance, context={'request': request})
+            
+            return Response({
+                "folder": serializer.data
+            }, status=200)
+            
+        except Exception as e:
+            return Response({"error": f"Error retrieving folder: {str(e)}"}, status=500)
+    
+    def patch(self, request, folder_id):
+        """
+        Update folder properties
+        """
+        try:
+            folder_instance = get_object_or_404(Folder, id=folder_id)
+            
+            # Check permissions - user must be owner
+            if folder_instance.owner != request.user:
+                return Response({"error": "Permission denied"}, status=403)
+            
+            # Get update data
+            name = request.data.get('name')
+            is_public = request.data.get('is_public')
+            
+            # Validate and update name
+            if name is not None:
+                name = name.strip()
+                if not name:
+                    return Response({"error": "Folder name cannot be empty"}, status=400)
+                
+                # Check if folder with same name already exists in the same parent
+                existing_folder = Folder.objects.filter(
+                    name=name,
+                    parent=folder_instance.parent,
+                    owner=request.user
+                ).exclude(id=folder_instance.id).first()
+                
+                if existing_folder:
+                    return Response({
+                        "error": f"A folder named '{name}' already exists in this location"
+                    }, status=409)
+                
+                folder_instance.name = name
+            
+            # Update visibility
+            if is_public is not None:
+                folder_instance.is_public = bool(is_public)
+            
+            # Save folder changes
+            folder_instance.save()
+            
+            # Serialize updated folder
+            serializer = FolderSerializer(folder_instance, context={'request': request})
+            
+            return Response({
+                "message": "Folder updated successfully",
+                "folder": serializer.data
+            }, status=200)
+            
+        except Exception as e:
+            return Response({"error": f"Error updating folder: {str(e)}"}, status=500)
 
 
 # Create a Folder
@@ -303,17 +526,18 @@ class CreateFolderView(generics.CreateAPIView):
         name = request.data.get('name')
         parent_id = request.data.get('parent')
 
-        # --- NEW: Check for duplicate folder in the same parent ---
+        # Check for duplicate folder in the same parent, considering ownership
         parent = Folder.objects.filter(id=parent_id).first() if parent_id else None
 
         duplicate_folder = Folder.objects.filter(
             name=name,
-            parent=parent  # Check in the same parent (or None for root)
+            parent=parent,  # Check in the same parent (or None for root)
+            owner=request.user  # Only check folders owned by the current user
         ).exists()
 
         if duplicate_folder:
             return Response(
-                {"error": f"A folder named '{name}' already exists in this location."},
+                {"error": f"You already have a folder named '{name}' in this location."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -429,31 +653,795 @@ class FolderContentsView(generics.RetrieveAPIView):
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# Download  file
-def download_file(request, file_id):
-    file_instance = get_object_or_404(UploadedFile, id=file_id)
-
-    # Get the file path
-    file_path = file_instance.file.path  # Correct field reference
-
-    try:
-        response = FileResponse(open(file_path, 'rb'), as_attachment=True)
-        response["Content-Disposition"] = f'attachment; filename="{file_instance.name}"'
-        return response
-    except FileNotFoundError:
-        raise Http404("File not found.")
-
-
-def view_file(request, file_id):
-    # Retrieve the file instance from the database
-    file_instance = get_object_or_404(UploadedFile, id=file_id)
+class DownloadFileView(APIView):
+    """
+    API view to download files with proper authentication and headers
+    """
+    permission_classes = [IsAuthenticated]
     
-    # Get the file path
-    file_path = file_instance.file.path  # Assuming 'file' is the FileField in the model
+    def get(self, request, file_id):
+        try:
+            # Get the file instance
+            file_instance = get_object_or_404(UploadedFile, id=file_id)
+            
+            # Check permissions - user must be owner, file must be public, or file must be shared with user
+            has_access = (
+                file_instance.owner == request.user or 
+                file_instance.is_public or
+                FileSharing.objects.filter(
+                    file=file_instance, 
+                    shared_to=request.user
+                ).exists()
+            )
+            
+            if not has_access:
+                return HttpResponse("Permission denied", status=403)
+            
+            # Get file path and verify it exists
+            import mimetypes
+            import os
+            
+            # Check if file object exists
+            if not file_instance.file:
+                return HttpResponse("File data not found", status=404)
+            
+            try:
+                file_path = file_instance.file.path
+            except ValueError as e:
+                return HttpResponse(f"File path error: {str(e)}", status=500)
+            
+            if not os.path.exists(file_path):
+                return HttpResponse("File not found on the server", status=404)
+            
+            # Determine content type
+            file_name = os.path.basename(file_path)
+            content_type, encoding = mimetypes.guess_type(file_name)
+            
+            if not content_type:
+                content_type = 'application/octet-stream'
+            
+            # Open and serve the file for download
+            file_handle = open(file_path, 'rb')
+            response = FileResponse(file_handle, content_type=content_type, as_attachment=True)
+            
+            # Set headers for proper file download
+            response['Content-Disposition'] = f'attachment; filename="{file_instance.name}"'
+            response['Content-Length'] = os.path.getsize(file_path)
+            response['X-Content-Type-Options'] = 'nosniff'
+            
+            return response
+            
+        except FileNotFoundError:
+            raise Http404("File not found on the server.")
+        except Exception as e:
+            return HttpResponse(f"Error downloading file: {str(e)}", status=500)
+
+
+class BulkDownloadView(APIView):
+    """
+    API view to download multiple files as a ZIP archive
+    """
+    permission_classes = [IsAuthenticated]
     
-    # Open and serve the file directly to the user
-    response = FileResponse(open(file_path, 'rb'))
-    return response
+    def post(self, request):
+        try:
+            file_ids = request.data.get('file_ids', [])
+            folder_ids = request.data.get('folder_ids', [])
+            
+            if not file_ids and not folder_ids:
+                return Response({"error": "No files or folders selected for download"}, status=400)
+            
+            # Get files that user has access to
+            files = []
+            if file_ids:
+                files = UploadedFile.objects.filter(
+                    id__in=file_ids
+                ).filter(
+                    Q(owner=request.user) | 
+                    Q(is_public=True) |
+                    Q(filesharing__shared_to=request.user)
+                ).distinct()
+            
+            # Get folders that user has access to
+            folders = []
+            if folder_ids:
+                folders = Folder.objects.filter(
+                    id__in=folder_ids
+                ).filter(
+                    Q(owner=request.user) | 
+                    Q(is_public=True) |
+                    Q(filesharing__shared_to=request.user)
+                ).distinct()
+            
+            if not files and not folders:
+                return Response({"error": "No accessible files or folders found"}, status=404)
+            
+            import zipfile
+            import tempfile
+            import os
+            from django.utils import timezone
+            
+            # Create a temporary zip file
+            temp_zip = tempfile.NamedTemporaryFile(delete=False, suffix='.zip')
+            
+            try:
+                with zipfile.ZipFile(temp_zip.name, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                    # Add individual files
+                    for file_obj in files:
+                        if file_obj.file and os.path.exists(file_obj.file.path):
+                            # Add file to zip with its original name
+                            zip_file.write(file_obj.file.path, file_obj.name)
+                    
+                    # Add folders and their contents
+                    for folder in folders:
+                        self._add_folder_to_zip(zip_file, folder, folder.name, request.user)
+                
+                # Prepare response
+                zip_file_size = os.path.getsize(temp_zip.name)
+                response = FileResponse(
+                    open(temp_zip.name, 'rb'),
+                    content_type='application/zip',
+                    as_attachment=True
+                )
+                
+                # Generate a meaningful filename
+                timestamp = timezone.now().strftime("%Y%m%d_%H%M%S")
+                zip_filename = f"files_{timestamp}.zip"
+                
+                response['Content-Disposition'] = f'attachment; filename="{zip_filename}"'
+                response['Content-Length'] = zip_file_size
+                
+                # Clean up temp file after response is sent
+                def cleanup():
+                    try:
+                        os.unlink(temp_zip.name)
+                    except:
+                        pass
+                
+                # Schedule cleanup (Django will handle this after response)
+                response.close = cleanup
+                
+                return response
+                
+            except Exception as e:
+                # Clean up on error
+                try:
+                    os.unlink(temp_zip.name)
+                except:
+                    pass
+                raise e
+                
+        except Exception as e:
+            return Response({"error": f"Error creating download: {str(e)}"}, status=500)
+    
+    def _add_folder_to_zip(self, zip_file, folder, folder_path, user):
+        """Recursively add folder contents to ZIP with proper permission checks"""
+        import os
+        
+        # Add files in this folder with permission checks
+        files = UploadedFile.objects.filter(folder=folder).filter(
+            Q(owner=user) | 
+            Q(is_public=True) |
+            Q(filesharing__shared_to=user)
+        ).distinct()
+        
+        for file in files:
+            try:
+                if file.file and os.path.exists(file.file.path):
+                    arcname = os.path.join(folder_path, file.name)
+                    zip_file.write(file.file.path, arcname)
+            except Exception as e:
+                # Log error but continue with other files
+                print(f"Error adding file {file.name} to zip: {str(e)}")
+                continue
+        
+        # Add subfolders recursively with permission checks
+        subfolders = Folder.objects.filter(parent=folder).filter(
+            Q(owner=user) | 
+            Q(is_public=True) |
+            Q(filesharing__shared_to=user)
+        ).distinct()
+        
+        for subfolder in subfolders:
+            try:
+                subfolder_path = os.path.join(folder_path, subfolder.name)
+                self._add_folder_to_zip(zip_file, subfolder, subfolder_path, user)
+            except Exception as e:
+                # Log error but continue with other folders
+                print(f"Error adding folder {subfolder.name} to zip: {str(e)}")
+                continue
+
+
+class CopyFileView(APIView):
+    """
+    API view to copy a single file to a destination folder
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, file_id):
+        try:
+            # Get the source file
+            source_file = get_object_or_404(UploadedFile, id=file_id)
+            
+            # Check permissions - user must be owner or file must be public
+            if not (source_file.owner == request.user or source_file.is_public):
+                return Response({"error": "Permission denied"}, status=403)
+            
+            # Get destination folder (optional)
+            destination_folder_id = request.data.get('destination_folder_id')
+            destination_folder = None
+            
+            if destination_folder_id:
+                try:
+                    destination_folder = Folder.objects.get(
+                        id=destination_folder_id,
+                        owner=request.user
+                    )
+                except Folder.DoesNotExist:
+                    return Response({"error": "Destination folder not found or access denied"}, status=404)
+            
+            # Check if file with same name already exists in destination
+            existing_file = UploadedFile.objects.filter(
+                name=source_file.name,
+                folder=destination_folder,
+                owner=request.user
+            ).first()
+            
+            if existing_file:
+                return Response({
+                    "error": f"A file named '{source_file.name}' already exists in the destination folder"
+                }, status=409)
+            
+            # Create a copy of the file
+            import shutil
+            from django.core.files import File
+            from django.core.files.base import ContentFile
+            
+            # Read the original file content
+            with source_file.file.open('rb') as original_file:
+                file_content = original_file.read()
+            
+            # Create new file instance
+            copied_file = UploadedFile(
+                name=source_file.name,
+                file_type=source_file.file_type,
+                file_size=source_file.file_size,
+                category=source_file.category,
+                folder=destination_folder,
+                owner=request.user,
+                is_public=False,  # Copied files are private by default
+            )
+            
+            # Save the file content
+            copied_file.file.save(
+                source_file.file.name.split('/')[-1],
+                ContentFile(file_content),
+                save=False
+            )
+            
+            # Copy tags
+            copied_file.save()
+            copied_file.meta_tags.set(source_file.meta_tags.all())
+            
+            # Serialize and return the copied file
+            serializer = UploadedFileSerializer(copied_file, context={'request': request})
+            
+            return Response({
+                "message": f"File '{source_file.name}' copied successfully",
+                "copied_file": serializer.data
+            }, status=201)
+            
+        except Exception as e:
+            return Response({"error": f"Error copying file: {str(e)}"}, status=500)
+
+
+class BulkCopyView(APIView):
+    """
+    API view to copy multiple files to a destination folder
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        try:
+            file_ids = request.data.get('file_ids', [])
+            folder_ids = request.data.get('folder_ids', [])
+            destination_folder_id = request.data.get('destination_folder_id')
+            
+            if not file_ids and not folder_ids:
+                return Response({"error": "No items selected for copying"}, status=400)
+            
+            # Get destination folder (optional)
+            destination_folder = None
+            if destination_folder_id:
+                try:
+                    destination_folder = Folder.objects.get(
+                        id=destination_folder_id,
+                        owner=request.user
+                    )
+                except Folder.DoesNotExist:
+                    return Response({"error": "Destination folder not found or access denied"}, status=404)
+            
+            copied_files = []
+            copied_folders = []
+            errors = []
+            
+            # Copy files
+            if file_ids:
+                files = UploadedFile.objects.filter(
+                    id__in=file_ids
+                ).filter(
+                    Q(owner=request.user) | Q(is_public=True)
+                )
+                
+                for source_file in files:
+                    try:
+                        # Check if file with same name already exists in destination
+                        existing_file = UploadedFile.objects.filter(
+                            name=source_file.name,
+                            folder=destination_folder,
+                            owner=request.user
+                        ).first()
+                        
+                        if existing_file:
+                            errors.append(f"File '{source_file.name}' already exists in destination")
+                            continue
+                        
+                        # Create a copy of the file
+                        from django.core.files.base import ContentFile
+                        
+                        # Read the original file content
+                        with source_file.file.open('rb') as original_file:
+                            file_content = original_file.read()
+                        
+                        # Create new file instance
+                        copied_file = UploadedFile(
+                            name=source_file.name,
+                            file_type=source_file.file_type,
+                            file_size=source_file.file_size,
+                            category=source_file.category,
+                            folder=destination_folder,
+                            owner=request.user,
+                            is_public=False,  # Copied files are private by default
+                        )
+                        
+                        # Save the file content
+                        copied_file.file.save(
+                            source_file.file.name.split('/')[-1],
+                            ContentFile(file_content),
+                            save=False
+                        )
+                        
+                        # Copy tags
+                        copied_file.save()
+                        copied_file.meta_tags.set(source_file.meta_tags.all())
+                        
+                        copied_files.append(copied_file)
+                        
+                    except Exception as e:
+                        errors.append(f"Error copying '{source_file.name}': {str(e)}")
+            
+            # Copy folders (recursive)
+            if folder_ids:
+                folders = Folder.objects.filter(
+                    id__in=folder_ids,
+                    owner=request.user
+                )
+                
+                for source_folder in folders:
+                    try:
+                        copied_folder = self._copy_folder_recursive(source_folder, destination_folder, request.user)
+                        copied_folders.append(copied_folder)
+                    except Exception as e:
+                        errors.append(f"Error copying folder '{source_folder.name}': {str(e)}")
+            
+            # Prepare response
+            response_data = {
+                "message": f"Successfully copied {len(copied_files)} file(s) and {len(copied_folders)} folder(s)",
+                "copied_files": len(copied_files),
+                "copied_folders": len(copied_folders),
+            }
+            
+            if errors:
+                response_data["errors"] = errors
+                response_data["message"] += f" with {len(errors)} error(s)"
+            
+            return Response(response_data, status=201)
+            
+        except Exception as e:
+            return Response({"error": f"Error copying items: {str(e)}"}, status=500)
+    
+    def _copy_folder_recursive(self, source_folder, destination_parent, user):
+        """
+        Recursively copy a folder and all its contents
+        """
+        # Check if folder with same name already exists in destination
+        existing_folder = Folder.objects.filter(
+            name=source_folder.name,
+            parent=destination_parent,
+            owner=user
+        ).first()
+        
+        if existing_folder:
+            raise Exception(f"Folder '{source_folder.name}' already exists in destination")
+        
+        # Create new folder
+        copied_folder = Folder.objects.create(
+            name=source_folder.name,
+            parent=destination_parent,
+            owner=user,
+            is_public=False,  # Copied folders are private by default
+        )
+        
+        # Copy all files in the folder
+        for file_obj in source_folder.files.all():
+            if file_obj.owner == user or file_obj.is_public:
+                try:
+                    from django.core.files.base import ContentFile
+                    
+                    # Read the original file content
+                    with file_obj.file.open('rb') as original_file:
+                        file_content = original_file.read()
+                    
+                    # Create new file instance
+                    copied_file = UploadedFile(
+                        name=file_obj.name,
+                        file_type=file_obj.file_type,
+                        file_size=file_obj.file_size,
+                        category=file_obj.category,
+                        folder=copied_folder,
+                        owner=user,
+                        is_public=False,
+                    )
+                    
+                    # Save the file content
+                    copied_file.file.save(
+                        file_obj.file.name.split('/')[-1],
+                        ContentFile(file_content),
+                        save=False
+                    )
+                    
+                    # Copy tags
+                    copied_file.save()
+                    copied_file.meta_tags.set(file_obj.meta_tags.all())
+                    
+                except Exception as e:
+                    # Log error but continue with other files
+                    print(f"Error copying file '{file_obj.name}': {str(e)}")
+        
+        # Recursively copy subfolders
+        for subfolder in source_folder.subfolders.filter(owner=user):
+            try:
+                self._copy_folder_recursive(subfolder, copied_folder, user)
+            except Exception as e:
+                # Log error but continue with other subfolders
+                print(f"Error copying subfolder '{subfolder.name}': {str(e)}")
+        
+        return copied_folder
+
+
+class MoveFileView(APIView):
+    """
+    API view to move a single file to a destination folder
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, file_id):
+        try:
+            # Get the source file
+            source_file = get_object_or_404(UploadedFile, id=file_id)
+            
+            # Check permissions - user must be owner
+            if source_file.owner != request.user:
+                return Response({"error": "Permission denied"}, status=403)
+            
+            # Get destination folder (optional)
+            destination_folder_id = request.data.get('destination_folder_id')
+            destination_folder = None
+            
+            if destination_folder_id:
+                try:
+                    destination_folder = Folder.objects.get(
+                        id=destination_folder_id,
+                        owner=request.user
+                    )
+                except Folder.DoesNotExist:
+                    return Response({"error": "Destination folder not found or access denied"}, status=404)
+            
+            # Check if file with same name already exists in destination
+            existing_file = UploadedFile.objects.filter(
+                name=source_file.name,
+                folder=destination_folder,
+                owner=request.user
+            ).exclude(id=source_file.id).first()
+            
+            if existing_file:
+                return Response({
+                    "error": f"A file named '{source_file.name}' already exists in the destination folder"
+                }, status=409)
+            
+            # Move the file by updating its folder
+            old_folder_name = source_file.folder.name if source_file.folder else "Root"
+            new_folder_name = destination_folder.name if destination_folder else "Root"
+            
+            source_file.folder = destination_folder
+            source_file.save()
+            
+            # Serialize and return the moved file
+            serializer = UploadedFileSerializer(source_file, context={'request': request})
+            
+            return Response({
+                "message": f"File '{source_file.name}' moved from '{old_folder_name}' to '{new_folder_name}'",
+                "moved_file": serializer.data
+            }, status=200)
+            
+        except Exception as e:
+            return Response({"error": f"Error moving file: {str(e)}"}, status=500)
+
+
+class MoveFolderView(APIView):
+    """
+    API view to move a single folder to a destination folder
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, folder_id):
+        try:
+            # Get the source folder
+            source_folder = get_object_or_404(Folder, id=folder_id)
+            
+            # Check permissions - user must be owner
+            if source_folder.owner != request.user:
+                return Response({"error": "Permission denied"}, status=403)
+            
+            # Get destination folder (optional)
+            destination_folder_id = request.data.get('destination_folder_id')
+            destination_folder = None
+            
+            if destination_folder_id:
+                try:
+                    destination_folder = Folder.objects.get(
+                        id=destination_folder_id,
+                        owner=request.user
+                    )
+                except Folder.DoesNotExist:
+                    return Response({"error": "Destination folder not found or access denied"}, status=404)
+                
+                # Check if trying to move folder into itself or its descendants
+                if self._is_descendant_or_self(source_folder, destination_folder):
+                    return Response({
+                        "error": "Cannot move folder into itself or its descendants"
+                    }, status=400)
+            
+            # Check if folder with same name already exists in destination
+            existing_folder = Folder.objects.filter(
+                name=source_folder.name,
+                parent=destination_folder,
+                owner=request.user
+            ).exclude(id=source_folder.id).first()
+            
+            if existing_folder:
+                return Response({
+                    "error": f"A folder named '{source_folder.name}' already exists in the destination"
+                }, status=409)
+            
+            # Move the folder by updating its parent
+            old_parent_name = source_folder.parent.name if source_folder.parent else "Root"
+            new_parent_name = destination_folder.name if destination_folder else "Root"
+            
+            source_folder.parent = destination_folder
+            source_folder.save()
+            
+            # Serialize and return the moved folder
+            serializer = FolderSerializer(source_folder, context={'request': request})
+            
+            return Response({
+                "message": f"Folder '{source_folder.name}' moved from '{old_parent_name}' to '{new_parent_name}'",
+                "moved_folder": serializer.data
+            }, status=200)
+            
+        except Exception as e:
+            return Response({"error": f"Error moving folder: {str(e)}"}, status=500)
+    
+    def _is_descendant_or_self(self, source_folder, potential_parent):
+        """
+        Check if potential_parent is the same as source_folder or a descendant of it
+        """
+        if source_folder.id == potential_parent.id:
+            return True
+        
+        current = potential_parent.parent
+        while current:
+            if current.id == source_folder.id:
+                return True
+            current = current.parent
+        
+        return False
+
+
+class BulkMoveView(APIView):
+    """
+    API view to move multiple files and folders to a destination folder
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        try:
+            file_ids = request.data.get('file_ids', [])
+            folder_ids = request.data.get('folder_ids', [])
+            destination_folder_id = request.data.get('destination_folder_id')
+            
+            if not file_ids and not folder_ids:
+                return Response({"error": "No items selected for moving"}, status=400)
+            
+            # Get destination folder (optional)
+            destination_folder = None
+            if destination_folder_id:
+                try:
+                    destination_folder = Folder.objects.get(
+                        id=destination_folder_id,
+                        owner=request.user
+                    )
+                except Folder.DoesNotExist:
+                    return Response({"error": "Destination folder not found or access denied"}, status=404)
+            
+            moved_files = []
+            moved_folders = []
+            errors = []
+            
+            # Move files
+            if file_ids:
+                files = UploadedFile.objects.filter(
+                    id__in=file_ids,
+                    owner=request.user
+                )
+                
+                for source_file in files:
+                    try:
+                        # Check if file with same name already exists in destination
+                        existing_file = UploadedFile.objects.filter(
+                            name=source_file.name,
+                            folder=destination_folder,
+                            owner=request.user
+                        ).exclude(id=source_file.id).first()
+                        
+                        if existing_file:
+                            errors.append(f"File '{source_file.name}' already exists in destination")
+                            continue
+                        
+                        # Move the file
+                        source_file.folder = destination_folder
+                        source_file.save()
+                        moved_files.append(source_file)
+                        
+                    except Exception as e:
+                        errors.append(f"Error moving '{source_file.name}': {str(e)}")
+            
+            # Move folders
+            if folder_ids:
+                folders = Folder.objects.filter(
+                    id__in=folder_ids,
+                    owner=request.user
+                )
+                
+                for source_folder in folders:
+                    try:
+                        # Check if trying to move folder into itself or its descendants
+                        if destination_folder and self._is_descendant_or_self(source_folder, destination_folder):
+                            errors.append(f"Cannot move '{source_folder.name}' into itself or its descendants")
+                            continue
+                        
+                        # Check if folder with same name already exists in destination
+                        existing_folder = Folder.objects.filter(
+                            name=source_folder.name,
+                            parent=destination_folder,
+                            owner=request.user
+                        ).exclude(id=source_folder.id).first()
+                        
+                        if existing_folder:
+                            errors.append(f"Folder '{source_folder.name}' already exists in destination")
+                            continue
+                        
+                        # Move the folder
+                        source_folder.parent = destination_folder
+                        source_folder.save()
+                        moved_folders.append(source_folder)
+                        
+                    except Exception as e:
+                        errors.append(f"Error moving folder '{source_folder.name}': {str(e)}")
+            
+            # Prepare response
+            destination_name = destination_folder.name if destination_folder else "Root"
+            response_data = {
+                "message": f"Successfully moved {len(moved_files)} file(s) and {len(moved_folders)} folder(s) to '{destination_name}'",
+                "moved_files": len(moved_files),
+                "moved_folders": len(moved_folders),
+            }
+            
+            if errors:
+                response_data["errors"] = errors
+                response_data["message"] += f" with {len(errors)} error(s)"
+            
+            return Response(response_data, status=200)
+            
+        except Exception as e:
+            return Response({"error": f"Error moving items: {str(e)}"}, status=500)
+    
+    def _is_descendant_or_self(self, source_folder, potential_parent):
+        """
+        Check if potential_parent is the same as source_folder or a descendant of it
+        """
+        if source_folder.id == potential_parent.id:
+            return True
+        
+        current = potential_parent.parent
+        while current:
+            if current.id == source_folder.id:
+                return True
+            current = current.parent
+        
+        return False
+
+
+class ViewFileView(APIView):
+    """
+    API view to serve files with proper authentication and headers
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, file_id):
+        try:
+            # Get the file instance
+            file_instance = get_object_or_404(UploadedFile, id=file_id)
+            
+            # Check permissions - user must be owner, file must be public, or file must be shared with user
+            has_access = (
+                file_instance.owner == request.user or 
+                file_instance.is_public or
+                FileSharing.objects.filter(
+                    file=file_instance, 
+                    shared_to=request.user
+                ).exists()
+            )
+            
+            if not has_access:
+                return HttpResponse("Permission denied", status=403)
+            
+            # Get file path and verify it exists
+            if not file_instance.file:
+                return HttpResponse("File data not found", status=404)
+            
+            try:
+                file_path = file_instance.file.path
+            except ValueError as e:
+                return HttpResponse(f"File path error: {str(e)}", status=500)
+            
+            import mimetypes
+            import os
+            
+            if not os.path.exists(file_path):
+                raise Http404("File not found on the server.")
+            
+            # Determine content type
+            file_name = os.path.basename(file_path)
+            content_type, encoding = mimetypes.guess_type(file_name)
+            
+            if not content_type:
+                content_type = 'application/octet-stream'
+            
+            # Open and serve the file
+            file_handle = open(file_path, 'rb')
+            response = FileResponse(file_handle, content_type=content_type)
+            
+            # Set headers for proper file display
+            response['Content-Disposition'] = f'inline; filename="{file_instance.name}"'
+            response['X-Content-Type-Options'] = 'nosniff'
+            
+            return response
+            
+        except FileNotFoundError:
+            raise Http404("File not found on the server.")
+        except Exception as e:
+            return HttpResponse(f"Error serving file: {str(e)}", status=500)
 
 
 # def send_email(request):
@@ -506,7 +1494,7 @@ def view_file(request, file_id):
 
 
 class DeleteUploadedFileView(APIView):
-    permission_classes = []
+    permission_classes = [IsAuthenticated]
 
     def delete(self, request, file_id):
         try:
@@ -517,12 +1505,41 @@ class DeleteUploadedFileView(APIView):
                 return Response({'error': 'You do not have permission to delete this file.'}, status=403)
 
             uploaded_file.delete()
-            return Response({'message': 'File deleted successfully.'})
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
         except UploadedFile.DoesNotExist:
             return Response({'error': 'File not found.'}, status=404)
 
 
+class BulkDeleteView(APIView):
+    """
+    View to handle bulk deletion of files and folders.
+    """
+    permission_classes = [IsAuthenticated]
+
+    @transaction.atomic
+    def delete(self, request, *args, **kwargs):
+        file_ids = request.data.get('file_ids', [])
+        folder_ids = request.data.get('folder_ids', [])
+
+        if not file_ids and not folder_ids:
+            return Response({"error": "No items selected for deletion."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Filter and delete files owned by the user
+        files_to_delete = UploadedFile.objects.filter(id__in=file_ids, owner=request.user)
+        deleted_files_count = files_to_delete.count()
+        if deleted_files_count > 0:
+            files_to_delete.delete()
+
+        # Filter and delete folders owned by the user
+        folders_to_delete = Folder.objects.filter(id__in=folder_ids, owner=request.user)
+        deleted_folders_count = folders_to_delete.count()
+        if deleted_folders_count > 0:
+            folders_to_delete.delete()
+
+        return Response({
+            "message": f"Successfully deleted {deleted_files_count} file(s) and {deleted_folders_count} folder(s)."
+        }, status=status.HTTP_200_OK)
 
 
 class ToggleStarredView(APIView):
@@ -767,3 +1784,511 @@ class UpcomingRemindersView(APIView):
 
         serializer = ReminderSerializer(reminders, many=True)
         return Response(serializer.data)
+
+
+# ============ PUBLIC SHARE LINK VIEWS ============
+
+class PublicShareView(APIView):
+    """
+    Public share endpoint - NO authentication required
+    URL: /share/{share_id}/
+    Works like Google Drive/Dropbox public links
+    """
+    permission_classes = []  # No authentication required
+    
+    def get(self, request, share_id):
+        """Download file or folder via public share link"""
+        try:
+            # Get the share link
+            share_link = get_object_or_404(ShareLink, share_id=share_id)
+            
+            # Check if link is valid
+            is_valid, message = share_link.is_valid()
+            if not is_valid:
+                return HttpResponse(f"Share link error: {message}", status=403)
+            
+            # Handle password protection (if implemented later)
+            # password = request.GET.get('password')
+            # if share_link.password and password != share_link.password:
+            #     return HttpResponse("Password required", status=401)
+            
+            # Increment download count
+            share_link.download_count += 1
+            share_link.save()
+            
+            # Handle file download
+            if share_link.file:
+                return self._serve_file(share_link.file)
+            
+            # Handle folder download (as ZIP)
+            elif share_link.folder:
+                return self._serve_folder_zip(share_link.folder)
+                
+        except Exception as e:
+            return HttpResponse(f"Error accessing shared item: {str(e)}", status=500)
+    
+    def _serve_file(self, file_instance):
+        """Serve a single file for download"""
+        import mimetypes
+        import os
+        
+        file_path = file_instance.file.path
+        
+        if not os.path.exists(file_path):
+            raise Http404("File not found on server")
+        
+        # Determine content type
+        content_type, encoding = mimetypes.guess_type(file_path)
+        if not content_type:
+            content_type = 'application/octet-stream'
+        
+        # Serve file
+        file_handle = open(file_path, 'rb')
+        response = FileResponse(file_handle, content_type=content_type, as_attachment=True)
+        response['Content-Disposition'] = f'attachment; filename="{file_instance.name}"'
+        response['Content-Length'] = os.path.getsize(file_path)
+        
+        return response
+    
+    def _serve_folder_zip(self, folder_instance):
+        """Serve folder contents as ZIP file"""
+        import zipfile
+        import tempfile
+        import os
+        
+        # Create temporary ZIP file
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.zip')
+        
+        try:
+            with zipfile.ZipFile(temp_file.name, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                self._add_folder_to_zip(folder_instance, zip_file, "")
+            
+            # Read ZIP data
+            with open(temp_file.name, 'rb') as f:
+                zip_data = f.read()
+            
+            # Create response
+            response = HttpResponse(zip_data, content_type='application/zip')
+            response['Content-Disposition'] = f'attachment; filename="{folder_instance.name}.zip"'
+            response['Content-Length'] = len(zip_data)
+            
+            return response
+            
+        finally:
+            # Cleanup
+            if os.path.exists(temp_file.name):
+                os.unlink(temp_file.name)
+    
+    def _add_folder_to_zip(self, folder, zip_file, folder_path):
+        """Recursively add folder contents to ZIP"""
+        import os
+        
+        # Add files in this folder
+        files = UploadedFile.objects.filter(folder=folder)
+        for file in files:
+            if file.file and os.path.exists(file.file.path):
+                arcname = os.path.join(folder_path, file.name)
+                zip_file.write(file.file.path, arcname)
+        
+        # Add subfolders recursively
+        subfolders = Folder.objects.filter(parent=folder)
+        for subfolder in subfolders:
+            subfolder_path = os.path.join(folder_path, subfolder.name)
+            self._add_folder_to_zip(subfolder, zip_file, subfolder_path)
+
+
+class ShareLinkManagementView(APIView):
+    """
+    Manage share links - CREATE new links for email sharing
+    Requires authentication (only for creating links)
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        """Create new share links for files/folders"""
+        file_ids = request.data.get('file_ids', [])
+        folder_ids = request.data.get('folder_ids', [])
+        expires_in_days = request.data.get('expires_in_days', 30)  # Default 30 days
+        
+        if not file_ids and not folder_ids:
+            return Response({'error': 'No files or folders specified'}, status=400)
+        
+        created_links = []
+        
+        try:
+            # Create links for files
+            for file_id in file_ids:
+                file_instance = get_object_or_404(UploadedFile, id=file_id, owner=request.user)
+                
+                # Check if link already exists
+                existing_link = ShareLink.objects.filter(
+                    file=file_instance, 
+                    created_by=request.user,
+                    is_active=True
+                ).first()
+                
+                if existing_link:
+                    created_links.append({
+                        'type': 'file',
+                        'name': file_instance.name,
+                        'share_id': existing_link.share_id,
+                        'url': request.build_absolute_uri(f'/share/{existing_link.share_id}/'),
+                        'created': False  # Already existed
+                    })
+                else:
+                    # Create new link
+                    from django.utils import timezone
+                    from datetime import timedelta
+                    
+                    share_link = ShareLink.objects.create(
+                        share_id=ShareLink.generate_share_id(),
+                        file=file_instance,
+                        created_by=request.user,
+                        expires_at=timezone.now() + timedelta(days=expires_in_days) if expires_in_days else None
+                    )
+                    
+                    created_links.append({
+                        'type': 'file',
+                        'name': file_instance.name,
+                        'share_id': share_link.share_id,
+                        'url': request.build_absolute_uri(f'/share/{share_link.share_id}/'),
+                        'created': True
+                    })
+            
+            # Create links for folders
+            for folder_id in folder_ids:
+                folder_instance = get_object_or_404(Folder, id=folder_id, owner=request.user)
+                
+                # Check if link already exists
+                existing_link = ShareLink.objects.filter(
+                    folder=folder_instance, 
+                    created_by=request.user,
+                    is_active=True
+                ).first()
+                
+                if existing_link:
+                    created_links.append({
+                        'type': 'folder',
+                        'name': folder_instance.name,
+                        'share_id': existing_link.share_id,
+                        'url': request.build_absolute_uri(f'/share/{existing_link.share_id}/'),
+                        'created': False
+                    })
+                else:
+                    from django.utils import timezone
+                    from datetime import timedelta
+                    
+                    share_link = ShareLink.objects.create(
+                        share_id=ShareLink.generate_share_id(),
+                        folder=folder_instance,
+                        created_by=request.user,
+                        expires_at=timezone.now() + timedelta(days=expires_in_days) if expires_in_days else None
+                    )
+                    
+                    created_links.append({
+                        'type': 'folder',
+                        'name': folder_instance.name,
+                        'share_id': share_link.share_id,
+                        'url': request.build_absolute_uri(f'/share/{share_link.share_id}/'),
+                        'created': True
+                    })
+            
+            return Response({
+                'success': True,
+                'message': f'Created {len(created_links)} share links',
+                'links': created_links
+            })
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+
+# ============ SEARCH FUNCTIONALITY ============
+
+class SearchView(APIView):
+    """
+    Search files and folders based on query and scope
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        query = request.GET.get('q', '').strip()
+        scope = request.GET.get('scope', 'all')
+        file_type = request.GET.get('file_type', '')
+        date_from = request.GET.get('date_from', '')
+        date_to = request.GET.get('date_to', '')
+        owner = request.GET.get('owner', '')
+        
+        if not query:
+            return Response({'files': [], 'folders': [], 'total': 0})
+        
+        # Base querysets
+        files_qs = UploadedFile.objects.filter(owner=request.user)
+        folders_qs = Folder.objects.filter(owner=request.user)
+        
+        # Apply scope filters
+        if scope == 'starred':
+            files_qs = files_qs.filter(is_starred=True)
+            folders_qs = folders_qs.filter(is_starred=True)
+        elif scope == 'archived':
+            files_qs = files_qs.filter(is_archived=True)
+            folders_qs = folders_qs.filter(is_archived=True)
+        elif scope == 'shared':
+            # Files shared with the user
+            shared_file_ids = FileSharing.objects.filter(
+                shared_with=request.user
+            ).values_list('file_id', flat=True)
+            files_qs = UploadedFile.objects.filter(id__in=shared_file_ids)
+            folders_qs = Folder.objects.none()  # No shared folders for now
+        elif scope == 'recent':
+            # Files uploaded in the last 30 days
+            from datetime import timedelta
+            recent_date = timezone.now() - timedelta(days=30)
+            files_qs = files_qs.filter(uploaded_at__gte=recent_date)
+            folders_qs = folders_qs.filter(created_at__gte=recent_date)
+        elif scope == 'files':
+            # Only files, no additional filtering
+            pass
+        # 'all' scope uses base querysets without additional filtering
+        
+        # Apply text search
+        files_qs = files_qs.filter(
+            Q(name__icontains=query) | 
+            Q(file_type__icontains=query)
+        )
+        folders_qs = folders_qs.filter(name__icontains=query)
+        
+        # Apply additional filters
+        if file_type:
+            files_qs = files_qs.filter(file_type__icontains=file_type)
+        
+        if date_from:
+            try:
+                from datetime import datetime
+                date_from_obj = datetime.fromisoformat(date_from.replace('Z', '+00:00'))
+                files_qs = files_qs.filter(uploaded_at__gte=date_from_obj)
+                folders_qs = folders_qs.filter(created_at__gte=date_from_obj)
+            except ValueError:
+                pass
+        
+        if date_to:
+            try:
+                from datetime import datetime
+                date_to_obj = datetime.fromisoformat(date_to.replace('Z', '+00:00'))
+                files_qs = files_qs.filter(uploaded_at__lte=date_to_obj)
+                folders_qs = folders_qs.filter(created_at__lte=date_to_obj)
+            except ValueError:
+                pass
+        
+        # Limit results for performance
+        files_qs = files_qs.order_by('-uploaded_at')[:20]
+        folders_qs = folders_qs.order_by('-created_at')[:10]
+        
+        # Serialize results
+        files_data = []
+        for file in files_qs:
+            files_data.append({
+                'id': file.id,
+                'name': file.name,
+                'type': 'file',
+                'file_type': file.file_type,
+                'size': file.file_size,
+                'uploaded_at': file.uploaded_at.isoformat(),
+                'is_starred': file.is_starred,
+                'is_archived': file.is_archived,
+                'folder_id': file.folder.id if file.folder else None,
+                'folder_name': file.folder.name if file.folder else None,
+            })
+        
+        folders_data = []
+        for folder in folders_qs:
+            folders_data.append({
+                'id': folder.id,
+                'name': folder.name,
+                'type': 'folder',
+                'created_at': folder.created_at.isoformat(),
+                'is_starred': folder.is_starred,
+                'parent_id': folder.parent.id if folder.parent else None,
+                'parent_name': folder.parent.name if folder.parent else None,
+            })
+        
+        # Combine and sort results by relevance/date
+        all_results = files_data + folders_data
+        
+        return Response({
+            'files': files_data,
+            'folders': folders_data,
+            'results': all_results,  # Combined for frontend convenience
+            'total': len(all_results)
+        })
+
+
+# ============ DASHBOARD ANALYTICS ============
+
+class DashboardStatsView(APIView):
+    """
+    Get dashboard statistics for the authenticated user
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        user = request.user
+        
+        # Get current month and previous month for comparison
+        from datetime import datetime, timedelta
+        from django.utils import timezone
+        
+        now = timezone.now()
+        current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        previous_month_start = (current_month_start - timedelta(days=1)).replace(day=1)
+        
+        # Total files count
+        total_files = UploadedFile.objects.filter(owner=user).count()
+        total_files_prev = UploadedFile.objects.filter(
+            owner=user, 
+            uploaded_at__lt=current_month_start
+        ).count()
+        
+        # Total folders count
+        total_folders = Folder.objects.filter(owner=user).count()
+        total_folders_prev = Folder.objects.filter(
+            owner=user, 
+            created_at__lt=current_month_start
+        ).count()
+        
+        # Starred files count
+        starred_files = UploadedFile.objects.filter(owner=user, is_starred=True).count()
+        starred_files_prev = UploadedFile.objects.filter(
+            owner=user, 
+            is_starred=True,
+            uploaded_at__lt=current_month_start
+        ).count()
+        
+        # Storage used (sum of file sizes)
+        from django.db.models import Sum
+        storage_used = UploadedFile.objects.filter(owner=user).aggregate(
+            total_size=Sum('file_size')
+        )['total_size'] or 0
+        
+        storage_used_prev = UploadedFile.objects.filter(
+            owner=user,
+            uploaded_at__lt=current_month_start
+        ).aggregate(total_size=Sum('file_size'))['total_size'] or 0
+        
+        # Files uploaded this month
+        files_this_month = UploadedFile.objects.filter(
+            owner=user,
+            uploaded_at__gte=current_month_start
+        ).count()
+        
+        files_prev_month = UploadedFile.objects.filter(
+            owner=user,
+            uploaded_at__gte=previous_month_start,
+            uploaded_at__lt=current_month_start
+        ).count()
+        
+        # Calculate percentage changes
+        def calculate_change(current, previous):
+            if previous == 0:
+                return 100 if current > 0 else 0
+            return round(((current - previous) / previous) * 100, 1)
+        
+        # Format storage size
+        def format_storage_size(bytes_size):
+            if bytes_size < 1024:
+                return f"{bytes_size} B"
+            elif bytes_size < 1024 * 1024:
+                return f"{round(bytes_size / 1024, 1)} KB"
+            elif bytes_size < 1024 * 1024 * 1024:
+                return f"{round(bytes_size / (1024 * 1024), 1)} MB"
+            else:
+                return f"{round(bytes_size / (1024 * 1024 * 1024), 1)} GB"
+        
+        return Response({
+            'total_files': {
+                'value': total_files,
+                'change': calculate_change(total_files, total_files_prev)
+            },
+            'total_folders': {
+                'value': total_folders,
+                'change': calculate_change(total_folders, total_folders_prev)
+            },
+            'starred_files': {
+                'value': starred_files,
+                'change': calculate_change(starred_files, starred_files_prev)
+            },
+            'storage_used': {
+                'value': storage_used,
+                'formatted': format_storage_size(storage_used),
+                'change_bytes': storage_used - storage_used_prev,
+                'change_formatted': format_storage_size(abs(storage_used - storage_used_prev))
+            },
+            'files_this_month': {
+                'value': files_this_month,
+                'change': calculate_change(files_this_month, files_prev_month)
+            }
+        })
+
+
+class DashboardRecentActivityView(APIView):
+    """
+    Get recent activity for dashboard
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        user = request.user
+        limit = int(request.GET.get('limit', 10))
+        
+        # Get recent files (uploaded in last 7 days)
+        from datetime import timedelta
+        recent_date = timezone.now() - timedelta(days=7)
+        
+        recent_files = UploadedFile.objects.filter(
+            owner=user,
+            uploaded_at__gte=recent_date
+        ).order_by('-uploaded_at')[:limit]
+        
+        activities = []
+        for file in recent_files:
+            activities.append({
+                'id': f"upload_{file.id}",
+                'type': 'upload',
+                'user': {
+                    'name': file.owner.get_full_name() or file.owner.username,
+                },
+                'file': {
+                    'name': file.name,
+                    'id': file.id
+                },
+                'timestamp': file.uploaded_at.isoformat(),
+                'description': 'uploaded'
+            })
+        
+        # Get recent shares (files shared with user)
+        recent_shares = FileSharing.objects.filter(
+            shared_to=user,
+            shared_at__gte=recent_date
+        ).select_related('file', 'shared_by').order_by('-shared_at')[:5]
+        
+        for share in recent_shares:
+            activities.append({
+                'id': f"share_{share.id}",
+                'type': 'share',
+                'user': {
+                    'name': share.shared_by.get_full_name() or share.shared_by.username,
+                },
+                'file': {
+                    'name': share.file.name,
+                    'id': share.file.id
+                },
+                'timestamp': share.shared_at.isoformat(),
+                'description': 'shared with you'
+            })
+        
+        # Sort all activities by timestamp
+        activities.sort(key=lambda x: x['timestamp'], reverse=True)
+        
+        return Response({
+            'activities': activities[:limit]
+        })

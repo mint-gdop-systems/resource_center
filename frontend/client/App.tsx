@@ -7,6 +7,9 @@ import { Toaster } from "react-hot-toast";
 import Layout from "./components/layout/Layout";
 // Context
 import { FileProvider } from "./contexts/FileContext";
+import { NotificationProvider } from "./contexts/NotificationContext";
+import { SidebarProvider } from "./contexts/SidebarContext";
+import { SearchProvider } from "./contexts/SearchContext";
 // Error Handling
 import ErrorBoundary from "./components/ErrorBoundary";
 import { AuthProvider, useAuth } from "./services/auth";
@@ -17,6 +20,7 @@ import Files from "./pages/Files";
 import Shared from "./pages/Shared";
 import Starred from "./pages/Starred";
 import Archive from "./pages/Archive";
+import Recent from "./pages/Recent";
 import Login from "./pages/Login";
 
 // Create a client
@@ -34,52 +38,59 @@ function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <FileProvider>
-          <BrowserRouter>
-              <div className="App">
-                <Routes>
-                  <Route element={<Layout />}>
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/files/*" element={<ProtectedRoutes><Files /></ProtectedRoutes>} />
-                    <Route path="/folders/:folderId" element={<ProtectedRoutes><Files /></ProtectedRoutes>} />
-                    <Route path="/shared" element={<ProtectedRoutes><Shared /></ProtectedRoutes>} />
-                    <Route path="/starred" element={<ProtectedRoutes><Starred /></ProtectedRoutes>} />
-                    <Route path="/archive" element={<ProtectedRoutes><Archive /></ProtectedRoutes>} />
-                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                  </Route>
-                  <Route path="/login" element={<Login />} />
-                </Routes>
-                {/* Global toast notifications */}
-                <Toaster
-                  position="top-right"
-                  toastOptions={{
-                    duration: 4000,
-                    style: {
-                      background: "#ffffff",
-                      color: "#1f2937",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "0.75rem",
-                      boxShadow:
-                        "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-                    },
-                    success: {
-                      iconTheme: {
-                        primary: "#10b981",
-                        secondary: "#ffffff",
-                      },
-                    },
-                    error: {
-                      iconTheme: {
-                        primary: "#ef4444",
-                        secondary: "#ffffff",
-                      },
-                    },
-                  }}
-                />
-              </div>
-            </BrowserRouter>
+        <NotificationProvider>
+          <FileProvider>
+            <SidebarProvider>
+              <BrowserRouter>
+                <SearchProvider>
+                  <div className="App">
+                    <Routes>
+                      <Route element={<Layout />}>
+                        <Route path="/dashboard" element={<Dashboard />} />
+                        <Route path="/files/*" element={<ProtectedRoutes><Files /></ProtectedRoutes>} />
+                        <Route path="/folders/:folderId" element={<ProtectedRoutes><Files /></ProtectedRoutes>} />
+                        <Route path="/recent" element={<ProtectedRoutes><Recent /></ProtectedRoutes>} />
+                        <Route path="/shared" element={<ProtectedRoutes><Shared /></ProtectedRoutes>} />
+                        <Route path="/starred" element={<ProtectedRoutes><Starred /></ProtectedRoutes>} />
+                        <Route path="/archive" element={<ProtectedRoutes><Archive /></ProtectedRoutes>} />
+                        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                      </Route>
+                      <Route path="/login" element={<Login />} />
+                    </Routes>
+                    {/* Global toast notifications */}
+                    <Toaster
+                      position="top-right"
+                      toastOptions={{
+                        duration: 4000,
+                        style: {
+                          background: "#ffffff",
+                          color: "#1f2937",
+                          border: "1px solid #e5e7eb",
+                          borderRadius: "0.75rem",
+                          boxShadow:
+                            "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+                        },
+                        success: {
+                          iconTheme: {
+                            primary: "#10b981",
+                            secondary: "#ffffff",
+                          },
+                        },
+                        error: {
+                          iconTheme: {
+                            primary: "#ef4444",
+                            secondary: "#ffffff",
+                          },
+                        },
+                      }}
+                    />
+                  </div>
+                </SearchProvider>
+              </BrowserRouter>
+            </SidebarProvider>
           </FileProvider>
+        </NotificationProvider>
         </AuthProvider>
       </QueryClientProvider>
     </ErrorBoundary>

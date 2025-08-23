@@ -27,6 +27,7 @@ export interface FileItem {
   reminders?: FileReminder[];
   thumbnail?: string;
   path: string[];
+  fileUrl?: string;
 }
 
 export interface FilePermission {
@@ -48,6 +49,17 @@ export interface FileVersion {
   createdBy: User;
   changeNote?: string;
   downloadUrl: string;
+}
+
+export interface FileVersionHistoryItem {
+  id: number;
+  version_number: number;
+  file_name: string;
+  uploaded_by_name: string;
+  uploaded_at: string;
+  change_note: string;
+  uploaded_file_url: string;
+  is_current: boolean;
 }
 
 export interface FileReminder {

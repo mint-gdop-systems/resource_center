@@ -2,29 +2,59 @@ services:
   django:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     ports:
       - "5000:5000"
     volumes:
       - ./backend:/app
+      - django_node_modules:/app/node_modules
     networks:
       - rc_network
     env_file:
       - ./backend/.env
+    depends_on:
+      - keycloak
 
   react:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
-    depends_on:
-      - django
+      dockerfile: Dockerfile.dev
+    ports:
+      - "7000:7000"
+    volumes:
+      - ./frontend:/app
+      - react_node_modules:/app/node_modules
     networks:
       - rc_network
     env_file:
       - ./frontend/.env
+    depends_on:
+      - django
+    environment:
+      - WATCHPACK_POLLING=true
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.1
+    container_name: keycloak
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
     ports:
-      - "7000:80"
+      - "8080:8080"
+    volumes:
+      - keycloak_data:/opt/keycloak/data   
+    networks:
+      - rc_network
+
+volumes:
+  keycloak_data:
+  django_node_modules:
+  react_node_modules:
 
 networks:
   rc_network:
     driver: bridge
+
+
+

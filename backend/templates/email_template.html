@@ -44,6 +44,39 @@
           </div>
 
           <!-- System Message -->
+          {% if is_multiple %}
+          <p style="font-size: 15px; color: #555555">
+            You can download the documents using the links below:
+          </p>
+          <div style="margin: 25px 0;">
+            {% for file in files %}
+            <div style="
+              border: 1px solid #e0e6ed;
+              border-radius: 6px;
+              padding: 15px;
+              margin-bottom: 10px;
+              background-color: #f8f9fa;
+            ">
+              <h4 style="margin: 0 0 10px 0; color: #333;">{{ file.name }}</h4>
+              <div style="margin-top: 10px;">
+                <a
+                  href="{{ file.download_url }}"
+                  style="
+                    display: inline-block;
+                    background-color: #007bff;
+                    color: white;
+                    text-decoration: none;
+                    padding: 10px 20px;
+                    border-radius: 5px;
+                    font-size: 14px;
+                    font-weight: bold;
+                  "
+                  >Download {{ file.name }}</a>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
           <p style="font-size: 15px; color: #555555">
             You can download the document using the link below:
           </p>
@@ -62,6 +95,7 @@
               >Download File</a
             >
           </p>
+          {% endif %}
 
           <hr
             style="border: none; border-top: 1px solid #eee; margin: 30px 0"

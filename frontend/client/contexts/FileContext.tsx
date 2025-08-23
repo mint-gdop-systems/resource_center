@@ -1,8 +1,10 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from "react";
 import { FileItem } from "../types";
 import toast from "react-hot-toast";
-import { uploadFileApi, getFiles, createFolder as createFolderApi } from "../services/api";
+import { uploadFileApi, getFiles, createFolder as createFolderApi, bulkDeleteApi, toggleFileStar, toggleFolderStar, toggleFileArchive, getRecentFiles } from "../services/api";
 import { useAuth } from "../services/auth";
+import ConfirmationModal from "../components/ui/ConfirmationModal";
+import { useNotifications } from "./NotificationContext";
 
 interface FileContextType {
   files: FileItem[];
@@ -13,7 +15,18 @@ interface FileContextType {
   moveFiles: (fileIds: string[], targetPath: string) => void;
   toggleStar: (fileId: string) => void;
   starFiles: (fileIds: string[], starred: boolean) => void;
+  toggleArchive: (fileId: string) => void;
+  archiveFiles?: (fileIds: string[], archived: boolean) => void;
   createFolder: (name: string, path: string[]) => void;
+  archiveCount: number;
+  refreshArchiveCount: () => Promise<void>;
+  starredCount: number;
+  refreshStarredCount: () => Promise<void>;
+  recentCount: number;
+  refreshRecentCount: () => Promise<void>;
+  filesCount: number;
+  refreshFilesCount: () => Promise<void>;
+  sharedCount: number;
 }
 
 const FileContext = createContext<FileContextType | undefined>(undefined);
@@ -22,6 +35,68 @@ export function FileProvider({ children }: { children: ReactNode }) {
   const [files, setFiles] = useState<FileItem[]>([]);
   const [currentFolderId, setCurrentFolderId] = useState<string | undefined>(undefined);
   const { initialized, authenticated } = useAuth();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [filesToDelete, setFilesToDelete] = useState<string[]>([]);
+  const [archiveCount, setArchiveCount] = useState(0);
+  const [starredCount, setStarredCount] = useState(0);
+  const [recentCount, setRecentCount] = useState(0);
+  const [filesCount, setFilesCount] = useState(0);
+  const { totalSharedCount } = useNotifications();
+  const refreshStarredCount = useCallback(async () => {
+    try {
+      const data = await getFiles(undefined, { starred: true });
+      const files = data.files || [];
+      const folders = data.folders || [];
+      setStarredCount(files.length + folders.length);
+    } catch (error) {
+      setStarredCount(0);
+    }
+  }, []);
+
+  const refreshArchiveCount = useCallback(async () => {
+    try {
+      const data = await getFiles(undefined, { archived: true });
+      const files = data.files || [];
+      setArchiveCount(files.length);
+    } catch (error) {
+      console.error('Failed to fetch archive count:', error);
+      setArchiveCount(0);
+    }
+  }, []);
+
+  const refreshRecentCount = useCallback(async () => {
+    try {
+      const data = await getRecentFiles({ limit: 100, includeArchived: false });
+      const files = data.files || [];
+      setRecentCount(files.length);
+    } catch (error) {
+      console.error('Failed to fetch recent count:', error);
+      setRecentCount(0);
+    }
+  }, []);
+
+  const refreshFilesCount = useCallback(async () => {
+    try {
+      const data = await getFiles();
+      const files = data.files || [];
+      const folders = data.folders || [];
+      setFilesCount(files.length + folders.length);
+    } catch (error) {
+      console.error('Failed to fetch files count:', error);
+      setFilesCount(0);
+    }
+  }, []);
+
+
+
+  useEffect(() => {
+    if (initialized && authenticated) {
+      refreshArchiveCount();
+      refreshStarredCount();
+      refreshRecentCount();
+      refreshFilesCount();
+    }
+  }, [initialized, authenticated, refreshArchiveCount, refreshStarredCount, refreshRecentCount, refreshFilesCount]);
 
   const fetchFiles = useCallback(async (folderId?: string) => {
     try {
@@ -31,7 +106,7 @@ export function FileProvider({ children }: { children: ReactNode }) {
         return {
           ...item,
           id: item.id.toString(),
-          name: item.name, // Ensure name is always set
+          name: item.name,
           parentId: isFile ? (item.folder ? item.folder.toString() : undefined) : (item.parent ? item.parent.toString() : undefined),
           type: isFile ? 'file' : 'folder',
           createdAt: new Date(item.uploaded_at || item.created_at),
@@ -45,10 +120,14 @@ export function FileProvider({ children }: { children: ReactNode }) {
           },
           size: isFile ? item.file_size : undefined,
           extension: isFile ? item.file_type : undefined,
-        };
+          starred: Boolean((item as any).is_starred),
+          archived: Boolean((item as any).is_archived),
+          shared: Boolean((item as any).is_shared),
+        } as unknown as FileItem;
       });
       setFiles(fetchedFiles);
       setCurrentFolderId(folderId);
+  // Do not call refreshStarredCount inside fetchFiles, only in useEffect and after starFiles
     } catch (error: any) {
       toast.error(`Failed to fetch files: ${error?.message || 'Unknown error'}`);
     }
@@ -57,12 +136,22 @@ export function FileProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (initialized && authenticated) {
       fetchFiles();
+      
+      // Listen for files:refresh events to reload files after operations like edit, move, copy
+      const handleFilesRefresh = () => {
+        fetchFiles(currentFolderId);
+      };
+      
+      window.addEventListener('files:refresh', handleFilesRefresh);
+      
+      return () => {
+        window.removeEventListener('files:refresh', handleFilesRefresh);
+      };
     }
-  }, [initialized, authenticated, fetchFiles]);
+  }, [initialized, authenticated, fetchFiles, currentFolderId]);
 
   const uploadFile = async (file: File, path: string[], categoryId?: number): Promise<void> => {
     try {
-      // If path is ["/", "parentId"] or ["parentId"], get the last non-root element as folderId
       let folderId: string | undefined = undefined;
       if (path.length > 0) {
         const last = path[path.length - 1];
@@ -70,8 +159,9 @@ export function FileProvider({ children }: { children: ReactNode }) {
       }
       await uploadFileApi({ file, folderId, categoryId });
       toast.success(`${file.name} uploaded successfully!`);
-      // Refresh files for the current folder
       await fetchFiles(folderId);
+      await refreshFilesCount();
+      await refreshRecentCount();
     } catch (error: any) {
       let message = "Failed to upload file.";
       if (error?.response) {
@@ -105,13 +195,34 @@ export function FileProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteFiles = (fileIds: string[]) => {
-    // TODO: Implement real delete logic using API
-    toast.success(`${fileIds.length} file(s) deleted (mock)`);
+  setFilesToDelete(fileIds);
+  setIsModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      const fileIdsToDelete = files.filter(f => f.type === 'file' && filesToDelete.includes(f.id)).map(f => f.id);
+      const folderIdsToDelete = files.filter(f => f.type === 'folder' && filesToDelete.includes(f.id)).map(f => f.id);
+
+      await bulkDeleteApi(fileIdsToDelete, folderIdsToDelete);
+      
+      toast.success(`${fileIdsToDelete.length + folderIdsToDelete.length} item(s) deleted successfully!`);
+      await fetchFiles(currentFolderId);
+      await refreshFilesCount();
+      await refreshRecentCount();
+      await refreshArchiveCount();
+      await refreshStarredCount();
+    } catch (error: any) {
+      toast.error(`Failed to delete item(s): ${error?.message || 'Unknown error'}`);
+    } finally {
+      setIsModalOpen(false);
+      setFilesToDelete([]);
+    }
   };
 
   const renameFile = (fileId: string, newName: string) => {
-    // TODO: Implement real rename logic using API
-    toast.success(`Renamed to "${newName}" (mock)`);
+  // TODO: Implement real rename logic using API
+  toast.success(`Renamed to "${newName}" (mock)`);
   };
 
   const moveFiles = (fileIds: string[], targetPath: string) => {
@@ -119,16 +230,85 @@ export function FileProvider({ children }: { children: ReactNode }) {
     toast.success(`${fileIds.length} file(s) moved to ${targetPath} (mock)`);
   };
 
-  const toggleStar = (fileId: string) => {
-    // TODO: Implement real star toggle logic using API
-    toast.success(`Toggled star (mock)`);
+  const toggleStar = async (itemId: string) => {
+    try {
+      const item = files.find(f => f.id === itemId);
+      if (!item) return;
+
+      if (item.type === 'file') {
+        const res = await toggleFileStar(itemId);
+        toast.success(res.message);
+      } else {
+        const res = await toggleFolderStar(itemId);
+        toast.success(res.message);
+      }
+      await fetchFiles(currentFolderId);
+      await refreshStarredCount();
+      await refreshRecentCount();
+    } catch (error: any) {
+      const msg = error?.response?.data?.error || error?.message || 'Failed to toggle star';
+      toast.error(msg);
+    }
   };
 
-  const starFiles = (fileIds: string[], starred: boolean) => {
-    // TODO: Implement real star/unstar logic using API
-    toast.success(`${fileIds.length} file(s) ${starred ? "added to" : "removed from"} starred (mock)`);
+  const starFiles = async (itemIds: string[], starred: boolean) => {
+    // Backend provides toggle endpoints, so we call per-item toggles to reach desired state
+    try {
+      const targetItems = files.filter(f => itemIds.includes(f.id));
+      let toggled = 0;
+      for (const item of targetItems) {
+        // We only toggle if current state differs from desired state
+        if ((item as any).is_starred !== undefined) {
+          const shouldToggle = (item as any).is_starred !== starred;
+          if (!shouldToggle) continue;
+        }
+        if (item.type === 'file') {
+          await toggleFileStar(item.id);
+        } else {
+          await toggleFolderStar(item.id);
+        }
+        toggled++;
+      }
+      toast.success(`${toggled} item(s) ${starred ? 'starred' : 'unstarred'}`);
+      await fetchFiles(currentFolderId);
+      await refreshStarredCount();
+    } catch (error: any) {
+      const msg = error?.response?.data?.error || error?.message || 'Failed to update starred state';
+      toast.error(msg);
+    }
   };
 
+  const toggleArchive = async (fileId: string) => {
+    try {
+      const res = await toggleFileArchive(fileId);
+      toast.success(res.is_archived ? 'Archived' : 'Unarchived');
+      await fetchFiles(currentFolderId);
+      await refreshArchiveCount();
+      await refreshRecentCount();
+    } catch (error: any) {
+      const msg = error?.response?.data?.error || error?.message || 'Failed to toggle archive';
+      toast.error(msg);
+    }
+  };
+
+
+  const archiveFiles = async (itemIds: string[], archived: boolean) => {
+    try {
+      const targetFiles = files.filter(f => f.type === 'file' && itemIds.includes(f.id));
+      let toggled = 0;
+      for (const item of targetFiles) {
+        if ((item.archived ?? false) !== archived) {
+          await toggleFileArchive(item.id);
+          toggled++;
+        }
+      }
+      toast.success(`${toggled} item(s) ${archived ? 'archived' : 'unarchived'}`);
+      await fetchFiles(currentFolderId);
+    } catch (error: any) {
+      const msg = error?.response?.data?.error || error?.message || 'Failed to update archive state';
+      toast.error(msg);
+    }
+  };
 
   const createFolder = async (name: string, path: string[]) => {
     try {
@@ -142,6 +322,7 @@ export function FileProvider({ children }: { children: ReactNode }) {
       toast.success(`Folder "${name}" created successfully!`);
       // Refresh files for the current folder
       await fetchFiles(parentId);
+      await refreshFilesCount();
     } catch (error: any) {
       toast.error(`Failed to create folder: ${error?.message || 'Unknown error'}`);
       throw error;
@@ -159,10 +340,28 @@ export function FileProvider({ children }: { children: ReactNode }) {
         moveFiles,
         toggleStar,
         starFiles,
+        toggleArchive,
+        archiveFiles,
         createFolder,
+        archiveCount,
+        refreshArchiveCount,
+        starredCount,
+        refreshStarredCount,
+        recentCount,
+        refreshRecentCount,
+        filesCount,
+        refreshFilesCount,
+        sharedCount: totalSharedCount
       }}
     >
       {children}
+      <ConfirmationModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Delete File(s)"
+        message={`Are you sure you want to delete ${filesToDelete.length} file(s)? This action cannot be undone.`}
+      />
     </FileContext.Provider>
   );
 }
@@ -174,3 +373,4 @@ export function useFiles() {
   }
   return context;
 }
+

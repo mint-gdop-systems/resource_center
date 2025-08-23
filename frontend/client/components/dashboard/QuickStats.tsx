@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   FolderIcon,
   DocumentIcon,
@@ -7,6 +7,8 @@ import {
   ChartBarIcon,
 } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
+import { getDashboardStats } from "../../services/api";
+import { useAuth } from "../../services/auth";
 
 interface StatCard {
   id: string;
@@ -17,54 +19,6 @@ interface StatCard {
   icon: React.ComponentType<{ className?: string }>;
   color: string;
 }
-
-const stats: StatCard[] = [
-  {
-    id: "total-files",
-    name: "Total Files",
-    value: "1,248",
-    change: "+12%",
-    changeType: "increase",
-    icon: DocumentIcon,
-    color: "mint",
-  },
-  {
-    id: "folders",
-    name: "Folders",
-    value: "156",
-    change: "+3%",
-    changeType: "increase",
-    icon: FolderIcon,
-    color: "blue",
-  },
-  {
-    id: "starred",
-    name: "Starred Files",
-    value: "64",
-    change: "+8%",
-    changeType: "increase",
-    icon: StarIcon,
-    color: "yellow",
-  },
-  {
-    id: "storage",
-    name: "Storage Used",
-    value: "45.2 GB",
-    change: "+2.1 GB",
-    changeType: "increase",
-    icon: ChartBarIcon,
-    color: "orange",
-  },
-  {
-    id: "uploads",
-    name: "This Month",
-    value: "28",
-    change: "+18%",
-    changeType: "increase",
-    icon: CloudArrowUpIcon,
-    color: "green",
-  },
-];
 
 const colorClasses = {
   mint: {
@@ -92,9 +46,186 @@ const colorClasses = {
     icon: "text-green-600",
     ring: "ring-green-100",
   },
+  purple: {
+    bg: "bg-purple-50",
+    icon: "text-purple-600",
+    ring: "ring-purple-100",
+  },
 };
 
 export default function QuickStats() {
+  const [stats, setStats] = useState<StatCard[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { authenticated } = useAuth();
+
+  useEffect(() => {
+    if (authenticated) {
+      fetchStats();
+      
+      // Auto-refresh stats when dashboard refreshes
+      const handleRefresh = () => fetchStats();
+      window.addEventListener('dashboard:refresh', handleRefresh);
+      
+      return () => window.removeEventListener('dashboard:refresh', handleRefresh);
+    } else {
+      // Show default stats for unauthenticated users
+      setStats(getDefaultStats());
+      setLoading(false);
+    }
+  }, [authenticated]);
+
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
+      const data = await getDashboardStats();
+
+      const statsData: StatCard[] = [
+        {
+          id: "total-files",
+          name: "Total Files",
+          value: data.total_files.value.toLocaleString(),
+          change: `${data.total_files.change >= 0 ? '+' : ''}${data.total_files.change}%`,
+          changeType: data.total_files.change >= 0 ? "increase" : "decrease",
+          icon: DocumentIcon,
+          color: "mint",
+        },
+        {
+          id: "folders",
+          name: "Folders",
+          value: data.total_folders.value.toLocaleString(),
+          change: `${data.total_folders.change >= 0 ? '+' : ''}${data.total_folders.change}%`,
+          changeType: data.total_folders.change >= 0 ? "increase" : "decrease",
+          icon: FolderIcon,
+          color: "blue",
+        },
+        {
+          id: "starred",
+          name: "Starred Files",
+          value: data.starred_files.value.toLocaleString(),
+          change: `${data.starred_files.change >= 0 ? '+' : ''}${data.starred_files.change}%`,
+          changeType: data.starred_files.change >= 0 ? "increase" : "decrease",
+          icon: StarIcon,
+          color: "yellow",
+        },
+        {
+          id: "shared",
+          name: "Shared Files",
+          value: data.starred_files.value.toLocaleString(), // Use starred files as placeholder since shared_files doesn't exist in backend
+          change: `${data.starred_files.change >= 0 ? '+' : ''}${data.starred_files.change}%`,
+          changeType: data.starred_files.change >= 0 ? "increase" : "decrease",
+          icon: ChartBarIcon,
+          color: "purple",
+        },
+        {
+          id: "uploads",
+          name: "This Month",
+          value: data.files_this_month.value.toLocaleString(),
+          change: `${data.files_this_month.change >= 0 ? '+' : ''}${data.files_this_month.change}%`,
+          changeType: data.files_this_month.change >= 0 ? "increase" : "decrease",
+          icon: CloudArrowUpIcon,
+          color: "green",
+        },
+      ];
+
+      setStats(statsData);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching dashboard stats:', err);
+      setError('Failed to load statistics');
+      // Fallback to default stats
+      setStats(getDefaultStats());
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getDefaultStats = (): StatCard[] => [
+    {
+      id: "total-files",
+      name: "Total Files",
+      value: "0",
+      change: "0%",
+      changeType: "neutral",
+      icon: DocumentIcon,
+      color: "mint",
+    },
+    {
+      id: "folders",
+      name: "Folders",
+      value: "0",
+      change: "0%",
+      changeType: "neutral",
+      icon: FolderIcon,
+      color: "blue",
+    },
+    {
+      id: "starred",
+      name: "Starred Files",
+      value: "0",
+      change: "0%",
+      changeType: "neutral",
+      icon: StarIcon,
+      color: "yellow",
+    },
+    {
+      id: "shared",
+      name: "Shared Files",
+      value: "0",
+      change: "0%",
+      changeType: "neutral",
+      icon: ChartBarIcon,
+      color: "purple",
+    },
+    {
+      id: "uploads",
+      name: "This Month",
+      value: "0",
+      change: "0%",
+      changeType: "neutral",
+      icon: CloudArrowUpIcon,
+      color: "green",
+    },
+  ];
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {[...Array(5)].map((_, index) => (
+          <div
+            key={index}
+            className="bg-white rounded-xl border border-gray-200 p-6 animate-pulse"
+          >
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
+              <div className="flex-1">
+                <div className="h-4 bg-gray-200 rounded w-20 mb-2"></div>
+                <div className="h-6 bg-gray-200 rounded w-16"></div>
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="h-4 bg-gray-200 rounded w-24"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (error && !authenticated) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="text-center">
+          <DocumentIcon className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">Welcome to MINT Resource Center</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            Sign in to view your personalized dashboard statistics.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
       {stats.map((stat, index) => {
@@ -128,13 +259,12 @@ export default function QuickStats() {
                 </div>
                 <div className="mt-3 flex items-center">
                   <span
-                    className={`inline-flex items-center text-sm font-medium ${
-                      stat.changeType === "increase"
-                        ? "text-green-600"
-                        : stat.changeType === "decrease"
-                          ? "text-red-600"
-                          : "text-gray-600"
-                    }`}
+                    className={`inline-flex items-center text-sm font-medium ${stat.changeType === "increase"
+                      ? "text-green-600"
+                      : stat.changeType === "decrease"
+                        ? "text-red-600"
+                        : "text-gray-600"
+                      }`}
                   >
                     {stat.changeType === "increase" && (
                       <svg

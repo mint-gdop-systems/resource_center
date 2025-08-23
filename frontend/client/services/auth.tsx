@@ -1,6 +1,6 @@
 import keycloak from './keycloak';
 import { KeycloakProfile } from 'keycloak-js';
-import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 
 interface AuthContextType {
   initialized: boolean;
@@ -23,12 +23,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<KeycloakProfile | null>(null);
 
   const initKeycloak = useCallback(async () => {
+    if (keycloak.authenticated || initialized) {
+      return; // Already initialized, skip
+    }
     try {
       const auth = await keycloak.init({
         onLoad: 'check-sso',
         silentCheckSsoRedirectUri: window.location.origin + '/silent-check-sso.html',
-        pkceMethod: 'S256',
         checkLoginIframe: false,
+        checkLoginIframeInterval: 0,
+        enableLogging: false,
+        flow: 'standard',
+        responseMode: 'fragment',
+        pkceMethod: 'S256'
       });
       setAuthenticated(auth);
       if (auth) {
@@ -37,6 +44,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
     } catch (error) {
       console.error('Keycloak init error', error);
+      // If silent check fails, just mark as not authenticated
+      setAuthenticated(false);
     } finally {
       setInitialized(true);
     }

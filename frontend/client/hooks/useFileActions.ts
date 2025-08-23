@@ -2,65 +2,53 @@ import { FileItem } from "../types";
 import toast from "react-hot-toast";
 
 export function useFileActions() {
-  const openFile = (file: FileItem) => {
+  const openFile = async (file: FileItem) => {
     if (file.type === "folder") {
       // This will be handled by navigation hook
       return { action: "navigate", target: file.name };
     }
 
-    // Handle different file types
-    switch (file.extension?.toLowerCase()) {
-      case "pdf":
-        // In a real app, this would open a PDF viewer
-        toast.success(`Opening ${file.name} in PDF viewer...`);
-        // Simulate opening in new tab
-        window.open(`#/preview/${file.id}`, "_blank");
-        break;
-
-      case "jpg":
-      case "jpeg":
-      case "png":
-      case "gif":
-        // Open image preview
-        toast.success(`Opening image preview for ${file.name}...`);
-        window.open(`#/preview/${file.id}`, "_blank");
-        break;
-
-      case "doc":
-      case "docx":
-        toast.success(`Opening ${file.name} in document viewer...`);
-        window.open(`#/preview/${file.id}`, "_blank");
-        break;
-
-      case "xls":
-      case "xlsx":
-        toast.success(`Opening ${file.name} in spreadsheet viewer...`);
-        window.open(`#/preview/${file.id}`, "_blank");
-        break;
-
-      case "ppt":
-      case "pptx":
-        toast.success(`Opening ${file.name} in presentation viewer...`);
-        window.open(`#/preview/${file.id}`, "_blank");
-        break;
-
-      default:
-        // Default to download
-        downloadFile(file);
+    try {
+      // Import the viewFile API function
+      const { viewFile } = await import('../services/api');
+      
+      // Use the API to get the file
+      const url = await viewFile(file.id);
+      window.open(url, '_blank');
+      
+      // Clean up the blob URL after a delay
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+      
+      toast.success(`Opening ${file.name}...`);
+    } catch (error) {
+      console.error('Error viewing file:', error);
+      toast.error('Failed to open file. Please try again.');
     }
 
     return { action: "open", target: file.id };
   };
 
-  const downloadFile = (file: FileItem) => {
-    // In a real app, this would trigger actual download
-    toast.success(`Downloading ${file.name}...`);
-
-    // Simulate download
-    const link = document.createElement("a");
-    link.href = "#"; // Would be actual file URL
-    link.download = file.name;
-    link.click();
+  const downloadFile = async (file: FileItem) => {
+    try {
+      if (file.type === 'folder') {
+        // Import the downloadFolder API function
+        const { downloadFolder } = await import('../services/api');
+        
+        // Download the folder as ZIP
+        await downloadFolder(file.id, file.name);
+        toast.success(`Downloading ${file.name}.zip...`);
+      } else {
+        // Import the downloadFile API function
+        const { downloadFile: downloadFileApi } = await import('../services/api');
+        
+        // Download the file
+        await downloadFileApi(file.id, file.name);
+        toast.success(`Downloading ${file.name}...`);
+      }
+    } catch (error) {
+      console.error('Error downloading:', error);
+      toast.error(`Failed to download ${file.type}. Please try again.`);
+    }
   };
 
   const previewFile = (file: FileItem) => {

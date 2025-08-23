@@ -1532,9 +1532,8 @@ document
       });
 
       const data = await response.json();
-
-      if (!response.ok || data.error) {
-        throw new Error(data.error || "Failed to upload the file.");
+      if (!response.ok) {
+        throw new Error(data.error || "An unexpected error occurred.");
       }
 
       // Hide modal first before showing success
@@ -1542,16 +1541,20 @@ document
       modalEl.addEventListener(
         "hidden.bs.modal",
         () => {
-          Swal.fire({
-            icon: "success",
-            title: "Upload Successful",
-            text:
-              data.message || "The new version has been uploaded successfully.",
-            timer: 2000,
-            showConfirmButton: false,
+          Swal.fire(
+            "Upload Successful",
+            data.message || "The new version has been uploaded successfully.",
+            "success"
+          ).then(() => {
+            // Use a slight delay to allow the user to see the message
+            // before the page reloads.
+            setTimeout(() => {
+              // Re-fetch the content of the current folder to show the new version
+              const folderId = currentFolder?.id || null;
+              fetchFilesAndFolders(folderId);
+              viewVersionHistory(fileId); // Re-open the history modal
+            }, 500);
           });
-
-          setTimeout(() => location.reload(), 1000);
         },
         { once: true }
       );
@@ -1722,28 +1725,31 @@ async function deleteFile(fileId) {
       const response = await fetch(`/files/${fileId}/delete/`, {
         method: "DELETE",
         headers: {
+          "Content-Type": "application/json",
           "X-CSRFToken": getCookie("csrftoken"),
         },
       });
 
-      const data = await response.json();
-
-      if (!response.ok) throw new Error(data.error || "Delete failed.");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({})); // Gracefully handle non-JSON error responses
+        throw new Error(errorData.error || "Failed to delete the file.");
+      }
 
       Swal.fire({
         icon: "success",
         title: "Deleted",
-        text: data.message,
+        text: "The file has been deleted successfully.",
         timer: 2000,
         showConfirmButton: false,
       });
 
-      setTimeout(() => location.reload(), 1000);
+      // Refresh the file list without a full page reload
+      fetchFilesAndFolders(currentFolder.id);
     } catch (err) {
       Swal.fire({
         icon: "error",
         title: "Failed to Delete",
-        text: err.message || "An error occurred.",
+        text: err.message,
       });
     }
   }

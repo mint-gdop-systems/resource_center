@@ -46,14 +46,15 @@ const fileTypeIconMap: Record<string, any> = {
 };
 
 interface FileGridProps {
-  files: FileItem[];
+  files: any[];
   selectedFiles: string[];
   onFileSelect: (fileId: string, selected: boolean) => void;
   onSelectAll: (selected: boolean) => void;
   viewMode: ViewMode;
-  onNavigateToFolder?: (folderName: string) => void;
+  onNavigateToFolder?: (folderId: string) => void;
   isAuthenticated?: boolean;
   setShowUpload?: (show: boolean) => void;
+  onArchiveOverride?: (fileId: string) => void;
 }
 
 export default function FileGrid({
@@ -65,8 +66,9 @@ export default function FileGrid({
   onNavigateToFolder,
   isAuthenticated = true,
   setShowUpload,
+  onArchiveOverride,
 }: FileGridProps) {
-  const { deleteFiles, renameFile, moveFiles, toggleStar, starFiles } =
+  const { deleteFiles, renameFile, moveFiles, toggleStar, starFiles, toggleArchive, downloadFiles } =
     useFiles();
   const getFileIcon = (file: FileItem) => {
     if (file.type === "folder") {
@@ -85,23 +87,25 @@ export default function FileGrid({
     return <FontAwesomeIcon icon={icon} className={`${colorClass} h-8 w-8`} />;
   };
 
-  const handleFileClick = (file: FileItem) => {
+  const handleFileClick = async (file: FileItem) => {
     if (file.type === "folder") {
       onNavigateToFolder?.(file.id);
     } else {
-      // Open file - in real app would open preview or download
-      if (
-        file.extension === "pdf" ||
-        file.extension === "jpg" ||
-        file.extension === "png"
-      ) {
-        window.open(`#/preview/${file.id}`, "_blank");
-      } else {
-        // Trigger download
-        const link = document.createElement("a");
-        link.href = "#"; // Would be actual file URL
-        link.download = file.name;
-        link.click();
+      try {
+        // Import the viewFile API function
+        const { viewFile } = await import('../../services/api');
+        
+        // Use the API to get the file
+        const url = await viewFile(file.id);
+        window.open(url, '_blank');
+        
+        // Clean up the blob URL after a delay
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+      } catch (error) {
+        console.error('Error viewing file:', error);
+        // Show user-friendly error message
+        const { default: toast } = await import('react-hot-toast');
+        toast.error('Failed to open file. Please try again.');
       }
     }
   };
@@ -115,18 +119,57 @@ export default function FileGrid({
     files.length > 0 && files.every((file) => selectedFiles.includes(file.id));
   const someSelected = selectedFiles.length > 0 && !allSelected;
 
+  // Get selected items for copy operations
+  const selectedItems = files.filter(file => selectedFiles.includes(file.id));
+
+  // Empty state
+  if (files.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <FolderIcon className="mx-auto h-12 w-12 text-gray-400" />
+        {isAuthenticated ? (
+          <>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No files</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Get started by uploading a file or creating a folder.
+            </p>
+            <div className="mt-6">
+              <button 
+                onClick={() => setShowUpload?.(true)}
+                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-mint-600 hover:bg-mint-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-mint-500"
+              >
+                <CloudArrowUpIcon className="h-4 w-4 mr-2" />
+                Upload your first file
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">Sign in to view files</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Please sign in to access and manage your files
+            </p>
+          </>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* Bulk Actions */}
       {isAuthenticated && files.length > 0 && (
         <BulkActions
           selectedFiles={selectedFiles}
-          onDownload={(fileIds) => {
-            // Download implementation would go here
-            console.log("Bulk download:", fileIds);
-          }}
+          selectedItems={selectedItems}
+          onDownload={downloadFiles}
           onDelete={deleteFiles}
-          onMove={moveFiles}
+          onMove={(fileIds, targetPath) => {
+            // Convert old interface to new interface
+            const fileIdsArray = selectedItems.filter(item => item.type === 'file').map(item => item.id);
+            const folderIdsArray = selectedItems.filter(item => item.type === 'folder').map(item => item.id);
+            moveFiles(fileIdsArray, folderIdsArray);
+          }}
           onShare={(fileIds) => {
             // Share implementation would go here
             console.log("Bulk share:", fileIds);
@@ -142,10 +185,10 @@ export default function FileGrid({
           <div className="flex items-center space-x-2">
             <input
               type="checkbox"
-              checked={allSelected}
-              ref={(input) => {
-                if (input) input.indeterminate = someSelected;
-              }}
+                checked={allSelected}
+                ref={(input) => {
+                  if (input) input.indeterminate = someSelected;
+                }}
               onChange={(e) => onSelectAll(e.target.checked)}
               className="h-4 w-4 text-mint-600 focus:ring-mint-500 border-gray-300 rounded"
             />
@@ -210,27 +253,30 @@ export default function FileGrid({
                   <FileActions
                     file={file}
                     onRename={renameFile}
-                    onDelete={(fileId) => deleteFiles([fileId])}
-                    onMove={(fileId, targetPath) =>
-                      moveFiles([fileId], targetPath)
-                    }
+                    onDelete={() => deleteFiles([file.id])}
+                    onMove={(fileId, targetPath) => {
+                      // This is handled by the FolderSelectionModal in FileActions now
+                    }}
                     onStar={(fileId) => toggleStar(fileId)}
+                    onArchive={(fileId) => (onArchiveOverride ? onArchiveOverride(fileId) : toggleArchive(fileId))}
                   />
                 </div>
 
                 {/* Star icon */}
-                <div className="absolute top-3 right-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute top-3 right-8">
                   <button
+                    aria-label={file.is_starred ? 'Unstar' : 'Star'}
+                    title={file.is_starred ? 'Unstar' : 'Star'}
                     onClick={(e) => {
                       e.stopPropagation();
-                      // Handle star toggle
+                      toggleStar(file.id);
                     }}
-                    className="p-1 text-gray-400 hover:text-yellow-500"
+                    className={`p-1 rounded hover:bg-gray-100`}
                   >
-                    {file.starred ? (
+                    {file.is_starred ? (
                       <StarIconSolid className="h-4 w-4 text-yellow-500" />
                     ) : (
-                      <StarIcon className="h-4 w-4" />
+                      <StarIcon className="h-4 w-4 text-gray-400" />
                     )}
                   </button>
                 </div>
@@ -244,34 +290,37 @@ export default function FileGrid({
                 <div className="space-y-1">
                   <h3
                     className="text-sm font-medium text-gray-900 truncate hover:underline cursor-pointer"
-                    onClick={e => {
+                    onClick={async (e) => {
                       e.stopPropagation();
-                      handleFileClick(file);
+                      await handleFileClick(file);
                     }}
                   >
                     {file.name}
                   </h3>
                   <div className="text-xs text-gray-500 space-y-0.5">
                     <div className="flex items-center justify-between">
-                      <span>{new Date(file.updatedAt).toLocaleDateString()}</span>
-                      {file.size && (
+                      <span>{new Date(file.uploaded_at).toLocaleDateString()}</span>
+                      {file.file_size && (
                         <span className="text-xs">
-                          {formatFileSize(file.size)}
+                          {formatFileSize(file.file_size)}
                         </span>
                       )}
                     </div>
-                    <div className="truncate">{file.owner.name}</div>
+                    <div className="truncate">{file.owner_first_name || file.owner_email || 'Unknown'}</div>
                   </div>
                 </div>
 
                 {/* Badges */}
                 <div className="flex items-center justify-between mt-2">
-                  <div className="flex space-x-1">
+                  <div className="flex space-x-1 items-center">
                     {file.shared && (
                       <div className="w-2 h-2 bg-mint-400 rounded-full" />
                     )}
                     {file.starred && (
                       <div className="w-2 h-2 bg-yellow-400 rounded-full" />
+                    )}
+                    {file.archived && (
+                      <span className="ml-1 text-[10px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">Archived</span>
                     )}
                   </div>
                   {file.type === "folder" && (
@@ -283,37 +332,6 @@ export default function FileGrid({
               </motion.div>
             );
           })}
-        </div>
-      )}
-
-      {/* Empty state */}
-      {files.length === 0 && (
-        <div className="text-center py-12">
-          <FolderIcon className="mx-auto h-12 w-12 text-gray-400" />
-          {isAuthenticated ? (
-            <>
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No files</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Get started by uploading a file or creating a folder.
-              </p>
-              <div className="mt-6">
-                <button 
-                  onClick={() => setShowUpload?.(true)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-mint-600 hover:bg-mint-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-mint-500"
-                >
-                  <CloudArrowUpIcon className="h-4 w-4 mr-2" />
-                  Upload your first file
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <h3 className="mt-2 text-sm font-medium text-gray-900">Sign in to view files</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Please sign in to access and manage your files
-              </p>
-            </>
-          )}
         </div>
       )}
     </div>

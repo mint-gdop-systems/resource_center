@@ -98,14 +98,48 @@ class UploadedFileSerializer(serializers.ModelSerializer):
 
 
 class FileSharingSerializer(serializers.ModelSerializer):
-    shared_by = serializers.ReadOnlyField(source='shared_by.email')  # or username
+    shared_by_email = serializers.ReadOnlyField(source='shared_by.email')
+    shared_by_name = serializers.SerializerMethodField()
+    shared_to_email = serializers.ReadOnlyField(source='shared_to.email')
+    shared_to_name = serializers.SerializerMethodField()
     file = UploadedFileSerializer(read_only=True)
+    folder = FolderSerializer(read_only=True)
     shared_at = serializers.DateTimeField(read_only=True)
+    item_name = serializers.SerializerMethodField()
+    item_type = serializers.SerializerMethodField()
 
     class Meta:
         model = FileSharing
-        fields = ['id', 'file', 'shared_to', 'shared_by', 'shared_at', 'message', 'share_type']
+        fields = [
+            'id', 'file', 'folder', 'shared_to', 'shared_to_email', 'shared_to_name',
+            'shared_by', 'shared_by_email', 'shared_by_name', 'shared_at', 
+            'message', 'share_type', 'is_seen', 'item_name', 'item_type'
+        ]
         read_only_fields = ['shared_by', 'shared_at']
+
+    def get_shared_by_name(self, obj):
+        if obj.shared_by:
+            return f"{obj.shared_by.first_name} {obj.shared_by.last_name}".strip() or obj.shared_by.email
+        return "Unknown"
+
+    def get_shared_to_name(self, obj):
+        if obj.shared_to:
+            return f"{obj.shared_to.first_name} {obj.shared_to.last_name}".strip() or obj.shared_to.email
+        return "Unknown"
+
+    def get_item_name(self, obj):
+        if obj.share_type == FileSharing.FILE and obj.file:
+            return obj.file.name
+        elif obj.share_type == FileSharing.FOLDER and obj.folder:
+            return obj.folder.name
+        return "Unknown"
+
+    def get_item_type(self, obj):
+        if obj.share_type == FileSharing.FILE and obj.file:
+            return obj.file.file_type
+        elif obj.share_type == FileSharing.FOLDER:
+            return "folder"
+        return "unknown"
 
     def validate(self, data):
         if not data.get('file') and not data.get('folder'):
@@ -120,8 +154,11 @@ class EmailShareSerializer(serializers.Serializer):
         child=serializers.EmailField(),
         allow_empty=False
     )
-    message = serializers.CharField()
-    file_id = serializers.IntegerField()
+    message = serializers.CharField(required=False, allow_blank=True)
+    file_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        allow_empty=False
+    )
 
 
 class FileVersionSerializer(serializers.ModelSerializer):

@@ -57,7 +57,7 @@ OIDC_OP_LOGOUT_ENDPOINT = f"{KEYCLOAK_URL}/realms/{REALM}/protocol/openid-connec
 
 OIDC_RP_SIGN_ALGO = "RS256"
 
-LOGIN_URL = "oidc_authentication_init"
+# LOGIN_URL = "oidc_authentication_init"
 LOGOUT_REDIRECT_URL = config("OIDC_LOGOUT_REDIRECT_URL")
 LOGIN_REDIRECT_URL = config("OIDC_LOGIN_REDIRECT_URL")
 
@@ -181,8 +181,8 @@ REST_FRAMEWORK = {
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  # Use this for real SMTP
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # Use this for testing - prints to console
 
 EMAIL_HOST = 'smtp.gmail.com'  
 EMAIL_PORT = 587
@@ -192,11 +192,11 @@ EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 CORS_ALLOWED_ORIGINS = [
-    "https://localhost:8090",
-    "http://localhost:8090",
-    "http://localhost:5173",
-    "http://localhost:8000",
+    "http://localhost:7000",
 ]
+
+CORS_ALLOW_ALL_ORIGINS = True
+
 
 # Logging configuration for debugging
 LOGGING = {
