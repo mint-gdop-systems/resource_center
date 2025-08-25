@@ -17,6 +17,7 @@ import { fileTypeIcons } from "../../data/mockData";
 import FileActions from "./FileActions";
 import BulkActions from "./BulkActions";
 import { useFiles } from "../../contexts/FileContext";
+import { useTheme } from "../../contexts/ThemeContext";
 import FileIcon from "./FileIcon";
 
 // FontAwesome imports
@@ -83,6 +84,8 @@ export default function FileList({
 }: FileListProps) {
   const { deleteFiles, renameFile, moveFiles, toggleStar, starFiles, toggleArchive, downloadFiles } =
     useFiles();
+  const { actualTheme } = useTheme();
+  const isDarkMode = actualTheme === 'dark';
   const handleView = async (fileId: string) => {
     const f = files.find(x => x.id === fileId);
     if (f && f.type !== 'folder') {
@@ -164,7 +167,11 @@ export default function FileList({
     label: string;
     sortKey: string;
   }) => (
-    <button className="flex items-center space-x-1 text-xs font-medium text-gray-500 hover:text-gray-700">
+    <button className={`flex items-center space-x-1 text-xs font-medium ${
+      isDarkMode 
+        ? 'text-gray-400 hover:text-gray-300' 
+        : 'text-gray-500 hover:text-gray-700'
+    }`}>
       <span>{label}</span>
       {viewMode.sortBy === sortKey && (
         <div>
@@ -185,8 +192,12 @@ export default function FileList({
         <FolderIcon className="mx-auto h-12 w-12 text-gray-400" />
         {isAuthenticated ? (
           <>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No files</h3>
-            <p className="mt-1 text-sm text-gray-500">
+            <h3 className={`mt-2 text-sm font-medium ${
+              isDarkMode ? 'text-white' : 'text-gray-900'
+            }`}>No files</h3>
+            <p className={`mt-1 text-sm ${
+              isDarkMode ? 'text-gray-400' : 'text-gray-500'
+            }`}>
               Get started by uploading a file or creating a folder.
             </p>
             <div className="mt-6">
@@ -201,8 +212,12 @@ export default function FileList({
           </>
         ) : (
           <>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">Sign in to view files</h3>
-            <p className="mt-1 text-sm text-gray-500">
+            <h3 className={`mt-2 text-sm font-medium ${
+              isDarkMode ? 'text-white' : 'text-gray-900'
+            }`}>Sign in to view files</h3>
+            <p className={`mt-1 text-sm ${
+              isDarkMode ? 'text-gray-400' : 'text-gray-500'
+            }`}>
               Please sign in to access and manage your files
             </p>
           </>
@@ -238,8 +253,14 @@ export default function FileList({
 
       {/* Table header */}
       {files.length > 0 && (
-        <div className="bg-gray-50 rounded-lg border border-gray-200">
-          <div className="grid grid-cols-12 gap-4 px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">
+        <div className={`rounded-lg border ${
+          isDarkMode 
+            ? 'bg-gray-800 border-gray-700' 
+            : 'bg-gray-50 border-gray-200'
+        }`}>
+          <div className={`grid grid-cols-12 gap-4 px-4 py-3 text-xs font-medium uppercase tracking-wide ${
+            isDarkMode ? 'text-gray-400' : 'text-gray-500'
+          }`}>
             <div className="col-span-1 flex items-center">
               <input
                 type="checkbox"
@@ -279,11 +300,12 @@ export default function FileList({
           // Handler to prevent row click when clicking on interactive elements
           const handleRowClick = (e: React.MouseEvent) => {
             const target = e.target as HTMLElement;
-            // If the click is on a button, input, or inside FileActions, do nothing
+            // If the click is on a button, input, file name, or inside FileActions, do nothing
             if (
               target.closest('button') ||
               target.closest('input[type="checkbox"]') ||
-              target.closest('.file-actions-menu')
+              target.closest('.file-actions-menu') ||
+              target.closest('p') // Prevent row click when clicking on file name
             ) {
               return;
             }
@@ -299,8 +321,12 @@ export default function FileList({
               transition={{ duration: 0.2, delay: index * 0.03 }}
               className={`group grid grid-cols-12 gap-4 px-4 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
                 isSelected
-                  ? "bg-mint-50 border border-mint-200"
-                  : "hover:bg-gray-50 border border-transparent"
+                  ? `border border-mint-200 ${
+                      isDarkMode ? 'bg-mint-900' : 'bg-mint-50'
+                    }`
+                  : `border border-transparent ${
+                      isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
+                    }`
               }`}
               onClick={handleRowClick}
               tabIndex={0}
@@ -327,35 +353,20 @@ export default function FileList({
                 {getFileIcon(file)}
                 <div className="flex-1 min-w-0">
                   <p
-                    className="text-sm font-medium text-gray-900 truncate hover:underline cursor-pointer"
+                    className={`text-sm font-medium truncate hover:underline cursor-pointer ${
+                      isDarkMode ? 'text-white' : 'text-gray-900'
+                    }`}
                     onClick={async (e) => {
                       e.stopPropagation();
-                      if (file.type !== 'folder') {
-                        try {
-                          // Import the viewFile API function
-                          const { viewFile } = await import('../../services/api');
-                          
-                          // Use the API to get the file
-                          const url = await viewFile(file.id);
-                          window.open(url, '_blank');
-                          
-                          // Clean up the blob URL after a delay
-                          setTimeout(() => URL.revokeObjectURL(url), 100);
-                        } catch (error) {
-                          console.error('Error viewing file:', error);
-                          // Show user-friendly error message
-                          const { default: toast } = await import('react-hot-toast');
-                          toast.error('Failed to open file. Please try again.');
-                        }
-                      } else {
-                        await handleFileClick(file);
-                      }
+                      await handleFileClick(file);
                     }}
                   >
                     {file.name}
                   </p>
                   {file.type === "folder" && (
-                    <p className="text-xs text-gray-500">Folder</p>
+                    <p className={`text-xs ${
+                      isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                    }`}>Folder</p>
                   )}
                 </div>
                 <div className="flex items-center space-x-1">
@@ -378,7 +389,11 @@ export default function FileList({
                     <div className="w-2 h-2 bg-mint-400 rounded-full" />
                   )}
                   {file.archived && (
-                    <span className="ml-1 text-[10px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">Archived</span>
+                    <span className={`ml-1 text-[10px] px-2 py-0.5 rounded-full ${
+                      isDarkMode 
+                        ? 'text-gray-300 bg-gray-700' 
+                        : 'text-gray-600 bg-gray-100'
+                    }`}>Archived</span>
                   )}
                 </div>
               </div>
@@ -386,12 +401,18 @@ export default function FileList({
               {/* Owner */}
               <div className="col-span-2 flex items-center">
                 <div className="flex items-center space-x-2">
-                  <div className="h-6 w-6 bg-gray-200 rounded-full flex items-center justify-center">
-                    <span className="text-xs font-medium text-gray-600">
+                  <div className={`h-6 w-6 rounded-full flex items-center justify-center ${
+                    isDarkMode ? 'bg-gray-600' : 'bg-gray-200'
+                  }`}>
+                    <span className={`text-xs font-medium ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                    }`}>
                       {(file.owner_first_name || file.owner_email || file.uploaded_by_name || file.owner?.name || "Unknown").charAt(0)}
                     </span>
                   </div>
-                  <span className="text-sm text-gray-900 truncate">
+                  <span className={`text-sm truncate ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-900'
+                  }`}>
                     {file.owner_first_name || file.owner_email || file.uploaded_by_name || file.owner?.name || "Unknown"}
                   </span>
                 </div>
@@ -412,7 +433,9 @@ export default function FileList({
 
               {/* Modified */}
               <div className="col-span-2 flex items-center">
-                <span className="text-sm text-gray-500">
+                <span className={`text-sm ${
+                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                }`}>
                   {file.type === 'folder' 
                     ? formatDate(new Date(file.createdAt))
                     : formatDate(new Date(file.uploaded_at))}
@@ -421,7 +444,9 @@ export default function FileList({
 
               {/* Size */}
               <div className="col-span-1 flex items-center">
-                <span className="text-sm text-gray-500">
+                <span className={`text-sm ${
+                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                }`}>
                   {file.size ? formatFileSize(file.size) : "—"}
                 </span>
               </div>

@@ -11,6 +11,7 @@ import {
 import toast from "react-hot-toast";
 import FolderSelectionModal from "./FolderSelectionModal";
 import ShareModal from "./ShareModal";
+import { useTheme } from "../../contexts/ThemeContext";
 
 interface BulkActionsProps {
   selectedFiles: string[];
@@ -35,6 +36,8 @@ export default function BulkActions({
   onClearSelection,
   onView,
 }: BulkActionsProps) {
+  const { actualTheme } = useTheme();
+  const isDarkMode = actualTheme === 'dark';
   const [showCopyModal, setShowCopyModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const handleDownload = async () => {
@@ -116,15 +119,25 @@ export default function BulkActions({
 
   return (
     <>
-      <div className="flex items-center justify-between p-3 bg-mint-50 border border-mint-200 rounded-lg mb-4">
+      <div className={`flex items-center justify-between p-3 border rounded-lg mb-4 ${
+        isDarkMode 
+          ? 'bg-mint-900 border-mint-700' 
+          : 'bg-mint-50 border-mint-200'
+      }`}>
         <div className="flex items-center space-x-4">
-          <span className="text-sm text-mint-700 font-medium">
+          <span className={`text-sm font-medium ${
+            isDarkMode ? 'text-mint-300' : 'text-mint-700'
+          }`}>
             {selectedFiles.length} item{selectedFiles.length > 1 ? "s" : ""}{" "}
             selected
           </span>
           <button
             onClick={onClearSelection}
-            className="text-sm text-mint-600 hover:text-mint-700 underline"
+            className={`text-sm underline ${
+              isDarkMode 
+                ? 'text-mint-400 hover:text-mint-300' 
+                : 'text-mint-600 hover:text-mint-700'
+            }`}
           >
             Clear selection
           </button>
@@ -149,7 +162,11 @@ export default function BulkActions({
                   toast.error('Failed to open file. Please try again.');
                 }
               }}
-              className="inline-flex items-center px-3 py-1.5 text-sm text-mint-600 hover:text-mint-700 hover:bg-mint-100 rounded-md transition-colors"
+              className={`inline-flex items-center px-3 py-1.5 text-sm rounded-md transition-colors ${
+                isDarkMode 
+                  ? 'text-mint-400 hover:text-mint-300 hover:bg-mint-800' 
+                  : 'text-mint-600 hover:text-mint-700 hover:bg-mint-100'
+              }`}
               title="View file"
             >
               <EyeIcon className="h-4 w-4 mr-1" />
@@ -158,7 +175,11 @@ export default function BulkActions({
           )}
           <button
             onClick={handleDownload}
-            className="inline-flex items-center px-3 py-1.5 text-sm text-mint-600 hover:text-mint-700 hover:bg-mint-100 rounded-md transition-colors"
+            className={`inline-flex items-center px-3 py-1.5 text-sm rounded-md transition-colors ${
+              isDarkMode 
+                ? 'text-mint-400 hover:text-mint-300 hover:bg-mint-800' 
+                : 'text-mint-600 hover:text-mint-700 hover:bg-mint-100'
+            }`}
             title="Download selected files"
           >
             <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
@@ -167,7 +188,11 @@ export default function BulkActions({
 
           <button
             onClick={handleShare}
-            className="inline-flex items-center px-3 py-1.5 text-sm text-mint-600 hover:text-mint-700 hover:bg-mint-100 rounded-md transition-colors"
+            className={`inline-flex items-center px-3 py-1.5 text-sm rounded-md transition-colors ${
+              isDarkMode 
+                ? 'text-mint-400 hover:text-mint-300 hover:bg-mint-800' 
+                : 'text-mint-600 hover:text-mint-700 hover:bg-mint-100'
+            }`}
             title="Share selected files"
           >
             <ShareIcon className="h-4 w-4 mr-1" />
@@ -176,7 +201,11 @@ export default function BulkActions({
 
           <button
             onClick={handleStar}
-            className="inline-flex items-center px-3 py-1.5 text-sm text-mint-600 hover:text-mint-700 hover:bg-mint-100 rounded-md transition-colors"
+            className={`inline-flex items-center px-3 py-1.5 text-sm rounded-md transition-colors ${
+              isDarkMode 
+                ? 'text-mint-400 hover:text-mint-300 hover:bg-mint-800' 
+                : 'text-mint-600 hover:text-mint-700 hover:bg-mint-100'
+            }`}
             title="Add to starred"
           >
             <StarIcon className="h-4 w-4 mr-1" />
@@ -185,7 +214,11 @@ export default function BulkActions({
 
           <button
             onClick={handleCopyToFolder}
-            className="inline-flex items-center px-3 py-1.5 text-sm text-mint-600 hover:text-mint-700 hover:bg-mint-100 rounded-md transition-colors"
+            className={`inline-flex items-center px-3 py-1.5 text-sm rounded-md transition-colors ${
+              isDarkMode 
+                ? 'text-mint-400 hover:text-mint-300 hover:bg-mint-800' 
+                : 'text-mint-600 hover:text-mint-700 hover:bg-mint-100'
+            }`}
             title="Copy to folder"
           >
             <DocumentDuplicateIcon className="h-4 w-4 mr-1" />
@@ -194,18 +227,28 @@ export default function BulkActions({
 
           <button
             onClick={handleMove}
-            className="inline-flex items-center px-3 py-1.5 text-sm text-mint-600 hover:text-mint-700 hover:bg-mint-100 rounded-md transition-colors"
+            className={`inline-flex items-center px-3 py-1.5 text-sm rounded-md transition-colors ${
+              isDarkMode 
+                ? 'text-mint-400 hover:text-mint-300 hover:bg-mint-800' 
+                : 'text-mint-600 hover:text-mint-700 hover:bg-mint-100'
+            }`}
             title="Move selected files"
           >
             <FolderIcon className="h-4 w-4 mr-1" />
             Move
           </button>
 
-          <div className="w-px h-6 bg-mint-200" />
+          <div className={`w-px h-6 ${
+            isDarkMode ? 'bg-mint-700' : 'bg-mint-200'
+          }`} />
 
           <button
             onClick={handleDelete}
-            className="inline-flex items-center px-3 py-1.5 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+            className={`inline-flex items-center px-3 py-1.5 text-sm rounded-md transition-colors ${
+              isDarkMode 
+                ? 'text-red-400 hover:text-red-300 hover:bg-red-900' 
+                : 'text-red-600 hover:text-red-700 hover:bg-red-50'
+            }`}
             title="Delete selected files"
           >
             <TrashIcon className="h-4 w-4 mr-1" />

@@ -13,6 +13,7 @@ import { fileTypeIcons } from "../../data/mockData";
 import FileActions from "./FileActions";
 import BulkActions from "./BulkActions";
 import { useFiles } from "../../contexts/FileContext";
+import { useTheme } from "../../contexts/ThemeContext";
 // FontAwesome imports
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -70,6 +71,8 @@ export default function FileGrid({
 }: FileGridProps) {
   const { deleteFiles, renameFile, moveFiles, toggleStar, starFiles, toggleArchive, downloadFiles } =
     useFiles();
+  const { actualTheme } = useTheme();
+  const isDarkMode = actualTheme === 'dark';
   const getFileIcon = (file: FileItem) => {
     if (file.type === "folder") {
       return <FontAwesomeIcon icon={faFolder} className="text-yellow-500 h-8 w-8" />;
@@ -129,8 +132,12 @@ export default function FileGrid({
         <FolderIcon className="mx-auto h-12 w-12 text-gray-400" />
         {isAuthenticated ? (
           <>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No files</h3>
-            <p className="mt-1 text-sm text-gray-500">
+            <h3 className={`mt-2 text-sm font-medium ${
+              isDarkMode ? 'text-white' : 'text-gray-900'
+            }`}>No files</h3>
+            <p className={`mt-1 text-sm ${
+              isDarkMode ? 'text-gray-400' : 'text-gray-500'
+            }`}>
               Get started by uploading a file or creating a folder.
             </p>
             <div className="mt-6">
@@ -145,8 +152,12 @@ export default function FileGrid({
           </>
         ) : (
           <>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">Sign in to view files</h3>
-            <p className="mt-1 text-sm text-gray-500">
+            <h3 className={`mt-2 text-sm font-medium ${
+              isDarkMode ? 'text-white' : 'text-gray-900'
+            }`}>Sign in to view files</h3>
+            <p className={`mt-1 text-sm ${
+              isDarkMode ? 'text-gray-400' : 'text-gray-500'
+            }`}>
               Please sign in to access and manage your files
             </p>
           </>
@@ -213,7 +224,8 @@ export default function FileGrid({
               if (
                 target.closest('button') ||
                 target.closest('input[type="checkbox"]') ||
-                target.closest('.file-actions-menu')
+                target.closest('.file-actions-menu') ||
+                target.closest('h3') // Prevent card click when clicking on file name
               ) {
                 return;
               }
@@ -227,10 +239,16 @@ export default function FileGrid({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.2, delay: index * 0.05 }}
-                className={`group relative bg-white border rounded-xl p-4 hover:shadow-md transition-all duration-200 cursor-pointer ${
+                className={`group relative border rounded-xl p-4 hover:shadow-md transition-all duration-200 cursor-pointer ${
                   isSelected
-                    ? "border-mint-300 bg-mint-50 shadow-sm"
-                    : "border-gray-200 hover:border-gray-300"
+                    ? `border-mint-300 shadow-sm ${
+                        isDarkMode ? 'bg-mint-900' : 'bg-mint-50'
+                      }`
+                    : `${
+                        isDarkMode 
+                          ? 'bg-gray-800 border-gray-700 hover:border-gray-600' 
+                          : 'bg-white border-gray-200 hover:border-gray-300'
+                      }`
                 }`}
                 onClick={handleCardClick}
               >
@@ -289,7 +307,9 @@ export default function FileGrid({
                 {/* File info */}
                 <div className="space-y-1">
                   <h3
-                    className="text-sm font-medium text-gray-900 truncate hover:underline cursor-pointer"
+                    className={`text-sm font-medium truncate hover:underline cursor-pointer ${
+                      isDarkMode ? 'text-white' : 'text-gray-900'
+                    }`}
                     onClick={async (e) => {
                       e.stopPropagation();
                       await handleFileClick(file);
@@ -297,7 +317,9 @@ export default function FileGrid({
                   >
                     {file.name}
                   </h3>
-                  <div className="text-xs text-gray-500 space-y-0.5">
+                  <div className={`text-xs space-y-0.5 ${
+                    isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
                     <div className="flex items-center justify-between">
                       <span>{new Date(file.uploaded_at).toLocaleDateString()}</span>
                       {file.file_size && (
@@ -320,7 +342,11 @@ export default function FileGrid({
                       <div className="w-2 h-2 bg-yellow-400 rounded-full" />
                     )}
                     {file.archived && (
-                      <span className="ml-1 text-[10px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">Archived</span>
+                      <span className={`ml-1 text-[10px] px-2 py-0.5 rounded-full ${
+                        isDarkMode 
+                          ? 'text-gray-300 bg-gray-700' 
+                          : 'text-gray-600 bg-gray-100'
+                      }`}>Archived</span>
                     )}
                   </div>
                   {file.type === "folder" && (

@@ -1,4 +1,4 @@
-import React from "react";
+
 import { motion } from "framer-motion";
 import {
   DocumentIcon,
@@ -54,7 +54,7 @@ export default function WelcomeSection() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="relative text-center bg-gradient-to-br from-mint-50 via-blue-50 to-purple-50 rounded-3xl p-8 md:p-16 overflow-hidden"
+        className="relative text-center bg-gradient-to-br from-mint-50 via-blue-50 to-purple-50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-900 rounded-3xl p-8 md:p-16 overflow-hidden"
       >
         {/* Background decoration */}
         <div className="absolute inset-0 bg-gradient-to-br from-mint-100/20 to-blue-100/20 rounded-3xl"></div>
@@ -72,13 +72,13 @@ export default function WelcomeSection() {
               <SparklesIcon className="h-4 w-4 mr-2" />
               Ministry of Innovation and Technology
             </div>
-            <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+            <h1 className="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6 leading-tight">
               Welcome to{" "}
               <span className="bg-gradient-to-r from-mint-600 to-blue-600 bg-clip-text text-transparent">
                 MINT Resource Center
               </span>
             </h1>
-            <p className="text-xl md:text-2xl text-gray-600 mb-8 leading-relaxed max-w-3xl mx-auto">
+            <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-8 leading-relaxed max-w-3xl mx-auto">
               Your comprehensive document management system. Securely store, organize, and collaborate 
               on important files with enterprise-grade features and modern workflows.
             </p>
@@ -115,17 +115,17 @@ export default function WelcomeSection() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: index * 0.1 }}
-            className="group bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-xl hover:border-mint-200 transition-all duration-300 transform hover:-translate-y-1"
+            className="group bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 hover:shadow-xl hover:border-mint-200 dark:hover:border-mint-600 transition-all duration-300 transform hover:-translate-y-1"
           >
             <div className="flex items-start space-x-4 mb-4">
               <div className="p-3 bg-gradient-to-br from-mint-50 to-mint-100 rounded-xl group-hover:from-mint-100 group-hover:to-mint-200 transition-all duration-300">
                 <feature.icon className="h-6 w-6 text-mint-600 group-hover:scale-110 transition-transform duration-300" />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-900 group-hover:text-mint-700 transition-colors duration-300">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-mint-700 dark:group-hover:text-mint-400 transition-colors duration-300">
                   {feature.title}
                 </h3>
-                <p className="text-gray-600 leading-relaxed mt-2 group-hover:text-gray-700 transition-colors duration-300">
+                <p className="text-gray-600 dark:text-gray-300 leading-relaxed mt-2 group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors duration-300">
                   {feature.description}
                 </p>
               </div>
@@ -139,17 +139,17 @@ export default function WelcomeSection() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.8 }}
-        className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-200 p-8 shadow-lg"
+        className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 p-8 shadow-lg"
       >
         <div className="text-center mb-8">
           <div className="inline-flex items-center px-4 py-2 bg-mint-100 text-mint-700 text-sm font-medium rounded-full mb-4">
             <ShieldCheckIcon className="h-4 w-4 mr-2" />
             Enterprise Grade Security
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
             Trusted by Government Agencies
           </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
             Powering digital transformation across the Ministry of Innovation and Technology 
             with world-class security and reliability standards.
           </p>
@@ -164,7 +164,7 @@ export default function WelcomeSection() {
             <div className="text-4xl font-bold bg-gradient-to-r from-mint-600 to-mint-700 bg-clip-text text-transparent mb-2 group-hover:from-mint-700 group-hover:to-mint-800 transition-all duration-300">
               99.9%
             </div>
-            <div className="text-sm font-medium text-gray-600 group-hover:text-gray-700 transition-colors duration-300">
+            <div className="text-sm font-medium text-gray-600 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors duration-300">
               Uptime Guarantee
             </div>
           </motion.div>
@@ -176,7 +176,7 @@ export default function WelcomeSection() {
             <div className="text-4xl font-bold bg-gradient-to-r from-mint-600 to-mint-700 bg-clip-text text-transparent mb-2 group-hover:from-mint-700 group-hover:to-mint-800 transition-all duration-300">
               256-bit
             </div>
-            <div className="text-sm font-medium text-gray-600 group-hover:text-gray-700 transition-colors duration-300">
+            <div className="text-sm font-medium text-gray-600 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors duration-300">
               AES Encryption
             </div>
           </motion.div>
@@ -188,7 +188,7 @@ export default function WelcomeSection() {
             <div className="text-4xl font-bold bg-gradient-to-r from-mint-600 to-mint-700 bg-clip-text text-transparent mb-2 group-hover:from-mint-700 group-hover:to-mint-800 transition-all duration-300">
               24/7
             </div>
-            <div className="text-sm font-medium text-gray-600 group-hover:text-gray-700 transition-colors duration-300">
+            <div className="text-sm font-medium text-gray-600 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors duration-300">
               Expert Support
             </div>
           </motion.div>
@@ -200,7 +200,7 @@ export default function WelcomeSection() {
             <div className="text-4xl font-bold bg-gradient-to-r from-mint-600 to-mint-700 bg-clip-text text-transparent mb-2 group-hover:from-mint-700 group-hover:to-mint-800 transition-all duration-300">
               ISO 27001
             </div>
-            <div className="text-sm font-medium text-gray-600 group-hover:text-gray-700 transition-colors duration-300">
+            <div className="text-sm font-medium text-gray-600 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors duration-300">
               Certified Secure
             </div>
           </motion.div>

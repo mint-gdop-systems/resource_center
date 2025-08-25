@@ -80,13 +80,13 @@ export default function RecentActivity({ limit = 8 }: RecentActivityProps) {
   const getActivityColor = (type: string) => {
     switch (type) {
       case "upload":
-        return "bg-green-50 border-green-200";
+        return "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800";
       case "share":
-        return "bg-blue-50 border-blue-200";
+        return "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800";
       case "edit":
-        return "bg-orange-50 border-orange-200";
+        return "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800";
       default:
-        return "bg-gray-50 border-gray-200";
+        return "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700";
     }
   };
 
@@ -110,10 +110,10 @@ export default function RecentActivity({ limit = 8 }: RecentActivityProps) {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
-        <p className="text-sm text-gray-600">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-300">
+      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Activity</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-300">
           Latest actions in your workspace
         </p>
       </div>
@@ -122,10 +122,10 @@ export default function RecentActivity({ limit = 8 }: RecentActivityProps) {
           <div className="space-y-4">
             {[...Array(4)].map((_, index) => (
               <div key={index} className="flex items-start space-x-3 animate-pulse">
-                <div className="flex-shrink-0 w-8 h-8 bg-gray-200 rounded-lg"></div>
+                <div className="flex-shrink-0 w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
                 <div className="flex-1 min-w-0">
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
                 </div>
               </div>
             ))}
@@ -133,10 +133,10 @@ export default function RecentActivity({ limit = 8 }: RecentActivityProps) {
         ) : error ? (
           <div className="text-center py-8">
             <DocumentIcon className="mx-auto h-12 w-12 text-red-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">
+            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
               Failed to load activity
             </h3>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               {error}
             </p>
             <button
@@ -154,7 +154,7 @@ export default function RecentActivity({ limit = 8 }: RecentActivityProps) {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
-                className="flex items-start space-x-3 hover:bg-gray-50 rounded-lg p-2 -m-2 transition-colors cursor-pointer"
+                className="flex items-start space-x-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg p-2 -m-2 transition-colors cursor-pointer"
               >
                 <div
                   className={`flex-shrink-0 p-2 rounded-lg border ${getActivityColor(activity.type)}`}
@@ -163,15 +163,15 @@ export default function RecentActivity({ limit = 8 }: RecentActivityProps) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm text-gray-900">
+                    <p className="text-sm text-gray-900 dark:text-white">
                       <span className="font-medium">{activity.user.name}</span>{" "}
                       {activity.description}
                     </p>
-                    <p className="text-xs text-gray-500 flex-shrink-0">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
                       {formatTimeAgo(activity.timestamp)}
                     </p>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1 truncate">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
                     {activity.file.name}
                   </p>
                 </div>
@@ -181,20 +181,20 @@ export default function RecentActivity({ limit = 8 }: RecentActivityProps) {
         ) : authenticated ? (
           <div className="text-center py-8">
             <DocumentIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">
+            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
               No recent activity
             </h3>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Activity will appear here as you work with files.
             </p>
           </div>
         ) : (
           <div className="text-center py-8">
             <DocumentIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">
+            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
               Sign in to view activity
             </h3>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Your recent file activity will appear here after signing in.
             </p>
           </div>

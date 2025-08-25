@@ -1,4 +1,4 @@
-import React from "react";
+
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
@@ -10,6 +10,7 @@ import { FileProvider } from "./contexts/FileContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
 import { SidebarProvider } from "./contexts/SidebarContext";
 import { SearchProvider } from "./contexts/SearchContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
 // Error Handling
 import ErrorBoundary from "./components/ErrorBoundary";
 import { AuthProvider, useAuth } from "./services/auth";
@@ -37,12 +38,13 @@ function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <NotificationProvider>
-          <FileProvider>
-            <SidebarProvider>
-              <BrowserRouter>
-                <SearchProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <NotificationProvider>
+              <FileProvider>
+                <SidebarProvider>
+                  <BrowserRouter>
+                    <SearchProvider>
                   <div className="App">
                     <Routes>
                       <Route element={<Layout />}>
@@ -63,10 +65,8 @@ function App() {
                       position="top-right"
                       toastOptions={{
                         duration: 4000,
+                        className: "dark:bg-gray-800 dark:text-white dark:border-gray-700",
                         style: {
-                          background: "#ffffff",
-                          color: "#1f2937",
-                          border: "1px solid #e5e7eb",
                           borderRadius: "0.75rem",
                           boxShadow:
                             "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
@@ -91,7 +91,8 @@ function App() {
             </SidebarProvider>
           </FileProvider>
         </NotificationProvider>
-        </AuthProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );

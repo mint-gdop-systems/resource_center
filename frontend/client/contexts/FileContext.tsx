@@ -33,7 +33,7 @@ const FileContext = createContext<FileContextType | undefined>(undefined);
 
 export function FileProvider({ children }: { children: ReactNode }) {
   const [files, setFiles] = useState<FileItem[]>([]);
-  const [currentFolderId, setCurrentFolderId] = useState<string | undefined>(undefined);
+  // Remove currentFolderId state - let the navigation hook manage this
   const { initialized, authenticated } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [filesToDelete, setFilesToDelete] = useState<string[]>([]);
@@ -126,29 +126,14 @@ export function FileProvider({ children }: { children: ReactNode }) {
         } as unknown as FileItem;
       });
       setFiles(fetchedFiles);
-      setCurrentFolderId(folderId);
+      // Don't set currentFolderId - let the navigation hook manage folder state
   // Do not call refreshStarredCount inside fetchFiles, only in useEffect and after starFiles
     } catch (error: any) {
       toast.error(`Failed to fetch files: ${error?.message || 'Unknown error'}`);
     }
   }, []);
 
-  useEffect(() => {
-    if (initialized && authenticated) {
-      fetchFiles();
-      
-      // Listen for files:refresh events to reload files after operations like edit, move, copy
-      const handleFilesRefresh = () => {
-        fetchFiles(currentFolderId);
-      };
-      
-      window.addEventListener('files:refresh', handleFilesRefresh);
-      
-      return () => {
-        window.removeEventListener('files:refresh', handleFilesRefresh);
-      };
-    }
-  }, [initialized, authenticated, fetchFiles, currentFolderId]);
+  // Removed refresh event handling - let useFileNavigation hook handle this
 
   const uploadFile = async (file: File, path: string[], categoryId?: number): Promise<void> => {
     try {
@@ -163,6 +148,12 @@ export function FileProvider({ children }: { children: ReactNode }) {
       await refreshFilesCount();
       await refreshRecentCount();
     } catch (error: any) {
+      // Check if this is a duplicate file error that should be handled by the upload component
+      if (error?.response?.status === 409 && error?.response?.data?.error === "duplicate_files_found") {
+        // Let duplicate errors bubble up to be handled by FileUpload component
+        throw error;
+      }
+      
       let message = "Failed to upload file.";
       if (error?.response) {
         // Backend returned a response
@@ -207,7 +198,8 @@ export function FileProvider({ children }: { children: ReactNode }) {
       await bulkDeleteApi(fileIdsToDelete, folderIdsToDelete);
       
       toast.success(`${fileIdsToDelete.length + folderIdsToDelete.length} item(s) deleted successfully!`);
-      await fetchFiles(currentFolderId);
+      // Dispatch refresh event instead of direct fetchFiles call
+      window.dispatchEvent(new CustomEvent('files:refresh'));
       await refreshFilesCount();
       await refreshRecentCount();
       await refreshArchiveCount();
@@ -242,7 +234,8 @@ export function FileProvider({ children }: { children: ReactNode }) {
         const res = await toggleFolderStar(itemId);
         toast.success(res.message);
       }
-      await fetchFiles(currentFolderId);
+      // Dispatch refresh event instead of direct fetchFiles call
+      window.dispatchEvent(new CustomEvent('files:refresh'));
       await refreshStarredCount();
       await refreshRecentCount();
     } catch (error: any) {
@@ -270,7 +263,8 @@ export function FileProvider({ children }: { children: ReactNode }) {
         toggled++;
       }
       toast.success(`${toggled} item(s) ${starred ? 'starred' : 'unstarred'}`);
-      await fetchFiles(currentFolderId);
+      // Dispatch refresh event instead of direct fetchFiles call
+      window.dispatchEvent(new CustomEvent('files:refresh'));
       await refreshStarredCount();
     } catch (error: any) {
       const msg = error?.response?.data?.error || error?.message || 'Failed to update starred state';
@@ -282,7 +276,8 @@ export function FileProvider({ children }: { children: ReactNode }) {
     try {
       const res = await toggleFileArchive(fileId);
       toast.success(res.is_archived ? 'Archived' : 'Unarchived');
-      await fetchFiles(currentFolderId);
+      // Dispatch refresh event instead of direct fetchFiles call
+      window.dispatchEvent(new CustomEvent('files:refresh'));
       await refreshArchiveCount();
       await refreshRecentCount();
     } catch (error: any) {
@@ -303,7 +298,8 @@ export function FileProvider({ children }: { children: ReactNode }) {
         }
       }
       toast.success(`${toggled} item(s) ${archived ? 'archived' : 'unarchived'}`);
-      await fetchFiles(currentFolderId);
+      // Dispatch refresh event instead of direct fetchFiles call
+      window.dispatchEvent(new CustomEvent('files:refresh'));
     } catch (error: any) {
       const msg = error?.response?.data?.error || error?.message || 'Failed to update archive state';
       toast.error(msg);

@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    FileUploadView, CreateFolderView, FolderContentsView, ToggleStarredView, ToggleArchivedView, ToggleFolderStarredView, EditFileView, EditFolderView, UploadNewVersionView, FileVersionHistoryView, RevertVersionView, DeleteUploadedFileView, BulkDeleteView, ReminderViewSet, UpcomingRemindersView, get_categories, TestAuthView, RecentFilesView, ViewFileView, DownloadFileView, BulkDownloadView, CopyFileView, BulkCopyView, MoveFileView, MoveFolderView, BulkMoveView, PublicShareView, ShareLinkManagementView, SearchView, DashboardStatsView, DashboardRecentActivityView
+    FileUploadView, ResolveDuplicateFilesView, CreateFolderView, FolderContentsView, ToggleStarredView, ToggleArchivedView, ToggleFolderStarredView, EditFileView, EditFolderView, UploadNewVersionView, FileVersionHistoryView, RevertVersionView, DeleteUploadedFileView, BulkDeleteView, ReminderViewSet, UpcomingRemindersView, get_categories, TestAuthView, RecentFilesView, ViewFileView, DownloadFileView, BulkDownloadView, CopyFileView, BulkCopyView, MoveFileView, MoveFolderView, BulkMoveView, PublicShareView, ShareLinkManagementView, SearchView, DashboardStatsView, DashboardRecentActivityView
 )
 from .sharing_views import ShareItemView, SharedWithMeView, shared_unseen_count, SendFileEmailView
 
@@ -13,6 +13,7 @@ urlpatterns = [
     path('recent-files/', RecentFilesView.as_view(), name='recent-files'),
     path('file-upload/', FileUploadView.as_view(), name='file-upload'),
     path('file-upload/<int:folder_id>/', FileUploadView.as_view(), name='folder-file-upload'),
+    path('resolve-duplicates/', ResolveDuplicateFilesView.as_view(), name='resolve-duplicates'),
 
     path('folders/', CreateFolderView.as_view(), name='create_folder'),
     path('folders/<int:parent_id>/', CreateFolderView.as_view(), name='create_subfolder'),

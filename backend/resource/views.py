@@ -1,5 +1,6 @@
 from django.contrib.postgres.search import SearchVector
 from django.shortcuts import render, get_object_or_404, redirect
+from django.core.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework import status, generics, viewsets
 from rest_framework.views import APIView
@@ -28,6 +29,7 @@ import zipfile
 import tempfile
 import os
 import mimetypes
+import logging
 
 
 print("Resource views.py loaded")
@@ -92,90 +94,434 @@ def myFiles(request, folder_id=None):
 
 
 class FileUploadView(APIView):
-    # Re-enable authentication
-    # authentication_classes = []
-    # permission_classes = []
-    # Temporarily disable authentication for debugging
-    # authentication_classes = []
-    # permission_classes = []
+    
+    permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
-
+    
     def post(self, request, folder_id=None, format=None):
-        print("FileUploadView.post called")
-        print("Request FILES:", request.FILES)
-        print("Request DATA:", request.data)
-        print("Request USER:", request.user)
+        """
+        Handle secure file upload with comprehensive validation
+        """
+        import logging
+        from .file_validators import validate_uploaded_file
         
+        logger = logging.getLogger(__name__)
+        
+        try:
+            return self._handle_upload(request, folder_id, logger)
+        except Exception as e:
+            logger.error(f"Unexpected error in file upload: {str(e)}", exc_info=True)
+            return Response(
+                {"error": "An unexpected error occurred during file upload"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def _handle_upload(self, request, folder_id, logger):
+        """
+        Internal method to handle the upload process
+        """
+        # Log upload attempt
+        logger.info(f"File upload attempt by user {request.user.id} ({request.user.email})")
+        
+        # Validate request has files
         if "files" not in request.FILES:
-            return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
-
-        files = request.FILES.getlist("files")  # Handle multiple files
-        print("Files received:", [f.name for f in files])
-
+            logger.warning(f"Upload attempt without files by user {request.user.id}")
+            return Response(
+                {"error": "No files provided. Please select at least one file to upload."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        files = request.FILES.getlist("files")
+        if not files:
+            return Response(
+                {"error": "No files provided. Please select at least one file to upload."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate folder
+        folder = self._validate_folder(folder_id, request, logger)
+        if isinstance(folder, Response):  # Error response
+            return folder
+        
+        # Validate category
+        category = self._validate_category(request.data.get("category_id"), logger)
+        if isinstance(category, Response):  # Error response
+            return category
+        
+        # Process files with transaction safety
+        try:
+            with transaction.atomic():
+                upload_results = self._process_files(files, request, folder, category, logger)
+                
+                if upload_results.get("errors"):
+                    # Check if all errors are duplicate file errors
+                    duplicate_errors = [e for e in upload_results["errors"] if e.get("error_type") == "duplicate"]
+                    other_errors = [e for e in upload_results["errors"] if e.get("error_type") != "duplicate"]
+                    
+                    # If we have duplicate errors and user hasn't specified how to handle them
+                    if duplicate_errors and not other_errors:
+                        # Don't rollback transaction for duplicate-only scenarios
+                        return Response(
+                            {
+                                "error": "duplicate_files_found",
+                                "message": f"Found {len(duplicate_errors)} duplicate file(s)",
+                                "duplicates": duplicate_errors,
+                                "uploaded_files": upload_results["uploaded_files"],
+                                "summary": upload_results["summary"]
+                            },
+                            status=status.HTTP_409_CONFLICT  # 409 Conflict for duplicates
+                        )
+                    
+                    # If there are validation or system errors, rollback transaction
+                    if other_errors:
+                        transaction.set_rollback(True)
+                    
+                    # If only one file and one non-duplicate error, show the specific error directly
+                    if len(other_errors) == 1 and len(files) == 1:
+                        error_detail = other_errors[0]
+                        return Response(
+                            {"error": error_detail["error"]},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    
+                    # For multiple files or errors, show detailed breakdown
+                    return Response(
+                        {
+                            "error": f"Upload failed for {len(other_errors)} file(s)",
+                            "details": other_errors,
+                            "duplicates": duplicate_errors,
+                            "uploaded_files": upload_results["uploaded_files"],
+                            "summary": f"{upload_results['summary']['successful_uploads']} succeeded, {len(other_errors)} failed, {len(duplicate_errors)} duplicates"
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                # Log successful upload
+                logger.info(
+                    f"Successful upload by user {request.user.id}: "
+                    f"{len(upload_results['uploaded_files'])} files"
+                )
+                
+                # Get all files for response (maintaining backward compatibility)
+                all_files = folder.files.order_by("-uploaded_at") if folder else UploadedFile.objects.filter(folder__isnull=True).order_by("-uploaded_at")
+                all_files_serializer = UploadedFileSerializer(all_files, many=True)
+                
+                return Response(
+                    {
+                        "message": f"Successfully uploaded {len(upload_results['uploaded_files'])} file(s)",
+                        "folder_name": folder.name if folder else "Root",
+                        "uploaded_files": upload_results["uploaded_files"],
+                        "files": all_files_serializer.data,  # For backward compatibility
+                        "upload_summary": upload_results["summary"]
+                    },
+                    status=status.HTTP_201_CREATED
+                )
+                
+        except Exception as e:
+            logger.error(f"Database error during upload: {str(e)}", exc_info=True)
+            return Response(
+                {"error": "Failed to save files. Please try again."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def _validate_folder(self, folder_id, request, logger):
+        """
+        Validate folder access and existence
+        """
         # Use folder_id from URL if present, else from form data
         folder_id = folder_id or request.data.get("folder_id")
         if folder_id in [None, "None", "null", ""]:
-            folder_id = None
-
-        folder = Folder.objects.filter(id=folder_id).first() if folder_id else None
-        if folder_id and not folder:
-            return Response({"error": "Invalid folder ID"}, status=status.HTTP_400_BAD_REQUEST)
-
-        folder_name = folder.name if folder else "Root"
-
-        category_id = request.data.get("category_id")
-        # Coerce category_id to a single value if it's a list
-        if isinstance(category_id, list):
-            category_id = category_id[0]
-        if category_id:
-            category = Category.objects.filter(id=category_id).first()
-        else:
-            category = Category.objects.get(id=Category.get_default_category())
-
-        uploaded_files = []
-        for file_obj in files:
-            file_name = file_obj.name
-            file_type = file_obj.name.split(".")[-1].lower()
-            file_size = file_obj.size
-
-            # Check if a file with the same name exists for the same user in the same folder
-            if UploadedFile.objects.filter(
-                name=file_name,
-                folder=folder,
-                owner=request.user
-            ).exists():
-                return Response({"error": f"You already have a file named '{file_name}' in this folder"}, status=status.HTTP_400_BAD_REQUEST)
-
-            uploaded_file = UploadedFile(
-                name=file_name,
-                file=file_obj,
-                file_type=file_type,
-                file_size=file_size,
-                category=category,
-                folder=folder,
-                owner=request.user if request.user.is_authenticated else None, 
-                is_public=request.data.get("is_public", False),
+            return None
+        
+        try:
+            folder = Folder.objects.get(id=folder_id)
+            
+            # Check if user has access to this folder
+            if folder.owner != request.user and not folder.is_public:
+                logger.warning(
+                    f"User {request.user.id} attempted to upload to unauthorized folder {folder_id}"
+                )
+                return Response(
+                    {"error": "You don't have permission to upload to this folder"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            return folder
+            
+        except Folder.DoesNotExist:
+            logger.warning(f"Upload attempt to non-existent folder {folder_id}")
+            return Response(
+                {"error": f"Folder with ID {folder_id} does not exist"},
+                status=status.HTTP_404_NOT_FOUND
             )
-            uploaded_file.save()
-            uploaded_files.append(uploaded_file)
-
-            shared_with = request.data.get("shared_with", [])
-            if shared_with:
-                uploaded_file.shared_with.set(shared_with)
-
-        all_files = folder.files.order_by("-uploaded_at") if folder else UploadedFile.objects.filter(folder__isnull=True).order_by("-uploaded_at")
-        uploaded_files_serializer = UploadedFileSerializer(uploaded_files, many=True)
-        all_files_serializer = UploadedFileSerializer(all_files, many=True)
-
-        return Response(
-            {
-                "message": "Files uploaded successfully",
+        except ValueError:
+            return Response(
+                {"error": "Invalid folder ID format"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    def _validate_category(self, category_id, logger):
+        """
+        Validate and get category
+        """
+        if category_id:
+            # Handle list input (from form data)
+            if isinstance(category_id, list):
+                category_id = category_id[0]
+            
+            try:
+                return Category.objects.get(id=category_id)
+            except Category.DoesNotExist:
+                logger.warning(f"Upload attempt with invalid category {category_id}")
+                return Response(
+                    {"error": f"Category with ID {category_id} does not exist"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            except ValueError:
+                return Response(
+                    {"error": "Invalid category ID format"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            # Use default category
+            return Category.objects.get(id=Category.get_default_category())
+    
+    def _process_files(self, files, request, folder, category, logger):
+        """
+        Process and validate all uploaded files
+        """
+        from .file_validators import validate_uploaded_file
+        
+        uploaded_files = []
+        errors = []
+        total_size = 0
+        
+        # Get duplicate handling preference from request
+        handle_duplicates = request.data.get("handle_duplicates", "ask")  # "ask", "rename", "skip"
+        
+        for i, file_obj in enumerate(files):
+            try:
+                # Validate file
+                validation_result = validate_uploaded_file(file_obj)
+                
+                # Check for duplicate files using the display filename
+                duplicate_check = self._check_duplicate_file(
+                    validation_result['display_filename'], 
+                    folder, 
+                    request.user
+                )
+                
+                final_filename = validation_result['display_filename']
+                
+                if duplicate_check["is_duplicate"]:
+                    if handle_duplicates == "ask":
+                        # Return duplicate info for frontend to handle
+                        errors.append({
+                            "file": file_obj.name,
+                            "error": f"A file named '{validation_result['display_filename']}' already exists in {duplicate_check['folder_name']}",
+                            "error_type": "duplicate",
+                            "duplicate_info": {
+                                "original_name": validation_result['display_filename'],
+                                "folder_name": duplicate_check['folder_name'],
+                                "existing_file_id": duplicate_check['existing_file_id']
+                            }
+                        })
+                        continue
+                    elif handle_duplicates == "rename":
+                        # Auto-generate unique filename
+                        final_filename = self._generate_unique_filename(
+                            validation_result['display_filename'],
+                            folder,
+                            request.user
+                        )
+                        logger.info(f"Renamed duplicate file from '{validation_result['display_filename']}' to '{final_filename}'")
+                    elif handle_duplicates == "skip":
+                        # Skip this file
+                        logger.info(f"Skipped duplicate file: {validation_result['display_filename']}")
+                        continue
+                
+                # Update validation result with final filename
+                validation_result['display_filename'] = final_filename
+                
+                # Create file record
+                uploaded_file = self._create_file_record(
+                    file_obj, validation_result, folder, category, request
+                )
+                
+                uploaded_files.append(UploadedFileSerializer(uploaded_file).data)
+                total_size += validation_result['file_size']
+                
+                logger.info(
+                    f"File uploaded successfully: {final_filename} "
+                    f"({validation_result['file_size_mb']}MB) by user {request.user.id}"
+                )
+                
+            except ValidationError as e:
+                # Handle validation errors with clear messages
+                error_message = str(e)
+                logger.warning(f"File validation failed for {file_obj.name}: {error_message}")
+                errors.append({
+                    "file": file_obj.name,
+                    "error": error_message,
+                    "error_type": "validation"
+                })
+            except Exception as e:
+                # Handle unexpected errors
+                logger.error(f"Unexpected error processing file {file_obj.name}: {str(e)}")
+                errors.append({
+                    "file": file_obj.name,
+                    "error": "An unexpected error occurred while processing this file. Please try again.",
+                    "error_type": "system"
+                })
+        
+        return {
+            "uploaded_files": uploaded_files,
+            "errors": errors,
+            "summary": {
+                "total_files_attempted": len(files),
+                "successful_uploads": len(uploaded_files),
+                "failed_uploads": len(errors),
+                "total_size_mb": round(total_size / (1024 * 1024), 2)
+            }
+        }
+    
+    def _check_duplicate_file(self, filename, folder, user):
+        """
+        Check for duplicate files and return duplicate info
+        """
+        existing_file = UploadedFile.objects.filter(
+            name=filename,
+            folder=folder,
+            owner=user
+        ).first()
+        
+        if existing_file:
+            folder_name = folder.name if folder else "root folder"
+            return {
+                "is_duplicate": True,
                 "folder_name": folder_name,
-                "uploaded_files": uploaded_files_serializer.data,
-                "files": all_files_serializer.data,
-            },
-            status=status.HTTP_201_CREATED,
+                "existing_file_id": existing_file.id
+            }
+        
+        return {"is_duplicate": False}
+    
+    def _generate_unique_filename(self, base_filename, folder, user):
+        """
+        Generate a unique filename by appending numbers if duplicates exist
+        Format: filename(1).ext, filename(2).ext, etc.
+        """
+        # Split filename and extension
+        name_parts = base_filename.rsplit('.', 1)
+        name = name_parts[0]
+        extension = f".{name_parts[1]}" if len(name_parts) > 1 else ""
+        
+        counter = 1
+        while True:
+            # Generate numbered filename
+            numbered_filename = f"{name}({counter}){extension}"
+            
+            # Check if this numbered version exists
+            existing = UploadedFile.objects.filter(
+                name=numbered_filename,
+                folder=folder,
+                owner=user
+            ).exists()
+            
+            if not existing:
+                return numbered_filename
+            
+            counter += 1
+            
+            # Safety check to prevent infinite loop
+            if counter > 1000:
+                # Fallback to UUID-based naming
+                import uuid
+                unique_id = uuid.uuid4().hex[:8]
+                return f"{name}_{unique_id}{extension}"
+    
+    def _create_file_record(self, file_obj, validation_result, folder, category, request):
+        """
+        Create database record for uploaded file
+        """
+        # Update file object name to unique storage filename for filesystem
+        file_obj.name = validation_result['storage_filename']
+        
+        uploaded_file = UploadedFile.objects.create(
+            name=validation_result['display_filename'],  # Store clean display name in database
+            file=file_obj,  # File stored with unique storage filename
+            file_type=validation_result['extension'],
+            file_size=validation_result['file_size'],
+            category=category,
+            folder=folder,
+            owner=request.user,
+            is_public=request.data.get("is_public", False),
         )
+        
+        # Handle shared_with if provided (if the model supports it)
+        shared_with = request.data.get("shared_with", [])
+        if shared_with and hasattr(uploaded_file, 'shared_with'):
+            uploaded_file.shared_with.set(shared_with)
+        
+        return uploaded_file
+
+
+class ResolveDuplicateFilesView(APIView):
+    """
+    API endpoint to resolve duplicate file conflicts
+    """
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+    
+    def post(self, request, format=None):
+        """
+        Resolve duplicate files based on user choice
+        
+        Expected payload:
+        {
+            "files": [file objects],
+            "folder_id": "optional",
+            "category_id": "optional", 
+            "resolution": "rename" | "skip",
+            "duplicate_files": [list of duplicate file info]
+        }
+        """
+        import logging
+        from .file_validators import validate_uploaded_file
+        
+        logger = logging.getLogger(__name__)
+        
+        try:
+            resolution = request.data.get("resolution")  # "rename" or "skip"
+            
+            if resolution not in ["rename", "skip"]:
+                return Response(
+                    {"error": "Invalid resolution. Must be 'rename' or 'skip'"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Re-process the files with the user's choice
+            files = request.FILES.getlist("files")
+            if not files:
+                return Response(
+                    {"error": "No files provided"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Set the duplicate handling preference
+            request.data._mutable = True
+            request.data["handle_duplicates"] = resolution
+            request.data._mutable = False
+            
+            # Use the existing upload logic with the resolution preference
+            file_upload_view = FileUploadView()
+            return file_upload_view.post(request, request.data.get("folder_id"))
+            
+        except Exception as e:
+            logger.error(f"Error resolving duplicate files: {str(e)}", exc_info=True)
+            return Response(
+                {"error": "An error occurred while resolving duplicate files"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
     # def get(self, request, format=None):

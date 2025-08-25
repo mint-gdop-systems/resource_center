@@ -17,7 +17,7 @@ export default function Layout() {
   };
 
   return (
-    <div className="h-screen flex overflow-hidden bg-gray-50">
+    <div className="h-screen flex overflow-hidden bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       {/* Sidebar */}
       <Sidebar 
         mobileOpen={mobileSidebarOpen} 

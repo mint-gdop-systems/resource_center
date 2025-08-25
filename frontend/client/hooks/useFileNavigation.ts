@@ -31,6 +31,21 @@ export function useFileNavigation(allFiles: FileItem[]) {
     fetchFiles(folderId);
   }, [currentPath, fetchFiles]);
 
+  // Listen for refresh events and refresh current folder
+  useEffect(() => {
+    const handleRefresh = () => {
+      // Use a ref or callback to get the current path without dependency
+      setCurrentPath(currentPath => {
+        const folderId = currentPath.length > 0 ? currentPath[currentPath.length - 1] : undefined;
+        fetchFiles(folderId);
+        return currentPath; // Don't change the path, just trigger refresh
+      });
+    };
+
+    window.addEventListener('files:refresh', handleRefresh);
+    return () => window.removeEventListener('files:refresh', handleRefresh);
+  }, [fetchFiles]); // Remove currentPath dependency
+
   // The context now always provides the current folder's files/folders
   const currentFiles = allFiles;
 
@@ -40,12 +55,21 @@ export function useFileNavigation(allFiles: FileItem[]) {
     if (folder?.name) {
       setFolderNameById((prev) => ({ ...prev, [folderId]: folder.name }));
     }
-    setCurrentPath((prev) => [...prev, folderId]);
+    setCurrentPath((prev) => {
+      // Prevent duplicate folder IDs in the path
+      if (prev.length > 0 && prev[prev.length - 1] === folderId) {
+        return prev;
+      }
+      const newPath = [...prev, folderId];
+      return newPath;
+    });
   };
 
   // Navigate to a specific path (array of IDs)
   const navigateToPath = (path: string[]) => {
-    setCurrentPath(path);
+    // Remove any duplicate IDs from the path
+    const uniquePath = path.filter((id, index) => path.indexOf(id) === index);
+    setCurrentPath(uniquePath);
   };
 
   // Go back to parent directory

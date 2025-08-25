@@ -59,6 +59,13 @@ media/
 .coverage
 htmlcov/
 
+
+backend/Dockerfile
+backend/SECURE_FILE_UPLOAD_README.md
+backend/requirements_file_upload.txt
+frontend/DARK_MODE_README.md
+
+
 # Virtual Environment
 venv/
 .env/
@@ -78,3 +85,5 @@ build/
 
 # Keep frontend lib directory
 !frontend/client/lib/ 
+
+backend/Dockerfile

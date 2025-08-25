@@ -1,14 +1,14 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
-import { 
-  ClockIcon, 
-  ArrowPathIcon, 
-  MagnifyingGlassIcon, 
-  FunnelIcon, 
-  ViewColumnsIcon, 
-  ListBulletIcon, 
-  StarIcon, 
-  ArchiveBoxIcon, 
-  ArrowDownTrayIcon 
+import {
+  ClockIcon,
+  ArrowPathIcon,
+  MagnifyingGlassIcon,
+  FunnelIcon,
+  ViewColumnsIcon,
+  ListBulletIcon,
+  StarIcon,
+  ArchiveBoxIcon,
+  ArrowDownTrayIcon
 } from "@heroicons/react/24/outline";
 import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
 import { motion, AnimatePresence } from "framer-motion";
@@ -16,6 +16,7 @@ import Breadcrumb from "../components/layout/Breadcrumb";
 import { ViewMode } from "../types";
 import { getRecentFiles, bulkDeleteApi } from "../services/api";
 import { useFiles } from "../contexts/FileContext";
+import { useTheme } from "../contexts/ThemeContext";
 import { formatDate, cn } from "../lib/utils";
 import BulkActions from "../components/files/BulkActions";
 
@@ -49,10 +50,14 @@ const fileTypeIconMap: Record<string, any> = {
   rar: faFileArchive,
 };
 
-function TypeBadge({ ext }: { ext?: string }) {
+function TypeBadge({ ext, isDarkMode }: { ext?: string; isDarkMode: boolean }) {
   const label = (ext || "file").toUpperCase();
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-700">
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
+      isDarkMode 
+        ? 'bg-gray-700 text-gray-300' 
+        : 'bg-gray-100 text-gray-700'
+    }`}>
       {label}
     </span>
   );
@@ -102,6 +107,8 @@ export default function Recent() {
   ];
 
   const { refreshRecentCount, refreshStarredCount, toggleStar, toggleArchive } = useFiles();
+  const { actualTheme } = useTheme();
+  const isDarkMode = actualTheme === 'dark';
   const [recentItems, setRecentItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
@@ -215,7 +222,9 @@ export default function Recent() {
     return (
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-700">{title}</h3>
+          <h3 className={`text-sm font-semibold ${
+            isDarkMode ? 'text-gray-300' : 'text-gray-700'
+          }`}>{title}</h3>
           <div className="flex items-center space-x-2">
             <input
               type="checkbox"
@@ -236,18 +245,24 @@ export default function Recent() {
                 transition={{ duration: 0.2, delay: idx * 0.02 }}
                 className={cn(
                   "group flex items-center justify-between px-4 py-3 rounded-lg border transition-all",
-                  selected.includes(file.id) ? "bg-mint-50 border-mint-200" : "bg-white hover:bg-gray-50 border-gray-200"
+                  selected.includes(file.id) 
+                    ? `border-mint-200 ${isDarkMode ? 'bg-mint-900' : 'bg-mint-50'}` 
+                    : `border ${isDarkMode ? 'bg-gray-800 hover:bg-gray-700 border-gray-700' : 'bg-white hover:bg-gray-50 border-gray-200'}`
                 )}
               >
                 <div className="flex items-center space-x-3 min-w-0">
                   {getTypeIcon(file.extension)}
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <p className={`text-sm font-medium truncate ${
+                      isDarkMode ? 'text-white' : 'text-gray-900'
+                    }`}>{file.name}</p>
+                    <div className={`flex items-center gap-2 text-xs ${
+                      isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                    }`}>
                       <span>{file.owner?.name ?? "Unknown"}</span>
                       <span>•</span>
                       <span>{formatDate(new Date(file.updatedAt || file.createdAt))}</span>
-                      <TypeBadge ext={file.extension} />
+                      <TypeBadge ext={file.extension} isDarkMode={isDarkMode} />
                     </div>
                   </div>
                 </div>
@@ -268,7 +283,9 @@ export default function Recent() {
                     aria-label={file.archived ? 'Unarchive' : 'Archive'}
                     title={file.archived ? 'Unarchive' : 'Archive'}
                     onClick={async () => { await toggleArchive(file.id); await refresh(); }}
-                    className="p-2 rounded-md hover:bg-gray-100"
+                    className={`p-2 rounded-md ${
+                      isDarkMode ? 'hover:bg-gray-600' : 'hover:bg-gray-100'
+                    }`}
                   >
                     <ArchiveBoxIcon className={cn("h-4 w-4", file.archived ? "text-mint-700" : "text-gray-400")} />
                   </button>
@@ -276,7 +293,9 @@ export default function Recent() {
                     aria-label="Download"
                     title="Download"
                     onClick={() => { /* Hook up download endpoint when available */ }}
-                    className="p-2 rounded-md hover:bg-gray-100"
+                    className={`p-2 rounded-md ${
+                      isDarkMode ? 'hover:bg-gray-600' : 'hover:bg-gray-100'
+                    }`}
                   >
                     <ArrowDownTrayIcon className="h-4 w-4 text-gray-400" />
                   </button>
@@ -300,7 +319,9 @@ export default function Recent() {
                 transition={{ duration: 0.2, delay: idx * 0.02 }}
                 className={cn(
                   "relative group rounded-xl border p-4 transition-all",
-                  selected.includes(file.id) ? "bg-mint-50 border-mint-200" : "bg-white hover:bg-gray-50 border-gray-200"
+                  selected.includes(file.id) 
+                    ? `border-mint-200 ${isDarkMode ? 'bg-mint-900' : 'bg-mint-50'}` 
+                    : `border ${isDarkMode ? 'bg-gray-800 hover:bg-gray-700 border-gray-700' : 'bg-white hover:bg-gray-50 border-gray-200'}`
                 )}
               >
                 <div className="absolute top-2 right-2">
@@ -316,12 +337,16 @@ export default function Recent() {
                     {getTypeIcon(file.extension)}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-gray-900 truncate" title={file.name}>{file.name}</p>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                    <p className={`text-sm font-semibold truncate ${
+                      isDarkMode ? 'text-white' : 'text-gray-900'
+                    }`} title={file.name}>{file.name}</p>
+                    <div className={`mt-1 flex items-center gap-2 text-xs ${
+                      isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                    }`}>
                       <span>{file.owner?.name ?? "Unknown"}</span>
                       <span>•</span>
                       <span>{formatDate(new Date(file.updatedAt || file.createdAt))}</span>
-                      <TypeBadge ext={file.extension} />
+                      <TypeBadge ext={file.extension} isDarkMode={isDarkMode} />
                     </div>
                   </div>
                 </div>
@@ -346,7 +371,11 @@ export default function Recent() {
                     aria-label={file.archived ? 'Unarchive' : 'Archive'}
                     title={file.archived ? 'Unarchive' : 'Archive'}
                     onClick={async () => { await toggleArchive(file.id); await refresh(); }}
-                    className="inline-flex items-center px-2 py-1 rounded-md border border-gray-200 text-xs text-gray-700 hover:bg-gray-50"
+                    className={`inline-flex items-center px-2 py-1 rounded-md border text-xs ${
+                      isDarkMode 
+                        ? 'border-gray-600 text-gray-300 hover:bg-gray-600' 
+                        : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                    }`}
                   >
                     <ArchiveBoxIcon className={cn("h-3.5 w-3.5 mr-1", file.archived ? "text-mint-700" : "text-gray-400")} />
                     {file.archived ? 'Unarchive' : 'Archive'}
@@ -355,7 +384,11 @@ export default function Recent() {
                     aria-label="Download"
                     title="Download"
                     onClick={() => { /* Hook up download endpoint when available */ }}
-                    className="inline-flex items-center px-2 py-1 rounded-md border border-gray-200 text-xs text-gray-700 hover:bg-gray-50"
+                    className={`inline-flex items-center px-2 py-1 rounded-md border text-xs ${
+                      isDarkMode 
+                        ? 'border-gray-600 text-gray-300 hover:bg-gray-600' 
+                        : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                    }`}
                   >
                     <ArrowDownTrayIcon className="h-3.5 w-3.5 mr-1 text-gray-400" />
                     Download
@@ -376,20 +409,30 @@ export default function Recent() {
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
           <Breadcrumb items={breadcrumbItems} />
-          <h1 className="mt-2 text-2xl font-bold text-gray-900">Recent</h1>
-          <p className="text-gray-600">Your most recently updated documents, at a glance</p>
+          <h1 className={`mt-2 text-2xl font-bold ${
+            isDarkMode ? 'text-white' : 'text-gray-900'
+          }`}>Recent</h1>
+          <p className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Your most recently updated documents, at a glance</p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="hidden sm:flex items-center bg-gray-100 rounded-lg p-1">
+          <div className={`hidden sm:flex items-center rounded-lg p-1 ${
+            isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
+          }`}>
             <button
               onClick={() => setViewMode((v) => ({ ...v, type: "grid" }))}
-              className={cn("p-2 rounded-md transition-colors", viewMode.type === "grid" ? "bg-white text-mint-600 shadow-sm" : "text-gray-500 hover:text-gray-700")}
+              className={cn("p-2 rounded-md transition-colors", viewMode.type === "grid" 
+                ? `text-mint-600 shadow-sm ${isDarkMode ? 'bg-gray-600' : 'bg-white'}` 
+                : `${isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`
+              )}
             >
               <ViewColumnsIcon className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode((v) => ({ ...v, type: "list" }))}
-              className={cn("p-2 rounded-md transition-colors", viewMode.type === "list" ? "bg-white text-mint-600 shadow-sm" : "text-gray-500 hover:text-gray-700")}
+              className={cn("p-2 rounded-md transition-colors", viewMode.type === "list" 
+                ? `text-mint-600 shadow-sm ${isDarkMode ? 'bg-gray-600' : 'bg-white'}` 
+                : `${isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`
+              )}
             >
               <ListBulletIcon className="h-4 w-4" />
             </button>
@@ -400,40 +443,63 @@ export default function Recent() {
               const [sortBy, sortOrder] = e.target.value.split("-");
               setViewMode((prev) => ({ ...prev, sortBy: sortBy as any, sortOrder: sortOrder as any }));
             }}
-            className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-mint-500"
+            className={`text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-mint-500 ${
+              isDarkMode 
+                ? 'border-gray-600 bg-gray-700 text-white' 
+                : 'border-gray-300 bg-white text-gray-900'
+            }`}
           >
             <option value="date-desc">Newest first</option>
             <option value="date-asc">Oldest first</option>
           </select>
           <button
             onClick={refresh}
-            className="inline-flex items-center px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50"
+            className={`inline-flex items-center px-3 py-2 rounded-lg border text-sm ${
+              isDarkMode 
+                ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
+                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+            }`}
           >
             <ArrowPathIcon className="h-4 w-4 mr-2" /> Refresh
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+      <div className={`rounded-xl shadow-sm border p-4 ${
+        isDarkMode 
+          ? 'bg-gray-800 border-gray-700' 
+          : 'bg-white border-gray-200'
+      }`}>
         <div className="flex flex-col lg:flex-row lg:items-center gap-4">
           <div className="relative flex-1">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <MagnifyingGlassIcon className={`absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 ${
+              isDarkMode ? 'text-gray-500' : 'text-gray-400'
+            }`} />
             <input
               type="text"
               placeholder="Search recent files..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-mint-500"
+              className={`block w-full pl-10 pr-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-mint-500 ${
+                isDarkMode 
+                  ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' 
+                  : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+              }`}
             />
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowFilters((s) => !s)}
-              className={cn("inline-flex items-center px-3 py-2 rounded-lg text-sm", showFilters ? "bg-mint-100 text-mint-700" : "border border-gray-300 text-gray-700 hover:bg-gray-50")}
+              className={cn("inline-flex items-center px-3 py-2 rounded-lg text-sm", showFilters 
+                ? `${isDarkMode ? 'bg-mint-900 text-mint-300' : 'bg-mint-100 text-mint-700'}` 
+                : `border ${isDarkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`
+              )}
             >
               <FunnelIcon className="h-4 w-4 mr-2" /> Filters
             </button>
-            <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+            <label className={`inline-flex items-center gap-2 text-sm ${
+              isDarkMode ? 'text-gray-300' : 'text-gray-700'
+            }`}>
               <input type="checkbox" checked={starOnly} onChange={(e) => setStarOnly(e.target.checked)} className="h-4 w-4 text-mint-600 focus:ring-mint-500 border-gray-300 rounded" />
               Starred only
             </label>
@@ -446,7 +512,9 @@ export default function Recent() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="mt-4 pt-4 border-t border-gray-200"
+              className={`mt-4 pt-4 border-t ${
+                isDarkMode ? 'border-gray-700' : 'border-gray-200'
+              }`}
             >
               <div className="flex flex-wrap gap-2">
                 {typeOptions.map((ext) => (
@@ -455,7 +523,9 @@ export default function Recent() {
                     onClick={() => toggleType(ext)}
                     className={cn(
                       "px-3 py-1 text-xs rounded-full border",
-                      typeFilters.includes(ext) ? "bg-mint-50 text-mint-700 border-mint-200" : "text-gray-700 border-gray-300 hover:bg-gray-50"
+                      typeFilters.includes(ext) 
+                        ? `border-mint-200 ${isDarkMode ? 'bg-mint-900 text-mint-300' : 'bg-mint-50 text-mint-700'}` 
+                        : `border ${isDarkMode ? 'text-gray-300 border-gray-600 hover:bg-gray-700' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`
                     )}
                   >
                     {ext.toUpperCase()}
@@ -464,7 +534,11 @@ export default function Recent() {
                 {(typeFilters.length > 0 || starOnly || search) && (
                   <button
                     onClick={() => { setTypeFilters([]); setStarOnly(false); setSearch(""); }}
-                    className="ml-auto px-3 py-1 text-xs rounded-full border border-gray-300 text-gray-700 hover:bg-gray-50"
+                    className={`ml-auto px-3 py-1 text-xs rounded-full border ${
+                      isDarkMode 
+                        ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
+                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                    }`}
                   >
                     Clear filters
                   </button>
@@ -486,15 +560,29 @@ export default function Recent() {
         {loading ? (
           <div className="grid grid-cols-1 gap-3">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="animate-pulse h-16 rounded-lg bg-gray-100 border border-gray-200" />
+              <div key={i} className={`animate-pulse h-16 rounded-lg border ${
+                isDarkMode 
+                  ? 'bg-gray-700 border-gray-600' 
+                  : 'bg-gray-100 border-gray-200'
+              }`} />
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className={`rounded-xl shadow-sm border ${
+            isDarkMode 
+              ? 'bg-gray-800 border-gray-700' 
+              : 'bg-white border-gray-200'
+          }`}>
             <div className="text-center py-16">
-              <ClockIcon className="mx-auto h-16 w-16 text-gray-400" />
-              <h3 className="mt-4 text-lg font-medium text-gray-900">No recent files</h3>
-              <p className="mt-2 text-gray-500 max-w-sm mx-auto">Recently updated files will appear here as you and your team work.</p>
+              <ClockIcon className={`mx-auto h-16 w-16 ${
+                isDarkMode ? 'text-gray-500' : 'text-gray-400'
+              }`} />
+              <h3 className={`mt-4 text-lg font-medium ${
+                isDarkMode ? 'text-white' : 'text-gray-900'
+              }`}>No recent files</h3>
+              <p className={`mt-2 max-w-sm mx-auto ${
+                isDarkMode ? 'text-gray-400' : 'text-gray-500'
+              }`}>Recently updated files will appear here as you and your team work.</p>
             </div>
           </div>
         ) : (

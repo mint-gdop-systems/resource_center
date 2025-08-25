@@ -11,6 +11,8 @@ import {
 import { UploadProgress } from "../../types";
 import { useFiles } from "../../contexts/FileContext";
 import { CategoryModal } from "./CategoryModal";
+import DuplicateFileModal from "./DuplicateFileModal";
+import { api } from "../../services/api";
 
 interface FileUploadProps {
   isOpen: boolean;
@@ -30,6 +32,15 @@ export default function FileUpload({
   // Category modal state
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  
+  // Duplicate file modal state
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [duplicateFiles, setDuplicateFiles] = useState<any[]>([]);
+  const [duplicateContext, setDuplicateContext] = useState<{
+    files: File[];
+    categoryId: number;
+    folderName?: string;
+  } | null>(null);
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
@@ -42,7 +53,13 @@ export default function FileUpload({
 
   // Handle category selection and upload (like uploadFileWithCategory in base.js)
   const handleCategoryUpload = async (categoryId: number) => {
-    const newUploads: UploadProgress[] = pendingFiles.map((file) => ({
+    await processFileUploads(pendingFiles, categoryId);
+    setPendingFiles([]);
+  };
+
+  // Process file uploads with duplicate detection
+  const processFileUploads = async (files: File[], categoryId: number) => {
+    const newUploads: UploadProgress[] = files.map((file) => ({
       id: Math.random().toString(36).substr(2, 9),
       fileName: file.name,
       progress: 0,
@@ -52,7 +69,8 @@ export default function FileUpload({
     setUploadFiles((prev) => [...prev, ...newUploads]);
 
     // Upload each file with the selected category
-    pendingFiles.forEach(async (file, index) => {
+    for (let index = 0; index < files.length; index++) {
+      const file = files[index];
       const uploadId = newUploads[index].id;
 
       // Simulate progress updates
@@ -75,8 +93,27 @@ export default function FileUpload({
       }, 300);
 
       try {
-        // Use real upload function from context with category
-        await uploadFile(file, currentPath, categoryId);
+        // Call the API directly to get proper duplicate handling
+        const formData = new FormData();
+        formData.append('files', file);
+        
+        if (categoryId) {
+          formData.append('category_id', categoryId.toString());
+        }
+        
+        // Add folder ID if we're in a specific folder
+        if (currentPath.length > 0) {
+          const folderId = currentPath[currentPath.length - 1];
+          if (folderId !== "/") {
+            formData.append('folder_id', folderId);
+          }
+        }
+        
+        await api.post('/file-upload/', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
 
         // Complete the upload
         clearInterval(progressInterval);
@@ -92,30 +129,163 @@ export default function FileUpload({
             return uploadFile;
           }),
         );
+        
+        // Refresh the file list
+        window.dispatchEvent(new CustomEvent('files:refresh'));
       } catch (error: any) {
         clearInterval(progressInterval);
+        
+        // Check if this is a duplicate file error
+        if (error?.response?.status === 409 && error?.response?.data?.error === "duplicate_files_found") {
+          // Handle duplicate files
+          const duplicates = error.response.data.duplicates || [];
+          setDuplicateFiles(duplicates);
+          setDuplicateContext({
+            files: [file],
+            categoryId,
+            folderName: currentPath.length === 0 ? "My Files" : currentPath.join(" / ")
+          });
+          setShowDuplicateModal(true);
+          
+          // Update upload status to show duplicate
+          setUploadFiles((prev) =>
+            prev.map((uploadFile) => {
+              if (uploadFile.id === uploadId) {
+                return {
+                  ...uploadFile,
+                  status: "error",
+                  error: "Duplicate file - awaiting resolution",
+                };
+              }
+              return uploadFile;
+            }),
+          );
+          return; // Don't continue with other files until duplicate is resolved
+        }
+        
+        // Extract the specific error message from the API response
+        let errorMessage = "Upload failed";
+        if (error?.response?.data?.error) {
+          errorMessage = error.response.data.error;
+        } else if (error?.response?.data?.detail) {
+          errorMessage = error.response.data.detail;
+        } else if (error?.message) {
+          errorMessage = error.message;
+        }
+        
         setUploadFiles((prev) =>
           prev.map((uploadFile) => {
             if (uploadFile.id === uploadId) {
               return {
                 ...uploadFile,
                 status: "error",
-                error: error?.message || "Upload failed",
+                error: errorMessage,
               };
             }
             return uploadFile;
           }),
         );
       }
-    });
-
-    // Clear pending files
-    setPendingFiles([]);
+    }
   };
 
   const handleCategoryModalClose = () => {
     setShowCategoryModal(false);
     setPendingFiles([]);
+  };
+
+  // Handle duplicate file resolution
+  const handleDuplicateResolution = async (resolution: "rename" | "skip") => {
+    if (!duplicateContext) return;
+
+    try {
+      // Create FormData for the resolution request
+      const formData = new FormData();
+      duplicateContext.files.forEach(file => {
+        formData.append('files', file);
+      });
+      
+      if (duplicateContext.categoryId) {
+        formData.append('category_id', duplicateContext.categoryId.toString());
+      }
+      
+      // Add folder ID if we're in a specific folder
+      if (currentPath.length > 0) {
+        const folderId = currentPath[currentPath.length - 1];
+        if (folderId !== "/") {
+          formData.append('folder_id', folderId);
+        }
+      }
+      
+      formData.append('resolution', resolution);
+      
+      // Call the resolution API
+      const response = await api.post('/resolve-duplicates/', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      if (response.status === 201) {
+        const result = response.data;
+        
+        // Update upload status based on resolution
+        if (resolution === "rename") {
+          // Files were uploaded with new names
+          setUploadFiles((prev) =>
+            prev.map((uploadFile) => {
+              if (uploadFile.status === "error" && uploadFile.error?.includes("Duplicate")) {
+                return {
+                  ...uploadFile,
+                  progress: 100,
+                  status: "completed",
+                  fileName: uploadFile.fileName // Could be updated with new name from response
+                };
+              }
+              return uploadFile;
+            }),
+          );
+        } else {
+          // Files were skipped
+          setUploadFiles((prev) =>
+            prev.filter((uploadFile) => 
+              !(uploadFile.status === "error" && uploadFile.error?.includes("Duplicate"))
+            )
+          );
+        }
+        
+        // Refresh the file list
+        window.dispatchEvent(new CustomEvent('files:refresh'));
+        
+      } else {
+        throw new Error(response.data?.error || 'Failed to resolve duplicates');
+      }
+      
+    } catch (error) {
+      console.error('Error resolving duplicates:', error);
+      // Update upload status to show error
+      setUploadFiles((prev) =>
+        prev.map((uploadFile) => {
+          if (uploadFile.status === "error" && uploadFile.error?.includes("Duplicate")) {
+            return {
+              ...uploadFile,
+              error: "Failed to resolve duplicate",
+            };
+          }
+          return uploadFile;
+        }),
+      );
+    } finally {
+      setShowDuplicateModal(false);
+      setDuplicateFiles([]);
+      setDuplicateContext(null);
+    }
+  };
+
+  const handleDuplicateModalClose = () => {
+    setShowDuplicateModal(false);
+    setDuplicateFiles([]);
+    setDuplicateContext(null);
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -350,6 +520,15 @@ export default function FileUpload({
         onClose={handleCategoryModalClose}
         onUpload={handleCategoryUpload}
         files={pendingFiles}
+      />
+
+      {/* Duplicate File Modal */}
+      <DuplicateFileModal
+        isOpen={showDuplicateModal}
+        onClose={handleDuplicateModalClose}
+        onResolve={handleDuplicateResolution}
+        duplicateFiles={duplicateFiles}
+        folderName={duplicateContext?.folderName}
       />
     </>
   );

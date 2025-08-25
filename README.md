@@ -234,9 +234,6 @@ npm run test:e2e
 - Update documentation for API changes
 - Follow semantic versioning for releases
 
-## 📄 **License**
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 **Acknowledgments**
 
@@ -250,7 +247,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 For support and questions:
 - **Email**: support@mint.gov.et
-- **Documentation**: [Wiki](https://github.com/passenger184/resource/wiki)
 - **Issues**: [GitHub Issues](https://github.com/passenger184/resource/issues)
 
 ---

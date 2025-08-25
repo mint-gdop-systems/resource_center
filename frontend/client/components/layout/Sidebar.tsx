@@ -77,15 +77,15 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const { unseenSharesCount } = useNotifications();
 
   const sidebarContent = (
-    <div className={`h-full flex flex-col bg-white border-r border-gray-200 shadow-sm transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-80'
+    <div className={`h-full flex flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-80'
       }`}>
       {/* Desktop toggle button */}
-      <div className="hidden lg:flex items-center justify-between p-4 border-b border-gray-200">
+      <div className="hidden lg:flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
         {!isCollapsed && (
           <div className="flex items-center space-x-3">
             <img
-              className="h-8 w-8 rounded-lg"
-              src="/logo-mint.svg"
+              className="h-8 w-8 rounded-lg object-cover"
+              src="/company-logo.jpg"
               alt="MINT"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
@@ -93,7 +93,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='12' fill='%232563eb'/%3E%3Ctext x='50' y='55' font-family='Arial' font-size='40' fill='white' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E";
               }}
             />
-            <span className="text-lg font-semibold text-gray-900">Resource Center</span>
+            <span className="text-lg font-semibold text-gray-900 dark:text-white">Resource Center</span>
           </div>
         )}
         <button
@@ -111,11 +111,11 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
       </div>
 
       {/* Mobile header */}
-      <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-200">
+      <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center space-x-3">
           <img
-            className="h-8 w-8 rounded-lg"
-            src="/logo-mint.svg"
+            className="h-8 w-8 rounded-lg object-cover"
+            src="/company-logo.jpeg"
             alt="MINT"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
@@ -123,7 +123,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                 "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='12' fill='%232563eb'/%3E%3Ctext x='50' y='55' font-family='Arial' font-size='40' fill='white' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E";
             }}
           />
-          <span className="text-lg font-semibold text-gray-900">MINT DMS</span>
+          <span className="text-lg font-semibold text-gray-900 dark:text-white">MINT DMS</span>
         </div>
         <button
           onClick={onMobileClose}
@@ -165,8 +165,8 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                     ? 'px-3 py-3 justify-center'
                     : 'px-3 py-2'
                   } ${isActive
-                    ? "bg-mint-50 text-mint-700"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    ? "bg-mint-50 dark:bg-mint-900/20 text-mint-700 dark:text-mint-400"
+                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
                   }`
                 }
               >
@@ -244,13 +244,13 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
         />
         {/* Sidebar */}
         <div className="fixed inset-y-0 left-0 z-30 w-80 transform transition-transform">
-          <div className="h-full flex flex-col bg-white border-r border-gray-200 shadow-lg w-80">
+          <div className="h-full flex flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-lg w-80">
             {/* Mobile header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center space-x-3">
                 <img
-                  className="h-8 w-8 rounded-lg"
-                  src="/logo-mint.svg"
+                  className="h-8 w-8 rounded-lg object-cover"
+                  src="/company-logo.jpeg"
                   alt="MINT"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
@@ -295,8 +295,8 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                     onClick={() => onMobileClose()}
                     className={({ isActive }) =>
                       `group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${isActive
-                        ? "bg-mint-50 text-mint-700"
-                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                        ? "bg-mint-50 dark:bg-mint-900/20 text-mint-700 dark:text-mint-400"
+                        : "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
                       }`
                     }
                   >

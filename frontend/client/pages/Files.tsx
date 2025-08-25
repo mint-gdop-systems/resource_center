@@ -17,12 +17,15 @@ import { ViewMode, SearchFilters } from "../types";
 import { useFiles } from "../contexts/FileContext";
 import { useFileNavigation } from "../hooks/useFileNavigation";
 import { useAuth } from "../services/auth";
+import { useTheme } from "../contexts/ThemeContext";
 import toast from "react-hot-toast";
 import { useCallback } from "react";
 
 export default function Files() {
   const { files, createFolder, fetchFiles } = useFiles();
   const { authenticated } = useAuth();
+  const { actualTheme } = useTheme();
+  const isDarkMode = actualTheme === 'dark';
   const {
     currentPath,
     currentFiles: navigationFiles,
@@ -150,7 +153,7 @@ function getFolderPathNames(pathIds: string[], allFolders: any[]): { id: string,
       path: "/files",
     },
     ...folderPath.map((folder, index) => ({
-      id: folder.id,
+      id: `${folder.id}-${index}`, // Make key unique by adding index
       name: folder.name || folder.id,
       path: `/files/${currentPath.slice(0, index + 1).join("/")}`,
     })),
@@ -210,21 +213,27 @@ function getFolderPathNames(pathIds: string[], allFolders: any[]): { id: string,
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
         <div>
           <Breadcrumb items={breadcrumbItems} onNavigate={handleBreadcrumbNavigate} />
-          <h1 className="mt-2 text-2xl font-bold text-gray-900">
+          <h1 className={`mt-2 text-2xl font-bold ${
+            isDarkMode ? 'text-white' : 'text-gray-900'
+          }`}>
             {currentPath.length === 0
               ? "My Files"
               : (folderPath.length > 0
                   ? folderPath[folderPath.length - 1].name
                   : "Folder")}
           </h1>
-          <p className="text-gray-600">
+          <p className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>
             {sortedFiles.length} item{sortedFiles.length !== 1 ? "s" : ""}
           </p>
         </div>
         <div className="flex items-center space-x-3">
           <button
             onClick={handleCreateFolder}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-mint-500"
+            className={`inline-flex items-center px-4 py-2 border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-mint-500 ${
+              isDarkMode 
+                ? 'border-gray-600 text-gray-300 bg-gray-700 hover:bg-gray-600' 
+                : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+            }`}
           >
             <PlusIcon className="h-4 w-4 mr-2" />
             New Folder
@@ -240,18 +249,28 @@ function getFolderPathNames(pathIds: string[], allFolders: any[]): { id: string,
       </div>
 
       {/* Search and filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className={`rounded-xl shadow-sm border p-6 ${
+        isDarkMode 
+          ? 'bg-gray-800 border-gray-700' 
+          : 'bg-white border-gray-200'
+      }`}>
         <div className="flex flex-col lg:flex-row lg:items-center space-y-4 lg:space-y-0 lg:space-x-4">
           {/* Search */}
           <div className="flex-1">
             <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <MagnifyingGlassIcon className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 ${
+                isDarkMode ? 'text-gray-500' : 'text-gray-400'
+              }`} />
               <input
                 type="text"
                 placeholder="Search files and folders..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-mint-500 focus:border-transparent"
+                className={`block w-full pl-10 pr-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-mint-500 focus:border-transparent ${
+                  isDarkMode 
+                    ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' 
+                    : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500'
+                }`}
               />
             </div>
           </div>
@@ -269,7 +288,11 @@ function getFolderPathNames(pathIds: string[], allFolders: any[]): { id: string,
                   sortOrder: sortOrder as "asc" | "desc",
                 }));
               }}
-              className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-mint-500"
+              className={`text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-mint-500 ${
+                isDarkMode 
+                  ? 'border-gray-600 bg-gray-700 text-white' 
+                  : 'border-gray-300 bg-white text-gray-900'
+              }`}
             >
               <option value="name-asc">Name (A-Z)</option>
               <option value="name-desc">Name (Z-A)</option>
@@ -284,21 +307,29 @@ function getFolderPathNames(pathIds: string[], allFolders: any[]): { id: string,
               onClick={() => setShowFilters(!showFilters)}
               className={`p-2 rounded-lg transition-colors ${
                 showFilters
-                  ? "bg-mint-100 text-mint-600"
-                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                  ? `text-mint-600 ${isDarkMode ? 'bg-mint-900' : 'bg-mint-100'}`
+                  : `${isDarkMode 
+                      ? 'text-gray-400 hover:text-gray-300 hover:bg-gray-700' 
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                    }`
               }`}
             >
               <FunnelIcon className="h-5 w-5" />
             </button>
 
             {/* View mode toggle */}
-            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+            <div className={`flex items-center rounded-lg p-1 ${
+              isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
+            }`}>
               <button
                 onClick={() => handleViewModeChange("grid")}
                 className={`p-2 rounded-md transition-colors ${
                   viewMode.type === "grid"
-                    ? "bg-white text-mint-600 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
+                    ? `text-mint-600 shadow-sm ${isDarkMode ? 'bg-gray-600' : 'bg-white'}`
+                    : `${isDarkMode 
+                        ? 'text-gray-400 hover:text-gray-300' 
+                        : 'text-gray-500 hover:text-gray-700'
+                      }`
                 }`}
               >
                 <ViewColumnsIcon className="h-4 w-4" />
@@ -307,8 +338,11 @@ function getFolderPathNames(pathIds: string[], allFolders: any[]): { id: string,
                 onClick={() => handleViewModeChange("list")}
                 className={`p-2 rounded-md transition-colors ${
                   viewMode.type === "list"
-                    ? "bg-white text-mint-600 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
+                    ? `text-mint-600 shadow-sm ${isDarkMode ? 'bg-gray-600' : 'bg-white'}`
+                    : `${isDarkMode 
+                        ? 'text-gray-400 hover:text-gray-300' 
+                        : 'text-gray-500 hover:text-gray-700'
+                      }`
                 }`}
               >
                 <ListBulletIcon className="h-4 w-4" />
@@ -323,16 +357,24 @@ function getFolderPathNames(pathIds: string[], allFolders: any[]): { id: string,
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="mt-4 pt-4 border-t border-gray-200"
+            className={`mt-4 pt-4 border-t ${
+              isDarkMode ? 'border-gray-700' : 'border-gray-200'
+            }`}
           >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className={`block text-sm font-medium mb-2 ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                }`}>
                   File Type
                 </label>
                 <select
                   multiple
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-mint-500"
+                  className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-mint-500 ${
+                    isDarkMode 
+                      ? 'border-gray-600 bg-gray-700 text-white' 
+                      : 'border-gray-300 bg-white text-gray-900'
+                  }`}
                   onChange={(e) => {
                     const values = Array.from(
                       e.target.selectedOptions,
@@ -350,7 +392,9 @@ function getFolderPathNames(pathIds: string[], allFolders: any[]): { id: string,
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className={`block text-sm font-medium mb-2 ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                }`}>
                   Status
                 </label>
                 <div className="space-y-2">
@@ -366,7 +410,9 @@ function getFolderPathNames(pathIds: string[], allFolders: any[]): { id: string,
                       }
                       className="h-4 w-4 text-mint-600 focus:ring-mint-500 border-gray-300 rounded"
                     />
-                    <span className="ml-2 text-sm text-gray-700">
+                    <span className={`ml-2 text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
                       Starred only
                     </span>
                   </label>
@@ -382,7 +428,9 @@ function getFolderPathNames(pathIds: string[], allFolders: any[]): { id: string,
                       }
                       className="h-4 w-4 text-mint-600 focus:ring-mint-500 border-gray-300 rounded"
                     />
-                    <span className="ml-2 text-sm text-gray-700">
+                    <span className={`ml-2 text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
                       Shared files
                     </span>
                   </label>
@@ -394,7 +442,11 @@ function getFolderPathNames(pathIds: string[], allFolders: any[]): { id: string,
                     setFilters({});
                     setSearchQuery("");
                   }}
-                  className="w-full px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-mint-500"
+                  className={`w-full px-4 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-mint-500 ${
+                    isDarkMode 
+                      ? 'text-gray-300 border-gray-600 hover:bg-gray-700' 
+                      : 'text-gray-600 border-gray-300 hover:bg-gray-50'
+                  }`}
                 >
                   Clear Filters
                 </button>
@@ -405,7 +457,11 @@ function getFolderPathNames(pathIds: string[], allFolders: any[]): { id: string,
       </div>
 
       {/* File listing */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+      <div className={`rounded-xl shadow-sm border ${
+        isDarkMode 
+          ? 'bg-gray-800 border-gray-700' 
+          : 'bg-white border-gray-200'
+      }`}>
         <div className="p-6">
           <motion.div
             key={viewMode.type}

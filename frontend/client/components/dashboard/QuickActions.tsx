@@ -69,34 +69,34 @@ const actions = [
 
 const colorClasses = {
   mint: {
-    bg: "bg-mint-50 hover:bg-mint-100",
-    icon: "text-mint-600",
-    border: "border-mint-200 hover:border-mint-300",
+    bg: "bg-mint-50 hover:bg-mint-100 dark:bg-mint-900/20 dark:hover:bg-mint-900/30",
+    icon: "text-mint-600 dark:text-mint-400",
+    border: "border-mint-200 hover:border-mint-300 dark:border-mint-800 dark:hover:border-mint-700",
   },
   blue: {
-    bg: "bg-blue-50 hover:bg-blue-100",
-    icon: "text-blue-600",
-    border: "border-blue-200 hover:border-blue-300",
+    bg: "bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30",
+    icon: "text-blue-600 dark:text-blue-400",
+    border: "border-blue-200 hover:border-blue-300 dark:border-blue-800 dark:hover:border-blue-700",
   },
   purple: {
-    bg: "bg-purple-50 hover:bg-purple-100",
-    icon: "text-purple-600",
-    border: "border-purple-200 hover:border-purple-300",
+    bg: "bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/30",
+    icon: "text-purple-600 dark:text-purple-400",
+    border: "border-purple-200 hover:border-purple-300 dark:border-purple-800 dark:hover:border-purple-700",
   },
   green: {
-    bg: "bg-green-50 hover:bg-green-100",
-    icon: "text-green-600",
-    border: "border-green-200 hover:border-green-300",
+    bg: "bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/30",
+    icon: "text-green-600 dark:text-green-400",
+    border: "border-green-200 hover:border-green-300 dark:border-green-800 dark:hover:border-green-700",
   },
   yellow: {
-    bg: "bg-yellow-50 hover:bg-yellow-100",
-    icon: "text-yellow-600",
-    border: "border-yellow-200 hover:border-yellow-300",
+    bg: "bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-900/20 dark:hover:bg-yellow-900/30",
+    icon: "text-yellow-600 dark:text-yellow-400",
+    border: "border-yellow-200 hover:border-yellow-300 dark:border-yellow-800 dark:hover:border-yellow-700",
   },
   orange: {
-    bg: "bg-orange-50 hover:bg-orange-100",
-    icon: "text-orange-600",
-    border: "border-orange-200 hover:border-orange-300",
+    bg: "bg-orange-50 hover:bg-orange-100 dark:bg-orange-900/20 dark:hover:bg-orange-900/30",
+    icon: "text-orange-600 dark:text-orange-400",
+    border: "border-orange-200 hover:border-orange-300 dark:border-orange-800 dark:hover:border-orange-700",
   },
 };
 
@@ -127,10 +127,10 @@ export default function QuickActions({ onUpload }: QuickActionsProps) {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-300">
       <div className="mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-2">Quick Actions</h2>
-        <p className="text-sm text-gray-600">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Quick Actions</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-300">
           Common tasks to help you get things done faster
         </p>
       </div>
@@ -154,10 +154,10 @@ export default function QuickActions({ onUpload }: QuickActionsProps) {
                   <IconComponent className={`h-6 w-6 ${colors.icon}`} />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-900 group-hover:text-gray-700 transition-colors">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors">
                     {action.name}
                   </p>
-                  <p className="text-xs text-gray-500 mt-1 group-hover:text-gray-600 transition-colors">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors">
                     {action.description}
                   </p>
                 </div>
