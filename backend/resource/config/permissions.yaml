@@ -1,0 +1,172 @@
+metadata:
+  version: "1.0.0"
+  last_updated: "2025-01-14T00:00:00Z"
+  description: "Role-based access control configuration for Resource Center"
+  schema_version: "1.0"
+
+roles:
+  system_admin:
+    name: "System Administrator"
+    description: "Full system access with all privileges"
+    level: 100
+    permissions:
+      groups:
+        create: true
+        read: true
+        update: true
+        delete: true
+        list_all: true
+      group_members:
+        add: true
+        remove: true
+        promote: true
+        demote: true
+        view_all: true
+      resources:
+        share_any: true
+        access_all: true
+        manage_any: true
+      group_shares:
+        create_any: true
+        view_all: true
+        delete_any: true
+    restrictions: {}
+
+  group_admin:
+    name: "Group Administrator"
+    description: "Can manage members and settings for assigned groups"
+    level: 50
+    permissions:
+      groups:
+        read: "own"
+        update: "own"
+      group_members:
+        add: "own_groups"
+        remove: "own_groups"
+        view: "own_groups"
+      resources:
+        share_own: "member_groups"
+        access_shared: "member_groups"
+      group_shares:
+        create: "own_groups"
+        view: "own_groups"
+    restrictions:
+      cannot_remove_other_admins: true
+      cannot_promote_to_admin: true
+      scope: "own_groups_only"
+
+  group_member:
+    name: "Group Member"
+    description: "Can access shared resources and optionally share own resources"
+    level: 25
+    permissions:
+      groups:
+        read: "member"
+      group_members:
+        view: "member_groups"
+      resources:
+        share_own: "member_groups"
+        access_shared: "member_groups"
+      group_shares:
+        view: "member_groups"
+    restrictions:
+      scope: "member_groups_only"
+      resources: "own_only"
+
+  regular_user:
+    name: "Regular User"
+    description: "Basic user with no group privileges"
+    level: 10
+    permissions:
+      resources:
+        manage_own: true
+    restrictions:
+      scope: "own_resources_only"
+
+actions:
+  groups:
+    create:
+      description: "Create new groups"
+      resource_type: "group"
+    read:
+      description: "View group information"
+      resource_type: "group"
+      scopes: ["all", "own", "member"]
+    update:
+      description: "Modify group settings"
+      resource_type: "group"
+      scopes: ["all", "own"]
+    delete:
+      description: "Delete/deactivate groups"
+      resource_type: "group"
+    list_all:
+      description: "List all groups in system"
+      resource_type: "group"
+
+  group_members:
+    add:
+      description: "Add members to groups"
+      resource_type: "group_membership"
+      scopes: ["all", "own_groups"]
+    remove:
+      description: "Remove members from groups"
+      resource_type: "group_membership"
+      scopes: ["all", "own_groups"]
+    promote:
+      description: "Promote members to admin role"
+      resource_type: "group_membership"
+    demote:
+      description: "Demote admins to member role"
+      resource_type: "group_membership"
+    view:
+      description: "View group memberships"
+      resource_type: "group_membership"
+      scopes: ["all", "own_groups", "member_groups"]
+
+  resources:
+    share_any:
+      description: "Share any resource with any group"
+      resource_type: "resource"
+    share_own:
+      description: "Share own resources"
+      resource_type: "resource"
+      scopes: ["member_groups", "any_group"]
+    access_all:
+      description: "Access all shared resources"
+      resource_type: "resource"
+    access_shared:
+      description: "Access resources shared with user"
+      resource_type: "resource"
+      scopes: ["member_groups"]
+    manage_own:
+      description: "Manage own resources"
+      resource_type: "resource"
+    manage_any:
+      description: "Manage any resource"
+      resource_type: "resource"
+
+  group_shares:
+    create:
+      description: "Create group shares"
+      resource_type: "group_share"
+      scopes: ["any", "own_groups"]
+    create_any:
+      description: "Share resources with any group"
+      resource_type: "group_share"
+    view:
+      description: "View group shares"
+      resource_type: "group_share"
+      scopes: ["all", "own_groups", "member_groups"]
+    view_all:
+      description: "View all group shares"
+      resource_type: "group_share"
+    delete_any:
+      description: "Delete any group share"
+      resource_type: "group_share"
+
+scopes:
+  all: "All resources in the system"
+  own: "Resources owned/managed by the user"
+  own_groups: "Groups where user is an administrator"
+  member_groups: "Groups where user is a member"
+  any_group: "Any group in the system"

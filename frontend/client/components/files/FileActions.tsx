@@ -286,6 +286,7 @@ export default function FileActions({
             
             // Refresh the current view
             window.dispatchEvent(new CustomEvent('files:refresh'));
+            window.dispatchEvent(new CustomEvent('files:modified'));
           } catch (error: any) {
             console.error('Error moving item:', error);
             const errorMessage = error?.response?.data?.error || error?.message || 'Failed to move item';

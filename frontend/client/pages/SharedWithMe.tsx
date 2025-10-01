@@ -28,6 +28,8 @@ import { getSharedWithMe, downloadFile, downloadFolder, deleteSharedItems } from
 import { useNotifications } from "../contexts/NotificationContext";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { usePagination } from "../hooks/usePagination";
+import PaginationComponent from "../components/ui/PaginationComponent";
 
 interface SharedItem {
   id: string;
@@ -51,6 +53,7 @@ export default function SharedWithMe() {
   const [filter, setFilter] = useState<'all' | 'files' | 'folders'>('all');
   const [selectedShares, setSelectedShares] = useState<string[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const { refreshNotifications } = useNotifications();
   const navigate = useNavigate();
 
@@ -205,6 +208,15 @@ export default function SharedWithMe() {
     }
   });
 
+  // Pagination
+  const pagination = usePagination({
+    totalItems: filteredShares.length,
+    itemsPerPage,
+    initialPage: 1,
+  });
+
+  const paginatedShares = pagination.getPageItems(filteredShares);
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -354,8 +366,9 @@ export default function SharedWithMe() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-4">
-          {filteredShares.map((shareItem) => (
+        <>
+          <div className="grid gap-4">
+            {paginatedShares.map((shareItem) => (
             <motion.div
               key={shareItem.id}
               initial={{ opacity: 0, y: 10 }}
@@ -445,8 +458,73 @@ export default function SharedWithMe() {
                 </div>
               </div>
             </motion.div>
-          ))}
-        </div>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {filteredShares.length > 0 && (
+            <div className="mt-8 space-y-4">
+              {/* Pagination Info and Items Per Page Selector */}
+              <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-lg border ${
+                isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'
+              }`}>
+                <div className="flex items-center gap-4">
+                  <div className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Showing {pagination.startIndex + 1} to {Math.min(pagination.endIndex + 1, filteredShares.length)} of {filteredShares.length} shared items
+                  </div>
+                  {pagination.totalPages > 1 && (
+                    <div className={`text-xs px-2 py-1 rounded-full ${
+                      isDarkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-600'
+                    }`}>
+                      Page {pagination.currentPage} of {pagination.totalPages}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>
+                    Show:
+                  </span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      const newItemsPerPage = Number(e.target.value);
+                      setItemsPerPage(newItemsPerPage);
+                      pagination.setItemsPerPage(newItemsPerPage);
+                    }}
+                    className={`px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-mint-500 transition-colors ${
+                      isDarkMode 
+                        ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
+                        : 'bg-white border-gray-300 text-gray-900 hover:border-gray-400'
+                    }`}
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>
+                    per page
+                  </span>
+                </div>
+              </div>
+
+              {/* Pagination Component */}
+              {pagination.totalPages > 1 && (
+                <div className="flex justify-center">
+                  <PaginationComponent
+                    currentPage={pagination.currentPage}
+                    totalPages={pagination.totalPages}
+                    onPageChange={pagination.goToPage}
+                    showFirstLast={true}
+                    showPreviousNext={true}
+                    maxVisiblePages={7}
+                    size="default"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       {/* Confirmation Modal */}

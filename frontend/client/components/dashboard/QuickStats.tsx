@@ -5,17 +5,17 @@ import {
   StarIcon,
   CloudArrowUpIcon,
   ChartBarIcon,
+  CircleStackIcon,
 } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
 import { getDashboardStats } from "../../services/api";
 import { useAuth } from "../../services/auth";
+import { useStorageQuota } from "../../hooks/useStorageQuota";
 
 interface StatCard {
   id: string;
   name: string;
   value: string;
-  change: string;
-  changeType: "increase" | "decrease" | "neutral";
   icon: React.ComponentType<{ className?: string }>;
   color: string;
 }
@@ -58,6 +58,7 @@ export default function QuickStats() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { authenticated } = useAuth();
+  const { quota, formatBytes, getUsageStatus } = useStorageQuota();
 
   useEffect(() => {
     if (authenticated) {
@@ -85,8 +86,6 @@ export default function QuickStats() {
           id: "total-files",
           name: "Total Files",
           value: data.total_files.value.toLocaleString(),
-          change: `${data.total_files.change >= 0 ? '+' : ''}${data.total_files.change}%`,
-          changeType: data.total_files.change >= 0 ? "increase" : "decrease",
           icon: DocumentIcon,
           color: "mint",
         },
@@ -94,8 +93,6 @@ export default function QuickStats() {
           id: "folders",
           name: "Folders",
           value: data.total_folders.value.toLocaleString(),
-          change: `${data.total_folders.change >= 0 ? '+' : ''}${data.total_folders.change}%`,
-          changeType: data.total_folders.change >= 0 ? "increase" : "decrease",
           icon: FolderIcon,
           color: "blue",
         },
@@ -103,8 +100,6 @@ export default function QuickStats() {
           id: "starred",
           name: "Starred Files",
           value: data.starred_files.value.toLocaleString(),
-          change: `${data.starred_files.change >= 0 ? '+' : ''}${data.starred_files.change}%`,
-          changeType: data.starred_files.change >= 0 ? "increase" : "decrease",
           icon: StarIcon,
           color: "yellow",
         },
@@ -112,17 +107,13 @@ export default function QuickStats() {
           id: "shared",
           name: "Shared Files",
           value: data.starred_files.value.toLocaleString(), // Use starred files as placeholder since shared_files doesn't exist in backend
-          change: `${data.starred_files.change >= 0 ? '+' : ''}${data.starred_files.change}%`,
-          changeType: data.starred_files.change >= 0 ? "increase" : "decrease",
           icon: ChartBarIcon,
           color: "purple",
         },
         {
           id: "uploads",
-          name: "This Month",
+          name: "Uploads This Month",
           value: data.files_this_month.value.toLocaleString(),
-          change: `${data.files_this_month.change >= 0 ? '+' : ''}${data.files_this_month.change}%`,
-          changeType: data.files_this_month.change >= 0 ? "increase" : "decrease",
           icon: CloudArrowUpIcon,
           color: "green",
         },
@@ -145,8 +136,6 @@ export default function QuickStats() {
       id: "total-files",
       name: "Total Files",
       value: "0",
-      change: "0%",
-      changeType: "neutral",
       icon: DocumentIcon,
       color: "mint",
     },
@@ -154,8 +143,6 @@ export default function QuickStats() {
       id: "folders",
       name: "Folders",
       value: "0",
-      change: "0%",
-      changeType: "neutral",
       icon: FolderIcon,
       color: "blue",
     },
@@ -163,8 +150,6 @@ export default function QuickStats() {
       id: "starred",
       name: "Starred Files",
       value: "0",
-      change: "0%",
-      changeType: "neutral",
       icon: StarIcon,
       color: "yellow",
     },
@@ -172,17 +157,13 @@ export default function QuickStats() {
       id: "shared",
       name: "Shared Files",
       value: "0",
-      change: "0%",
-      changeType: "neutral",
       icon: ChartBarIcon,
       color: "purple",
     },
     {
       id: "uploads",
-      name: "This Month",
+      name: "Uploads This Month",
       value: "0",
-      change: "0%",
-      changeType: "neutral",
       icon: CloudArrowUpIcon,
       color: "green",
     },
@@ -227,7 +208,7 @@ export default function QuickStats() {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
       {stats.map((stat, index) => {
         const colors = colorClasses[stat.color as keyof typeof colorClasses];
         const IconComponent = stat.icon;
@@ -257,52 +238,66 @@ export default function QuickStats() {
                     </p>
                   </div>
                 </div>
-                <div className="mt-3 flex items-center">
-                  <span
-                    className={`inline-flex items-center text-sm font-medium ${stat.changeType === "increase"
-                      ? "text-green-600"
-                      : stat.changeType === "decrease"
-                        ? "text-red-600"
-                        : "text-gray-600"
-                      }`}
-                  >
-                    {stat.changeType === "increase" && (
-                      <svg
-                        className="mr-1 h-3 w-3"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    )}
-                    {stat.changeType === "decrease" && (
-                      <svg
-                        className="mr-1 h-3 w-3"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    )}
-                    {stat.change}
-                  </span>
-                  <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
-                    from last month
-                  </span>
-                </div>
               </div>
             </div>
           </motion.div>
         );
       })}
+
+      {/* Storage Quota Card */}
+      {authenticated && quota && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: stats.length * 0.1 }}
+          className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow duration-200"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <div className="flex items-center space-x-3">
+                <div
+                  className={`p-2 rounded-lg ring-4 ${
+                    getUsageStatus(quota.storage_usage_percentage) === 'danger'
+                      ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 ring-red-100 dark:ring-red-800/50'
+                      : getUsageStatus(quota.storage_usage_percentage) === 'warning'
+                      ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 ring-orange-100 dark:ring-orange-800/50'
+                      : 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 ring-green-100 dark:ring-green-800/50'
+                  }`}
+                >
+                  <CircleStackIcon className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    Storage Used
+                  </p>
+                  <p className="text-lg font-bold text-gray-900 dark:text-white">
+                    {formatBytes(quota.storage_used)}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    of {formatBytes(quota.storage_quota)} ({quota.storage_usage_percentage.toFixed(1)}%)
+                  </p>
+                </div>
+              </div>
+              
+              {/* Progress bar */}
+              <div className="mt-3">
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      getUsageStatus(quota.storage_usage_percentage) === 'danger'
+                        ? 'bg-red-500'
+                        : getUsageStatus(quota.storage_usage_percentage) === 'warning'
+                        ? 'bg-orange-500'
+                        : 'bg-green-500'
+                    }`}
+                    style={{ width: `${Math.min(quota.storage_usage_percentage, 100)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 }

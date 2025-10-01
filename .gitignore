@@ -87,3 +87,14 @@ build/
 !frontend/client/lib/ 
 
 backend/Dockerfile
+
+# Documentation and test files
+*.md
+*.markdown
+test_*.py
+**/test_*.py
+**/tests.py
+backend/resource/management/commands/create_test_data.py
+fix_group_sharing.py
+debug_group_sharing.py
+debug_user_search.py

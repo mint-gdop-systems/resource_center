@@ -6,12 +6,14 @@ import {
   FunnelIcon,
   CloudArrowUpIcon,
   MagnifyingGlassIcon,
+  ShareIcon,
 } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
 import Breadcrumb from "../components/layout/Breadcrumb";
 import FileGrid from "../components/files/FileGrid";
 import FileList from "../components/files/FileList";
 import FileUpload from "../components/files/FileUpload";
+import ShareModal from "../components/files/ShareModal";
 import FolderModal from "../components/ui/FolderModal";
 import { ViewMode, SearchFilters } from "../types";
 import { useFiles } from "../contexts/FileContext";
@@ -47,6 +49,7 @@ export default function Files() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<SearchFilters>({});
   const [showFolderModal, setShowFolderModal] = useState(false);
+
 
   // Search and filter files with proper logic
   const filteredFiles = useMemo(() => {
@@ -207,6 +210,16 @@ function getFolderPathNames(pathIds: string[], allFolders: any[]): { id: string,
     setShowFolderModal(false);
   };
 
+  // Get selected files and folders for sharing
+  const selectedFilesData = sortedFiles.filter(file => 
+    selectedFiles.includes(file.id) && file.type !== 'folder'
+  );
+  const selectedFoldersData = sortedFiles.filter(file => 
+    selectedFiles.includes(file.id) && file.type === 'folder'
+  );
+
+  const [showShareModal, setShowShareModal] = useState(false);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -227,6 +240,15 @@ function getFolderPathNames(pathIds: string[], allFolders: any[]): { id: string,
           </p>
         </div>
         <div className="flex items-center space-x-3">
+          {selectedFiles.length > 0 && (
+            <button
+              onClick={() => setShowShareModal(true)}
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <ShareIcon className="h-4 w-4 mr-2" />
+              Share ({selectedFiles.length})
+            </button>
+          )}
           <button
             onClick={handleCreateFolder}
             className={`inline-flex items-center px-4 py-2 border rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-mint-500 ${
@@ -479,6 +501,8 @@ function getFolderPathNames(pathIds: string[], allFolders: any[]): { id: string,
                 onNavigateToFolder={navigateToFolder}
                 setShowUpload={setShowUpload}
                 isAuthenticated={authenticated}
+                itemsPerPage={24}
+                showPagination={true}
               />
             ) : (
               <FileList
@@ -490,6 +514,8 @@ function getFolderPathNames(pathIds: string[], allFolders: any[]): { id: string,
                 onNavigateToFolder={navigateToFolder}
                 setShowUpload={setShowUpload}
                 isAuthenticated={authenticated}
+                itemsPerPage={20}
+                showPagination={true}
               />
             )}
           </motion.div>
@@ -504,6 +530,19 @@ function getFolderPathNames(pathIds: string[], allFolders: any[]): { id: string,
           currentPath={currentPath}
         />
       )}
+      {/* Share Modal */}
+      {showShareModal && (
+        <ShareModal
+          isOpen={showShareModal}
+          onClose={() => {
+            setShowShareModal(false);
+            setSelectedFiles([]); // Clear selection after sharing
+          }}
+          files={selectedFilesData}
+          folders={selectedFoldersData}
+        />
+      )}
+
       {/* Folder Modal */}
       <FolderModal
         open={showFolderModal}

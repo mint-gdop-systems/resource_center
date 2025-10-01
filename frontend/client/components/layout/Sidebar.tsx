@@ -21,12 +21,13 @@ import {
   ArchiveBoxIcon as ArchiveBoxIconSolid,
 } from "@heroicons/react/24/solid";
 import { navigationItems } from "../../data/mockData";
-import { createFolder, getFiles } from "../../services/api";
+import { createFolder } from "../../services/api";
 import { useFiles } from '../../contexts/FileContext';
 import { useAuth } from '../../services/auth';
 import { useNotifications } from '../../contexts/NotificationContext';
 import { useSidebar } from '../../contexts/SidebarContext';
 import FolderModal from "../ui/FolderModal";
+import StorageQuotaWidget from "./StorageQuotaWidget";
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -58,7 +59,7 @@ const solidIconMap: Record<
 
 export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const location = useLocation();
-  const { initialized, authenticated } = useAuth();
+  const { initialized, authenticated, user } = useAuth();
   const { isCollapsed, toggleSidebar } = useSidebar();
   const [showFolderModal, setShowFolderModal] = React.useState(false);
 
@@ -77,7 +78,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const { unseenSharesCount } = useNotifications();
 
   const sidebarContent = (
-    <div className={`h-full flex flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-80'
+    <div className={`h-full flex flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-72'
       }`}>
       {/* Desktop toggle button */}
       <div className="hidden lg:flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
@@ -136,7 +137,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
       {/* Navigation */}
       <nav className={`flex-1 py-6 space-y-1 overflow-y-auto transition-all duration-300 ${isCollapsed ? 'px-2' : 'px-4'
         }`}>
-        {navigationItems.map((item) => {
+        {navigationItems.filter(item => !item.adminOnly || (authenticated && (user as any)?.is_superuser)).map((item) => {
           const IconComponent = iconMap[item.icon];
           const SolidIconComponent = solidIconMap[item.icon];
           const isActive = location.pathname === item.path;
@@ -230,6 +231,13 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
 
       <FolderModal open={showFolderModal} onClose={() => setShowFolderModal(false)} onCreate={handleCreateFolder} />
+
+      {/* Storage Quota Widget - Bottom of Sidebar */}
+      {!isCollapsed && authenticated && (
+        <div className="mt-auto">
+          <StorageQuotaWidget />
+        </div>
+      )}
     </div>
   );
 
@@ -243,7 +251,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
           onClick={onMobileClose}
         />
         {/* Sidebar */}
-        <div className="fixed inset-y-0 left-0 z-30 w-80 transform transition-transform">
+        <div className="fixed inset-y-0 left-0 z-30 w-72 transform transition-transform">
           <div className="h-full flex flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-lg w-80">
             {/* Mobile header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
@@ -270,7 +278,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
             {/* Mobile Navigation */}
             <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-              {navigationItems.map((item) => {
+              {navigationItems.filter(item => !item.adminOnly || (authenticated && (user as any)?.is_superuser)).map((item) => {
                 const IconComponent = iconMap[item.icon];
                 const SolidIconComponent = solidIconMap[item.icon];
                 const isActive = location.pathname === item.path;
@@ -335,6 +343,12 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
               })}
             </nav>
 
+            {/* Storage Quota Widget - Mobile Bottom */}
+            {authenticated && (
+              <div className="mt-auto">
+                <StorageQuotaWidget />
+              </div>
+            )}
 
           </div>
         </div>

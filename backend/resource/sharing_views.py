@@ -39,6 +39,7 @@ class ShareItemView(APIView):
         folder_ids = request.data.get("folder_ids", [])
         emails = request.data.get("emails", [])
         message = request.data.get("message", "")
+        is_reshare = request.data.get("is_reshare", False)
         
         # Validate input
         if not emails:
@@ -47,17 +48,45 @@ class ShareItemView(APIView):
         if not file_ids and not folder_ids:
             return Response({"error": "At least one file or folder must be selected."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Validate and get files
+        # Validate and get files with proper permission checks
         files = []
         if file_ids:
-            files = UploadedFile.objects.filter(id__in=file_ids, owner=request.user)
+            all_files = UploadedFile.objects.filter(id__in=file_ids)
+            for file in all_files:
+                if is_reshare:
+                    # For reshare, check if user has access and reshare permission
+                    if file.owner == request.user or file.is_accessible_by(request.user):
+                        files.append(file)
+                    else:
+                        return Response({"error": f"You don't have permission to reshare '{file.name}'."}, status=status.HTTP_403_FORBIDDEN)
+                else:
+                    # For regular share, user must be owner
+                    if file.owner == request.user:
+                        files.append(file)
+                    else:
+                        return Response({"error": f"You don't own '{file.name}' and cannot share it."}, status=status.HTTP_403_FORBIDDEN)
+            
             if len(files) != len(file_ids):
                 return Response({"error": "Some files not found or you don't have permission."}, status=status.HTTP_403_FORBIDDEN)
 
-        # Validate and get folders
+        # Validate and get folders with proper permission checks
         folders = []
         if folder_ids:
-            folders = Folder.objects.filter(id__in=folder_ids, owner=request.user)
+            all_folders = Folder.objects.filter(id__in=folder_ids)
+            for folder in all_folders:
+                if is_reshare:
+                    # For reshare, check if user has access and reshare permission
+                    if folder.owner == request.user or folder.is_accessible_by(request.user):
+                        folders.append(folder)
+                    else:
+                        return Response({"error": f"You don't have permission to reshare '{folder.name}'."}, status=status.HTTP_403_FORBIDDEN)
+                else:
+                    # For regular share, user must be owner
+                    if folder.owner == request.user:
+                        folders.append(folder)
+                    else:
+                        return Response({"error": f"You don't own '{folder.name}' and cannot share it."}, status=status.HTTP_403_FORBIDDEN)
+            
             if len(folders) != len(folder_ids):
                 return Response({"error": "Some folders not found or you don't have permission."}, status=status.HTTP_403_FORBIDDEN)
 

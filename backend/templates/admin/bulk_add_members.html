@@ -1,0 +1,121 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label='resource' %}">Resource</a>
+    &rsaquo; <a href="{% url 'admin:resource_group_changelist' %}">Groups</a>
+    &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="module aligned">
+    <h1>{{ title }}</h1>
+    
+    <div class="form-row">
+        <h2>Selected Groups ({{ groups|length }})</h2>
+        <ul>
+            {% for group in groups %}
+                <li><strong>{{ group.name }}</strong> - {{ group.get_member_count }} current members</li>
+            {% endfor %}
+        </ul>
+    </div>
+    
+    <form method="post">
+        {% csrf_token %}
+        
+        <fieldset class="module aligned">
+            <h2>Add Members</h2>
+            
+            <div class="form-row">
+                <div>
+                    <label for="id_users">Select Users to Add:</label>
+                    <select name="users" id="id_users" multiple size="10" style="width: 100%; min-height: 200px;">
+                        {% for user in users %}
+                            <option value="{{ user.id }}">
+                                {{ user.get_full_name|default:user.username }} ({{ user.email }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <p class="help">Hold Ctrl (Cmd on Mac) to select multiple users</p>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div>
+                    <label for="id_role">Role:</label>
+                    <select name="role" id="id_role">
+                        {% for value, label in role_choices %}
+                            <option value="{{ value }}"{% if value == 'MEMBER' %} selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </fieldset>
+        
+        <div class="submit-row">
+            <input type="submit" value="Add Members to Groups" name="apply" class="default">
+            <a href="{% url 'admin:resource_group_changelist' %}" class="button cancel-link">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add search functionality to user select
+    const userSelect = document.getElementById('id_users');
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.placeholder = 'Search users...';
+    searchInput.style.width = '100%';
+    searchInput.style.marginBottom = '10px';
+    
+    userSelect.parentNode.insertBefore(searchInput, userSelect);
+    
+    const allOptions = Array.from(userSelect.options);
+    
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        
+        // Clear current options
+        userSelect.innerHTML = '';
+        
+        // Filter and add matching options
+        allOptions.forEach(option => {
+            if (option.text.toLowerCase().includes(searchTerm)) {
+                userSelect.appendChild(option.cloneNode(true));
+            }
+        });
+    });
+});
+</script>
+
+<style>
+.form-row select[multiple] {
+    font-family: monospace;
+}
+
+.form-row select[multiple] option {
+    padding: 5px;
+    border-bottom: 1px solid #eee;
+}
+
+.form-row select[multiple] option:hover {
+    background-color: #e6f3ff;
+}
+
+.cancel-link {
+    margin-left: 10px;
+    text-decoration: none;
+    color: #666;
+}
+
+.cancel-link:hover {
+    color: #000;
+}
+</style>
+{% endblock %}

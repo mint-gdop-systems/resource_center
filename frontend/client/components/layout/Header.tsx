@@ -13,6 +13,7 @@ import { useNotifications } from "../../contexts/NotificationContext";
 import { useSearch } from "../../contexts/SearchContext";
 import { useNavigate } from "react-router-dom";
 import ThemeToggle from "../ui/ThemeToggle";
+import GDOPMenu from "./GDOPMenu";
 
 interface HeaderProps {
   onToggleMobileSidebar: () => void;
@@ -268,6 +269,9 @@ export default function Header({ onToggleMobileSidebar }: HeaderProps) {
         <div className="flex items-center space-x-4">
           {/* Theme Toggle */}
           <ThemeToggle />
+          
+          {/* GDOP Applications Menu */}
+          <GDOPMenu />
           
           {/* Notifications */}
           <div className="relative">

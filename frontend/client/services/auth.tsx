@@ -1,11 +1,31 @@
 import keycloak from './keycloak';
 import { KeycloakProfile } from 'keycloak-js';
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
+import { getUserProfile } from './api';
+
+interface DjangoUser {
+  id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  is_superuser: boolean;
+  is_staff: boolean;
+  is_active: boolean;
+  date_joined: string;
+  last_login: string | null;
+}
+
+interface ExtendedUser extends KeycloakProfile {
+  is_superuser?: boolean;
+  is_staff?: boolean;
+  django_user?: DjangoUser;
+}
 
 interface AuthContextType {
   initialized: boolean;
   authenticated: boolean;
-  user: KeycloakProfile | null;
+  user: ExtendedUser | null;
   login: () => void;
   logout: () => void;
   getToken: () => string | undefined;
@@ -20,7 +40,7 @@ interface AuthProviderProps {
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [initialized, setInitialized] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
-  const [user, setUser] = useState<KeycloakProfile | null>(null);
+  const [user, setUser] = useState<ExtendedUser | null>(null);
 
   const initKeycloak = useCallback(async () => {
     if (keycloak.authenticated || initialized) {
@@ -40,7 +60,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setAuthenticated(auth);
       if (auth) {
         const profile = await keycloak.loadUserProfile();
-        setUser(profile);
+        
+        // Fetch Django user profile to get is_superuser and other Django fields
+        try {
+          const djangoUser = await getUserProfile();
+          
+          // Merge Keycloak profile with Django user data
+          const extendedUser: ExtendedUser = {
+            ...profile,
+            is_superuser: djangoUser.is_superuser,
+            is_staff: djangoUser.is_staff,
+            django_user: djangoUser
+          };
+          
+          setUser(extendedUser);
+        } catch (error) {
+          console.error('Failed to fetch Django user profile:', error);
+          // Fallback to just Keycloak profile
+          setUser(profile);
+        }
       }
     } catch (error) {
       console.error('Keycloak init error', error);

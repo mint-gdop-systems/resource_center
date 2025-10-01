@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .file_validators import validate_uploaded_file
-from .models import UploadedFile, Category, Folder
+from .models import UploadedFile, Category, Folder, UserProfile
 from .serializers import UploadedFileSerializer
 
 # Set up logging
@@ -66,6 +66,11 @@ class SecureFileUploadView(APIView):
                 {"error": "No files provided. Please select at least one file to upload."},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+        # Check storage quota before processing files
+        quota_check = self._check_storage_quota(files, request.user)
+        if isinstance(quota_check, Response):  # Error response
+            return quota_check
         
         # Validate folder
         folder = self._validate_folder(folder_id, request)
@@ -287,6 +292,49 @@ class SecureFileUploadView(APIView):
             uploaded_file.shared_with.set(shared_with)
         
         return uploaded_file
+    
+    def _check_storage_quota(self, files: List, user) -> Optional[Response]:
+        """
+        Check if user has enough storage quota for the files
+        """
+        # Get user profile
+        profile = UserProfile.get_or_create_profile(user)
+        
+        # Calculate total size of files to upload
+        total_size = 0
+        for file_obj in files:
+            total_size += file_obj.size
+        
+        # Check if user can upload these files
+        if not profile.can_upload_file(total_size):
+            remaining_storage = profile.get_remaining_storage()
+            usage_percentage = profile.get_storage_usage_percentage()
+            
+            logger.warning(
+                f"Storage quota exceeded for user {user.id}: "
+                f"Attempted {total_size} bytes, remaining {remaining_storage} bytes"
+            )
+            
+            return Response(
+                {
+                    "error": "Storage quota exceeded",
+                    "details": {
+                        "message": "You don't have enough storage space for these files.",
+                        "total_file_size": total_size,
+                        "total_file_size_mb": round(total_size / (1024 * 1024), 2),
+                        "remaining_storage": remaining_storage,
+                        "remaining_storage_mb": round(remaining_storage / (1024 * 1024), 2),
+                        "storage_quota": profile.storage_quota,
+                        "storage_quota_mb": round(profile.storage_quota / (1024 * 1024), 2),
+                        "storage_used": profile.storage_used,
+                        "storage_used_mb": round(profile.storage_used / (1024 * 1024), 2),
+                        "usage_percentage": round(usage_percentage, 2)
+                    }
+                },
+                status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+            )
+        
+        return None
 
 
 # For backward compatibility, you can also create an alias

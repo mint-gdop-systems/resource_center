@@ -216,6 +216,8 @@ export default function Archive() {
               actionsMode="archive"
               onDeleteOverride={confirmDeleteOne}
               showBulkActions={false}
+              itemsPerPage={20}
+              showPagination={true}
             />
           </div>
         </div>

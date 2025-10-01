@@ -19,6 +19,8 @@ import { useFiles } from "../contexts/FileContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { formatDate, cn } from "../lib/utils";
 import BulkActions from "../components/files/BulkActions";
+import { usePagination } from "../hooks/usePagination";
+import PaginationComponent from "../components/ui/PaginationComponent";
 
 // FontAwesome type icons
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -117,6 +119,7 @@ export default function Recent() {
   const [typeFilters, setTypeFilters] = useState<string[]>([]);
   const [starOnly, setStarOnly] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>({ type: "list", sortBy: "date", sortOrder: "desc" });
+  const [itemsPerPage, setItemsPerPage] = useState(20);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -178,7 +181,15 @@ export default function Recent() {
     return items;
   }, [recentItems, search, typeFilters, starOnly, viewMode.sortOrder]);
 
-  const groups = useMemo(() => groupByDate(filtered), [filtered]);
+  // Pagination
+  const pagination = usePagination({
+    totalItems: filtered.length,
+    itemsPerPage,
+    initialPage: 1,
+  });
+
+  const paginatedFiltered = pagination.getPageItems(filtered);
+  const groups = useMemo(() => groupByDate(paginatedFiltered), [paginatedFiltered]);
 
   const toggleType = (ext: string) => {
     setTypeFilters((prev) => prev.includes(ext) ? prev.filter((e) => e !== ext) : [...prev, ext]);
@@ -586,12 +597,78 @@ export default function Recent() {
             </div>
           </div>
         ) : (
-          <div className="space-y-8">
-            <Section title="Today" items={groups["Today"]} />
-            <Section title="Yesterday" items={groups["Yesterday"]} />
-            <Section title="Last 7 days" items={groups["Last 7 days"]} />
-            <Section title="Earlier" items={groups["Earlier"]} />
-          </div>
+          <>
+            <div className="space-y-8">
+              <Section title="Today" items={groups["Today"]} />
+              <Section title="Yesterday" items={groups["Yesterday"]} />
+              <Section title="Last 7 days" items={groups["Last 7 days"]} />
+              <Section title="Earlier" items={groups["Earlier"]} />
+            </div>
+
+            {/* Pagination */}
+            {filtered.length > 0 && (
+              <div className="mt-8 space-y-4">
+                {/* Pagination Info and Items Per Page Selector */}
+                <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-lg border ${
+                  isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <div className="flex items-center gap-4">
+                    <div className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      Showing {pagination.startIndex + 1} to {Math.min(pagination.endIndex + 1, filtered.length)} of {filtered.length} recent files
+                    </div>
+                    {pagination.totalPages > 1 && (
+                      <div className={`text-xs px-2 py-1 rounded-full ${
+                        isDarkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-600'
+                      }`}>
+                        Page {pagination.currentPage} of {pagination.totalPages}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>
+                      Show:
+                    </span>
+                    <select
+                      value={itemsPerPage}
+                      onChange={(e) => {
+                        const newItemsPerPage = Number(e.target.value);
+                        setItemsPerPage(newItemsPerPage);
+                        pagination.setItemsPerPage(newItemsPerPage);
+                      }}
+                      className={`px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-mint-500 transition-colors ${
+                        isDarkMode 
+                          ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
+                          : 'bg-white border-gray-300 text-gray-900 hover:border-gray-400'
+                      }`}
+                    >
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                    <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>
+                      per page
+                    </span>
+                  </div>
+                </div>
+
+                {/* Pagination Component */}
+                {pagination.totalPages > 1 && (
+                  <div className="flex justify-center">
+                    <PaginationComponent
+                      currentPage={pagination.currentPage}
+                      totalPages={pagination.totalPages}
+                      onPageChange={pagination.goToPage}
+                      showFirstLast={true}
+                      showPreviousNext={true}
+                      maxVisiblePages={7}
+                      size="default"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -635,6 +635,28 @@ class TestAuthView(APIView):
     def get(self, request):
         return Response({"message": "Test view working", "user": str(request.user)})
 
+
+class UserProfileView(APIView):
+    """
+    Get current user's profile information including Django-specific fields
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        user = request.user
+        return Response({
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "is_superuser": user.is_superuser,
+            "is_staff": user.is_staff,
+            "is_active": user.is_active,
+            "date_joined": user.date_joined,
+            "last_login": user.last_login,
+        })
+
 class RecentFilesView(APIView):
     """
     Return a list of recent files accessible to the current user, ordered by most recent upload.
@@ -1010,14 +1032,11 @@ class DownloadFileView(APIView):
             # Get the file instance
             file_instance = get_object_or_404(UploadedFile, id=file_id)
             
-            # Check permissions - user must be owner, file must be public, or file must be shared with user
+            # Check permissions using the model's comprehensive access check
             has_access = (
                 file_instance.owner == request.user or 
                 file_instance.is_public or
-                FileSharing.objects.filter(
-                    file=file_instance, 
-                    shared_to=request.user
-                ).exists()
+                file_instance.is_accessible_by(request.user)
             )
             
             if not has_access:
@@ -1080,24 +1099,14 @@ class BulkDownloadView(APIView):
             # Get files that user has access to
             files = []
             if file_ids:
-                files = UploadedFile.objects.filter(
-                    id__in=file_ids
-                ).filter(
-                    Q(owner=request.user) | 
-                    Q(is_public=True) |
-                    Q(filesharing__shared_to=request.user)
-                ).distinct()
+                all_files = UploadedFile.objects.filter(id__in=file_ids)
+                files = [f for f in all_files if f.owner == request.user or f.is_public or f.is_accessible_by(request.user)]
             
             # Get folders that user has access to
             folders = []
             if folder_ids:
-                folders = Folder.objects.filter(
-                    id__in=folder_ids
-                ).filter(
-                    Q(owner=request.user) | 
-                    Q(is_public=True) |
-                    Q(filesharing__shared_to=request.user)
-                ).distinct()
+                all_folders = Folder.objects.filter(id__in=folder_ids)
+                folders = [f for f in all_folders if f.owner == request.user or f.is_public or f.is_accessible_by(request.user)]
             
             if not files and not folders:
                 return Response({"error": "No accessible files or folders found"}, status=404)
@@ -1165,37 +1174,29 @@ class BulkDownloadView(APIView):
         import os
         
         # Add files in this folder with permission checks
-        files = UploadedFile.objects.filter(folder=folder).filter(
-            Q(owner=user) | 
-            Q(is_public=True) |
-            Q(filesharing__shared_to=user)
-        ).distinct()
+        all_files = UploadedFile.objects.filter(folder=folder)
         
-        for file in files:
-            try:
-                if file.file and os.path.exists(file.file.path):
-                    arcname = os.path.join(folder_path, file.name)
-                    zip_file.write(file.file.path, arcname)
-            except Exception as e:
-                # Log error but continue with other files
-                print(f"Error adding file {file.name} to zip: {str(e)}")
-                continue
+        for file in all_files:
+            if file.owner == user or file.is_public or file.is_accessible_by(user):
+                try:
+                    if file.file and os.path.exists(file.file.path):
+                        arcname = os.path.join(folder_path, file.name)
+                        zip_file.write(file.file.path, arcname)
+                except Exception as e:
+                    print(f"Error adding file {file.name} to zip: {str(e)}")
+                    continue
         
         # Add subfolders recursively with permission checks
-        subfolders = Folder.objects.filter(parent=folder).filter(
-            Q(owner=user) | 
-            Q(is_public=True) |
-            Q(filesharing__shared_to=user)
-        ).distinct()
+        all_subfolders = Folder.objects.filter(parent=folder)
         
-        for subfolder in subfolders:
-            try:
-                subfolder_path = os.path.join(folder_path, subfolder.name)
-                self._add_folder_to_zip(zip_file, subfolder, subfolder_path, user)
-            except Exception as e:
-                # Log error but continue with other folders
-                print(f"Error adding folder {subfolder.name} to zip: {str(e)}")
-                continue
+        for subfolder in all_subfolders:
+            if subfolder.owner == user or subfolder.is_public or subfolder.is_accessible_by(user):
+                try:
+                    subfolder_path = os.path.join(folder_path, subfolder.name)
+                    self._add_folder_to_zip(zip_file, subfolder, subfolder_path, user)
+                except Exception as e:
+                    print(f"Error adding folder {subfolder.name} to zip: {str(e)}")
+                    continue
 
 
 class CopyFileView(APIView):
@@ -1313,11 +1314,8 @@ class BulkCopyView(APIView):
             
             # Copy files
             if file_ids:
-                files = UploadedFile.objects.filter(
-                    id__in=file_ids
-                ).filter(
-                    Q(owner=request.user) | Q(is_public=True)
-                )
+                all_files = UploadedFile.objects.filter(id__in=file_ids)
+                files = [f for f in all_files if f.owner == request.user or f.is_public or f.is_accessible_by(request.user)]
                 
                 for source_file in files:
                     try:
@@ -1739,14 +1737,11 @@ class ViewFileView(APIView):
             # Get the file instance
             file_instance = get_object_or_404(UploadedFile, id=file_id)
             
-            # Check permissions - user must be owner, file must be public, or file must be shared with user
+            # Check permissions using the model's comprehensive access check
             has_access = (
                 file_instance.owner == request.user or 
                 file_instance.is_public or
-                FileSharing.objects.filter(
-                    file=file_instance, 
-                    shared_to=request.user
-                ).exists()
+                file_instance.is_accessible_by(request.user)
             )
             
             if not has_access:
@@ -1864,6 +1859,10 @@ class BulkDeleteView(APIView):
     permission_classes = [IsAuthenticated]
 
     @transaction.atomic
+    def post(self, request, *args, **kwargs):
+        return self.delete(request, *args, **kwargs)
+    
+    @transaction.atomic
     def delete(self, request, *args, **kwargs):
         file_ids = request.data.get('file_ids', [])
         folder_ids = request.data.get('folder_ids', [])
@@ -1872,16 +1871,23 @@ class BulkDeleteView(APIView):
             return Response({"error": "No items selected for deletion."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Filter and delete files owned by the user
+        # Use individual delete() calls to trigger storage usage updates
         files_to_delete = UploadedFile.objects.filter(id__in=file_ids, owner=request.user)
-        deleted_files_count = files_to_delete.count()
-        if deleted_files_count > 0:
-            files_to_delete.delete()
+        deleted_files_count = 0
+        
+        print(f"DEBUG: BulkDeleteView - About to delete {files_to_delete.count()} files for user {request.user}")
+        
+        for file_obj in files_to_delete:
+            print(f"DEBUG: Deleting file {file_obj.id}: {file_obj.name} ({file_obj.file_size} bytes)")
+            file_obj.delete()  # This triggers the model's delete() method which updates storage
+            deleted_files_count += 1
 
         # Filter and delete folders owned by the user
         folders_to_delete = Folder.objects.filter(id__in=folder_ids, owner=request.user)
-        deleted_folders_count = folders_to_delete.count()
-        if deleted_folders_count > 0:
-            folders_to_delete.delete()
+        deleted_folders_count = 0
+        for folder_obj in folders_to_delete:
+            folder_obj.delete()  # This triggers the model's delete() method
+            deleted_folders_count += 1
 
         return Response({
             "message": f"Successfully deleted {deleted_files_count} file(s) and {deleted_folders_count} folder(s)."
@@ -2524,7 +2530,8 @@ class DashboardStatsView(APIView):
         # Files uploaded this month
         files_this_month = UploadedFile.objects.filter(
             owner=user,
-            uploaded_at__gte=current_month_start
+            uploaded_at__gte=current_month_start,
+            uploaded_at__lt=now
         ).count()
         
         files_prev_month = UploadedFile.objects.filter(
@@ -2583,58 +2590,65 @@ class DashboardRecentActivityView(APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
-        user = request.user
-        limit = int(request.GET.get('limit', 10))
-        
-        # Get recent files (uploaded in last 7 days)
-        from datetime import timedelta
-        recent_date = timezone.now() - timedelta(days=7)
-        
-        recent_files = UploadedFile.objects.filter(
-            owner=user,
-            uploaded_at__gte=recent_date
-        ).order_by('-uploaded_at')[:limit]
-        
-        activities = []
-        for file in recent_files:
-            activities.append({
-                'id': f"upload_{file.id}",
-                'type': 'upload',
-                'user': {
-                    'name': file.owner.get_full_name() or file.owner.username,
-                },
-                'file': {
-                    'name': file.name,
-                    'id': file.id
-                },
-                'timestamp': file.uploaded_at.isoformat(),
-                'description': 'uploaded'
+        try:
+            user = request.user
+            limit = int(request.GET.get('limit', 10))
+            
+            # Get recent files (uploaded in last 30 days)
+            from datetime import timedelta
+            recent_date = timezone.now() - timedelta(days=30)
+            
+            recent_files = UploadedFile.objects.filter(
+                owner=user,
+                uploaded_at__gte=recent_date
+            ).order_by('-uploaded_at')[:limit]
+            
+            activities = []
+            for file in recent_files:
+                activities.append({
+                    'id': f"upload_{file.id}",
+                    'type': 'upload',
+                    'user': {
+                        'name': file.owner.get_full_name() or file.owner.username,
+                    },
+                    'file': {
+                        'name': file.name,
+                        'id': file.id
+                    },
+                    'timestamp': file.uploaded_at.isoformat(),
+                    'description': 'uploaded'
+                })
+            
+            # Get recent folders created
+            recent_folders = Folder.objects.filter(
+                owner=user,
+                created_at__gte=recent_date
+            ).order_by('-created_at')[:5]
+            
+            for folder in recent_folders:
+                activities.append({
+                    'id': f"folder_{folder.id}",
+                    'type': 'upload',
+                    'user': {
+                        'name': folder.owner.get_full_name() or folder.owner.username,
+                    },
+                    'file': {
+                        'name': folder.name,
+                        'id': folder.id
+                    },
+                    'timestamp': folder.created_at.isoformat(),
+                    'description': 'created folder'
+                })
+            
+            # Sort all activities by timestamp
+            activities.sort(key=lambda x: x['timestamp'], reverse=True)
+            
+            return Response({
+                'activities': activities[:limit]
             })
-        
-        # Get recent shares (files shared with user)
-        recent_shares = FileSharing.objects.filter(
-            shared_to=user,
-            shared_at__gte=recent_date
-        ).select_related('file', 'shared_by').order_by('-shared_at')[:5]
-        
-        for share in recent_shares:
-            activities.append({
-                'id': f"share_{share.id}",
-                'type': 'share',
-                'user': {
-                    'name': share.shared_by.get_full_name() or share.shared_by.username,
-                },
-                'file': {
-                    'name': share.file.name,
-                    'id': share.file.id
-                },
-                'timestamp': share.shared_at.isoformat(),
-                'description': 'shared with you'
+            
+        except Exception as e:
+            # Return empty activities on error to prevent 500
+            return Response({
+                'activities': []
             })
-        
-        # Sort all activities by timestamp
-        activities.sort(key=lambda x: x['timestamp'], reverse=True)
-        
-        return Response({
-            'activities': activities[:limit]
-        })

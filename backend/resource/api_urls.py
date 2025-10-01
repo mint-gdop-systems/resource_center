@@ -1,15 +1,29 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    FileUploadView, ResolveDuplicateFilesView, CreateFolderView, FolderContentsView, ToggleStarredView, ToggleArchivedView, ToggleFolderStarredView, EditFileView, EditFolderView, UploadNewVersionView, FileVersionHistoryView, RevertVersionView, DeleteUploadedFileView, BulkDeleteView, ReminderViewSet, UpcomingRemindersView, get_categories, TestAuthView, RecentFilesView, ViewFileView, DownloadFileView, BulkDownloadView, CopyFileView, BulkCopyView, MoveFileView, MoveFolderView, BulkMoveView, PublicShareView, ShareLinkManagementView, SearchView, DashboardStatsView, DashboardRecentActivityView
+    FileUploadView, ResolveDuplicateFilesView, CreateFolderView, FolderContentsView, ToggleStarredView, ToggleArchivedView, ToggleFolderStarredView, EditFileView, EditFolderView, UploadNewVersionView, FileVersionHistoryView, RevertVersionView, DeleteUploadedFileView, BulkDeleteView, ReminderViewSet, UpcomingRemindersView, get_categories, TestAuthView, RecentFilesView, ViewFileView, DownloadFileView, BulkDownloadView, CopyFileView, BulkCopyView, MoveFileView, MoveFolderView, BulkMoveView, PublicShareView, ShareLinkManagementView, SearchView, DashboardStatsView, DashboardRecentActivityView, UserProfileView
+)
+from .storage_views import (
+    StorageQuotaView, UserStorageQuotaView, recalculate_storage_usage,
+    check_upload_capacity, storage_statistics, admin_users_storage
 )
 from .sharing_views import ShareItemView, SharedWithMeView, shared_unseen_count, SendFileEmailView
+from .group_views import (
+    GroupListCreateView, GroupDetailView, GroupMembershipView, GroupSharingView,
+    GroupSharedWithMeView, UserGroupContextView, assign_group_admin, group_statistics,
+    search_users, get_user_roles_for_group
+)
+from .enhanced_sharing_views import (
+    CombinedSharedWithMeView, AllAccessibleResourcesView, combined_unseen_count,
+    EnhancedShareItemView
+)
 
 router = DefaultRouter()
 router.register(r'reminders', ReminderViewSet, basename='reminder')
 print("api_urls.py loaded")
 urlpatterns = [
     path('test-auth/', TestAuthView.as_view(), name='test-auth'),
+    path('user/profile/', UserProfileView.as_view(), name='user-profile'),
     path('recent-files/', RecentFilesView.as_view(), name='recent-files'),
     path('file-upload/', FileUploadView.as_view(), name='file-upload'),
     path('file-upload/<int:folder_id>/', FileUploadView.as_view(), name='folder-file-upload'),
@@ -56,6 +70,40 @@ urlpatterns = [
     # Dashboard analytics
     path('dashboard/stats/', DashboardStatsView.as_view(), name='dashboard-stats'),
     path('dashboard/activity/', DashboardRecentActivityView.as_view(), name='dashboard-activity'),
+    
+    # Group Management APIs
+    path('groups/', GroupListCreateView.as_view(), name='groups-list-create'),
+    path('groups/<int:group_id>/', GroupDetailView.as_view(), name='group-detail'),
+    path('groups/<int:group_id>/members/', GroupMembershipView.as_view(), name='group-members'),
+    path('groups/<int:group_id>/assign-admin/', assign_group_admin, name='assign-group-admin'),
+    path('groups/<int:group_id>/statistics/', group_statistics, name='group-statistics'),
+    
+    # Group Sharing APIs
+    path('group-share/', GroupSharingView.as_view(), name='group-share'),
+    path('group-shared-with-me/', GroupSharedWithMeView.as_view(), name='group-shared-with-me'),
+    
+    # User Group Context
+    path('user/groups/', UserGroupContextView.as_view(), name='user-groups'),
+    
+    # User Search for Group Management
+    path('users/search/', search_users, name='search-users'),
+    path('groups/<int:group_id>/available-roles/', get_user_roles_for_group, name='group-available-roles'),
+    
+    # Enhanced Sharing APIs (combines individual + group sharing)
+    path('combined-shared-with-me/', CombinedSharedWithMeView.as_view(), name='combined-shared-with-me'),
+    path('all-accessible-resources/', AllAccessibleResourcesView.as_view(), name='all-accessible-resources'),
+    path('combined-unseen-count/', combined_unseen_count, name='combined-unseen-count'),
+    path('enhanced-share/', EnhancedShareItemView.as_view(), name='enhanced-share'),
+    
+    # Storage Quota APIs
+    path('storage/quota/', StorageQuotaView.as_view(), name='storage-quota'),
+    path('storage/quota/<int:user_id>/', UserStorageQuotaView.as_view(), name='user-storage-quota'),
+    path('storage/recalculate/', recalculate_storage_usage, name='recalculate-storage'),
+    path('storage/check-capacity/', check_upload_capacity, name='check-upload-capacity'),
+    path('storage/statistics/', storage_statistics, name='storage-statistics'),
+    
+    # Admin user management
+    path('admin/users/storage/', admin_users_storage, name='admin-users-storage'),
     
     path('', include(router.urls)),
 ] 

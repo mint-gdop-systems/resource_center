@@ -300,6 +300,7 @@ export default function BulkActions({
 
             // Refresh the current view
             window.dispatchEvent(new CustomEvent('files:refresh'));
+            window.dispatchEvent(new CustomEvent('files:modified'));
           } catch (error: any) {
             console.error('Error moving items:', error);
             const errorMessage = error?.response?.data?.error || error?.message || 'Failed to move items';

@@ -213,11 +213,24 @@ export const navigationItems: NavigationItem[] = [
     count: 15,
   },
   {
+    id: "groups",
+    name: "Groups",
+    icon: "UserGroupIcon",
+    path: "/groups",
+  },
+  {
     id: "archive",
     name: "Archive",
     icon: "ArchiveBoxIcon",
     path: "/archive",
     count: 5,
+  },
+  {
+    id: "admin-storage",
+    name: "Storage Admin",
+    icon: "ChartBarIcon",
+    path: "/admin/storage",
+    adminOnly: true,
   },
 ];
 

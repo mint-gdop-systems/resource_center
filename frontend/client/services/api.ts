@@ -175,8 +175,9 @@ export async function deleteFileApi(fileId: string): Promise<void> {
 }
 
 export async function bulkDeleteApi(fileIds: string[], folderIds: string[]): Promise<void> {
-  await api.delete('/bulk-delete/', {
-    data: { file_ids: fileIds, folder_ids: folderIds },
+  await api.post('/bulk-delete/', {
+    file_ids: fileIds, 
+    folder_ids: folderIds 
   });
 }
 
@@ -795,6 +796,146 @@ export const searchFiles = async (
   } catch (error) {
     console.error('Error searching files:', error);
     return [];
+  }
+};
+
+// ============ STORAGE QUOTA FUNCTIONALITY ============
+
+/**
+ * Get current user's storage quota information
+ */
+export const getStorageQuota = async (): Promise<{
+  storage_quota: number;
+  storage_used: number;
+  storage_usage_percentage: number;
+  remaining_storage: number;
+  storage_quota_mb: number;
+  storage_used_mb: number;
+  remaining_storage_mb: number;
+  is_near_limit: boolean;
+  is_over_limit: boolean;
+}> => {
+  try {
+    const response = await api.get('/storage/quota/');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching storage quota:', error);
+    throw error;
+  }
+};
+
+/**
+ * Check if user can upload files of given sizes
+ * @param fileSizes Array of file sizes in bytes
+ */
+export const checkUploadCapacity = async (fileSizes: number[]): Promise<{
+  can_upload: boolean;
+  total_file_size: number;
+  total_file_size_mb: number;
+  remaining_storage: number;
+  remaining_storage_mb: number;
+  storage_quota: number;
+  storage_used: number;
+  usage_percentage: number;
+}> => {
+  try {
+    const params = new URLSearchParams();
+    fileSizes.forEach(size => params.append('file_size', size.toString()));
+    
+    const response = await api.get(`/storage/check-capacity/?${params.toString()}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error checking upload capacity:', error);
+    throw error;
+  }
+};
+
+/**
+ * Recalculate storage usage for current user
+ */
+export const recalculateStorageUsage = async (): Promise<{
+  message: string;
+  new_storage_used: number;
+  storage_used_mb: number;
+}> => {
+  try {
+    const response = await api.post('/storage/recalculate/', {});
+    return response.data;
+  } catch (error) {
+    console.error('Error recalculating storage usage:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get storage statistics (admin only)
+ */
+export const getStorageStatistics = async (): Promise<{
+  total_users: number;
+  total_quota: number;
+  total_quota_gb: number;
+  total_used: number;
+  total_used_gb: number;
+  total_usage_percentage: number;
+  users_near_limit: number;
+  users_over_limit: number;
+  users_normal: number;
+}> => {
+  try {
+    const response = await api.get('/storage/statistics/');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching storage statistics:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get all users with storage information (admin only)
+ */
+export const getAdminUsersStorage = async (): Promise<Array<{
+  id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  storage_quota: number;
+  storage_used: number;
+  storage_usage_percentage: number;
+  remaining_storage: number;
+  is_near_limit: boolean;
+  is_over_limit: boolean;
+}>> => {
+  try {
+    const response = await api.get('/admin/users/storage/');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching admin users storage:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get current user's Django profile information
+ */
+export const getUserProfile = async (): Promise<{
+  id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  is_superuser: boolean;
+  is_staff: boolean;
+  is_active: boolean;
+  date_joined: string;
+  last_login: string | null;
+}> => {
+  try {
+    const response = await api.get('/user/profile/');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    throw error;
   }
 };
 

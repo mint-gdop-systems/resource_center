@@ -2,7 +2,6 @@ import React from "react";
 import { motion } from "framer-motion";
 import {
   StarIcon,
-  DocumentIcon,
   FolderIcon,
   ArrowUpIcon,
   ArrowDownIcon,
@@ -13,12 +12,13 @@ import {
 import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
 import { FileItem, ViewMode } from "../../types";
 import { formatFileSize, formatDate } from "../../lib/utils";
-import { fileTypeIcons } from "../../data/mockData";
 import FileActions from "./FileActions";
 import BulkActions from "./BulkActions";
 import { useFiles } from "../../contexts/FileContext";
 import { useTheme } from "../../contexts/ThemeContext";
-import FileIcon from "./FileIcon";
+import { usePagination } from "../../hooks/usePagination";
+import PaginationComponent from "../ui/PaginationComponent";
+
 
 // FontAwesome imports
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -64,6 +64,10 @@ interface FileListProps {
   actionsMode?: "default" | "archive";
   onDeleteOverride?: (fileId: string) => void;
   showBulkActions?: boolean;
+  itemsPerPage?: number;
+  showPagination?: boolean;
+  onToggleStar?: (fileId: string) => void;
+  onBulkStar?: (fileIds: string[], starred: boolean) => void;
 }
 
 
@@ -81,22 +85,35 @@ export default function FileList({
   actionsMode = "default",
   onDeleteOverride,
   showBulkActions = true,
+  itemsPerPage = 20,
+  showPagination = true,
+  onToggleStar,
+  onBulkStar,
 }: FileListProps) {
-  const { deleteFiles, renameFile, moveFiles, toggleStar, starFiles, toggleArchive, downloadFiles } =
+  const { deleteFiles, renameFile, moveFiles, toggleStar, starFiles, toggleArchive } =
     useFiles();
   const { actualTheme } = useTheme();
   const isDarkMode = actualTheme === 'dark';
+
+  // Pagination
+  const pagination = usePagination({
+    totalItems: files.length,
+    itemsPerPage,
+    initialPage: 1,
+  });
+
+  const paginatedFiles = showPagination ? pagination.getPageItems(files) : files;
   const handleView = async (fileId: string) => {
     const f = files.find(x => x.id === fileId);
     if (f && f.type !== 'folder') {
       try {
         // Import the viewFile API function
         const { viewFile } = await import('../../services/api');
-        
+
         // Use the API to get the file
         const url = await viewFile(fileId);
         window.open(url, '_blank');
-        
+
         // Clean up the blob URL after a delay
         setTimeout(() => URL.revokeObjectURL(url), 100);
       } catch (error) {
@@ -132,11 +149,11 @@ export default function FileList({
       try {
         // Import the viewFile API function
         const { viewFile } = await import('../../services/api');
-        
+
         // Use the API to get the file
         const url = await viewFile(file.id);
         window.open(url, '_blank');
-        
+
         // Clean up the blob URL after a delay
         setTimeout(() => URL.revokeObjectURL(url), 100);
       } catch (error) {
@@ -154,7 +171,7 @@ export default function FileList({
   };
 
   const allSelected =
-    files.length > 0 && files.every((file) => selectedFiles.includes(file.id));
+    paginatedFiles.length > 0 && paginatedFiles.every((file) => selectedFiles.includes(file.id));
   const someSelected = selectedFiles.length > 0 && !allSelected;
 
   // Get selected items for copy operations
@@ -167,11 +184,10 @@ export default function FileList({
     label: string;
     sortKey: string;
   }) => (
-    <button className={`flex items-center space-x-1 text-xs font-medium ${
-      isDarkMode 
-        ? 'text-gray-400 hover:text-gray-300' 
-        : 'text-gray-500 hover:text-gray-700'
-    }`}>
+    <button className={`flex items-center space-x-1 text-xs font-medium ${isDarkMode
+      ? 'text-gray-400 hover:text-gray-300'
+      : 'text-gray-500 hover:text-gray-700'
+      }`}>
       <span>{label}</span>
       {viewMode.sortBy === sortKey && (
         <div>
@@ -192,16 +208,14 @@ export default function FileList({
         <FolderIcon className="mx-auto h-12 w-12 text-gray-400" />
         {isAuthenticated ? (
           <>
-            <h3 className={`mt-2 text-sm font-medium ${
-              isDarkMode ? 'text-white' : 'text-gray-900'
-            }`}>No files</h3>
-            <p className={`mt-1 text-sm ${
-              isDarkMode ? 'text-gray-400' : 'text-gray-500'
-            }`}>
+            <h3 className={`mt-2 text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'
+              }`}>No files</h3>
+            <p className={`mt-1 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
+              }`}>
               Get started by uploading a file or creating a folder.
             </p>
             <div className="mt-6">
-              <button 
+              <button
                 onClick={() => setShowUpload?.(true)}
                 className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-mint-600 hover:bg-mint-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-mint-500"
               >
@@ -212,12 +226,10 @@ export default function FileList({
           </>
         ) : (
           <>
-            <h3 className={`mt-2 text-sm font-medium ${
-              isDarkMode ? 'text-white' : 'text-gray-900'
-            }`}>Sign in to view files</h3>
-            <p className={`mt-1 text-sm ${
-              isDarkMode ? 'text-gray-400' : 'text-gray-500'
-            }`}>
+            <h3 className={`mt-2 text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'
+              }`}>Sign in to view files</h3>
+            <p className={`mt-1 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
+              }`}>
               Please sign in to access and manage your files
             </p>
           </>
@@ -230,37 +242,36 @@ export default function FileList({
     <div className="space-y-4">
       {/* Bulk Actions */}
       {showBulkActions && (
-      <BulkActions
-        selectedFiles={selectedFiles}
-        selectedItems={selectedItems}
-        onView={handleView}
-        onDownload={downloadFiles}
-        onDelete={deleteFiles}
-        onMove={(fileIds, targetPath) => {
-          // Convert old interface to new interface
-          const fileIdsArray = selectedItems.filter(item => item.type === 'file').map(item => item.id);
-          const folderIdsArray = selectedItems.filter(item => item.type === 'folder').map(item => item.id);
-          moveFiles(fileIdsArray, folderIdsArray);
-        }}
-        onShare={(fileIds) => {
-          // Share implementation would go here
-          console.log("Bulk share:", fileIds);
-        }}
-        onStar={starFiles}
-        onClearSelection={() => onSelectAll(false)}
-      />
+        <BulkActions
+          selectedFiles={selectedFiles}
+          selectedItems={selectedItems}
+          onView={handleView}
+          onDownload={(fileIds) => {
+            console.log("Download files:", fileIds);
+            // TODO: Implement download functionality
+          }}
+          onDelete={deleteFiles}
+          onMove={(_, targetPath) => {
+            const fileIds = selectedItems.map(item => item.id);
+            moveFiles(fileIds, "target-path"); // TODO: Implement proper target path selection
+          }}
+          onShare={(fileIds) => {
+            // Share implementation would go here
+            console.log("Bulk share:", fileIds);
+          }}
+          onStar={onBulkStar || starFiles}
+          onClearSelection={() => onSelectAll(false)}
+        />
       )}
 
       {/* Table header */}
-      {files.length > 0 && (
-        <div className={`rounded-lg border ${
-          isDarkMode 
-            ? 'bg-gray-800 border-gray-700' 
-            : 'bg-gray-50 border-gray-200'
-        }`}>
-          <div className={`grid grid-cols-12 gap-4 px-4 py-3 text-xs font-medium uppercase tracking-wide ${
-            isDarkMode ? 'text-gray-400' : 'text-gray-500'
+      {paginatedFiles.length > 0 && (
+        <div className={`rounded-lg border ${isDarkMode
+          ? 'bg-gray-800 border-gray-700'
+          : 'bg-gray-50 border-gray-200'
           }`}>
+          <div className={`grid grid-cols-12 gap-4 px-4 py-3 text-xs font-medium uppercase tracking-wide ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
+            }`}>
             <div className="col-span-1 flex items-center">
               <input
                 type="checkbox"
@@ -294,7 +305,7 @@ export default function FileList({
 
       {/* File list */}
       <div className="space-y-1">
-        {files.map((file, index) => {
+        {paginatedFiles.map((file, index) => {
           const isSelected = selectedFiles.includes(file.id);
 
           // Handler to prevent row click when clicking on interactive elements
@@ -319,15 +330,12 @@ export default function FileList({
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.2, delay: index * 0.03 }}
-              className={`group grid grid-cols-12 gap-4 px-4 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
-                isSelected
-                  ? `border border-mint-200 ${
-                      isDarkMode ? 'bg-mint-900' : 'bg-mint-50'
-                    }`
-                  : `border border-transparent ${
-                      isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
-                    }`
-              }`}
+              className={`group grid grid-cols-12 gap-4 px-4 py-3 rounded-lg cursor-pointer transition-all duration-200 ${isSelected
+                ? `border border-mint-200 ${isDarkMode ? 'bg-mint-900' : 'bg-mint-50'
+                }`
+                : `border border-transparent ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
+                }`
+                }`}
               onClick={handleRowClick}
               tabIndex={0}
               role="row"
@@ -353,9 +361,8 @@ export default function FileList({
                 {getFileIcon(file)}
                 <div className="flex-1 min-w-0">
                   <p
-                    className={`text-sm font-medium truncate hover:underline cursor-pointer ${
-                      isDarkMode ? 'text-white' : 'text-gray-900'
-                    }`}
+                    className={`text-sm font-medium truncate hover:underline cursor-pointer ${isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}
                     onClick={async (e) => {
                       e.stopPropagation();
                       await handleFileClick(file);
@@ -364,9 +371,8 @@ export default function FileList({
                     {file.name}
                   </p>
                   {file.type === "folder" && (
-                    <p className={`text-xs ${
-                      isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                    }`}>Folder</p>
+                    <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                      }`}>Folder</p>
                   )}
                 </div>
                 <div className="flex items-center space-x-1">
@@ -375,7 +381,11 @@ export default function FileList({
                     title={file.starred ? 'Unstar' : 'Star'}
                     onClick={(e) => {
                       e.stopPropagation();
-                      toggleStar(file.id);
+                      if (onToggleStar) {
+                        onToggleStar(file.id);
+                      } else {
+                        toggleStar(file.id);
+                      }
                     }}
                     className={`p-1 rounded hover:bg-gray-100`}
                   >
@@ -389,11 +399,10 @@ export default function FileList({
                     <div className="w-2 h-2 bg-mint-400 rounded-full" />
                   )}
                   {file.archived && (
-                    <span className={`ml-1 text-[10px] px-2 py-0.5 rounded-full ${
-                      isDarkMode 
-                        ? 'text-gray-300 bg-gray-700' 
-                        : 'text-gray-600 bg-gray-100'
-                    }`}>Archived</span>
+                    <span className={`ml-1 text-[10px] px-2 py-0.5 rounded-full ${isDarkMode
+                      ? 'text-gray-300 bg-gray-700'
+                      : 'text-gray-600 bg-gray-100'
+                      }`}>Archived</span>
                   )}
                 </div>
               </div>
@@ -401,18 +410,15 @@ export default function FileList({
               {/* Owner */}
               <div className="col-span-2 flex items-center">
                 <div className="flex items-center space-x-2">
-                  <div className={`h-6 w-6 rounded-full flex items-center justify-center ${
-                    isDarkMode ? 'bg-gray-600' : 'bg-gray-200'
-                  }`}>
-                    <span className={`text-xs font-medium ${
-                      isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  <div className={`h-6 w-6 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-gray-600' : 'bg-gray-200'
                     }`}>
+                    <span className={`text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                      }`}>
                       {(file.owner_first_name || file.owner_email || file.uploaded_by_name || file.owner?.name || "Unknown").charAt(0)}
                     </span>
                   </div>
-                  <span className={`text-sm truncate ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-900'
-                  }`}>
+                  <span className={`text-sm truncate ${isDarkMode ? 'text-gray-300' : 'text-gray-900'
+                    }`}>
                     {file.owner_first_name || file.owner_email || file.uploaded_by_name || file.owner?.name || "Unknown"}
                   </span>
                 </div>
@@ -421,22 +427,21 @@ export default function FileList({
               {/* Category */}
               <div className="col-span-2 flex items-center">
                 <span className="text-sm text-gray-500">
-                {file.type === "folder"
-                  ? "—"
-                  : file.category == null
+                  {file.type === "folder"
                     ? "—"
-                    : typeof file.category === 'object' && "name" in file.category
-                      ? (file.category.name ?? "—")
-                      : file.category}
+                    : file.category == null
+                      ? "—"
+                      : typeof file.category === 'object' && "name" in file.category
+                        ? (file.category.name ?? "—")
+                        : file.category}
                 </span>
               </div>
 
               {/* Modified */}
               <div className="col-span-2 flex items-center">
-                <span className={`text-sm ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                }`}>
-                  {file.type === 'folder' 
+                <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
+                  {file.type === 'folder'
                     ? formatDate(new Date(file.createdAt))
                     : formatDate(new Date(file.uploaded_at))}
                 </span>
@@ -444,9 +449,8 @@ export default function FileList({
 
               {/* Size */}
               <div className="col-span-1 flex items-center">
-                <span className={`text-sm ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                }`}>
+                <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
                   {file.size ? formatFileSize(file.size) : "—"}
                 </span>
               </div>
@@ -473,24 +477,84 @@ export default function FileList({
                     </button>
                   </div>
                 ) : (
-                <div className="file-actions-menu">
-                  <FileActions
-                    file={file}
-                    onRename={renameFile}
-                    onDelete={() => deleteFiles([file.id])}
-                    onMove={(fileId, targetPath) => {
-                      // This is handled by the FolderSelectionModal in FileActions now
-                    }}
-                    onStar={(fileId) => toggleStar(fileId)}
-                    onArchive={(fileId) => (onArchiveOverride ? onArchiveOverride(fileId) : toggleArchive(fileId))}
-                  />
-                </div>
+                  <div className="file-actions-menu">
+                    <FileActions
+                      file={file}
+                      onRename={renameFile}
+                      onDelete={() => deleteFiles([file.id])}
+                      onMove={(fileId, targetPath) => {
+                        // This is handled by the FolderSelectionModal in FileActions now
+                      }}
+                      onStar={(fileId) => onToggleStar ? onToggleStar(fileId) : toggleStar(fileId)}
+                      onArchive={(fileId) => (onArchiveOverride ? onArchiveOverride(fileId) : toggleArchive(fileId))}
+                    />
+                  </div>
                 )}
               </div>
             </motion.div>
           );
         })}
       </div>
+
+      {/* Pagination */}
+      {showPagination && files.length > 0 && (
+        <div className="mt-6 space-y-4">
+          {/* Pagination Info and Items Per Page Selector */}
+          <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-lg border ${
+            isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'
+          }`}>
+            <div className="flex items-center gap-4">
+              <div className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                Showing {pagination.startIndex + 1} to {Math.min(pagination.endIndex + 1, files.length)} of {files.length} files
+              </div>
+              {pagination.totalPages > 1 && (
+                <div className={`text-xs px-2 py-1 rounded-full ${
+                  isDarkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-600'
+                }`}>
+                  Page {pagination.currentPage} of {pagination.totalPages}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>
+                Show:
+              </span>
+              <select
+                value={pagination.itemsPerPage}
+                onChange={(e) => pagination.setItemsPerPage(Number(e.target.value))}
+                className={`px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-mint-500 transition-colors ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
+                    : 'bg-white border-gray-300 text-gray-900 hover:border-gray-400'
+                }`}
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>
+                per page
+              </span>
+            </div>
+          </div>
+
+          {/* Pagination Component */}
+          {pagination.totalPages > 1 && (
+            <div className="flex justify-center">
+              <PaginationComponent
+                currentPage={pagination.currentPage}
+                totalPages={pagination.totalPages}
+                onPageChange={pagination.goToPage}
+                showFirstLast={true}
+                showPreviousNext={true}
+                maxVisiblePages={7}
+                size="default"
+              />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
+import { Toaster as ShadcnToaster } from "./components/ui/toaster";
 
 // Layout
 import Layout from "./components/layout/Layout";
@@ -23,6 +24,8 @@ import Starred from "./pages/Starred";
 import Archive from "./pages/Archive";
 import Recent from "./pages/Recent";
 import Login from "./pages/Login";
+import { Groups } from "./pages/Groups";
+import AdminStorage from "./pages/AdminStorage";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -55,6 +58,8 @@ function App() {
                         <Route path="/shared" element={<ProtectedRoutes><Shared /></ProtectedRoutes>} />
                         <Route path="/starred" element={<ProtectedRoutes><Starred /></ProtectedRoutes>} />
                         <Route path="/archive" element={<ProtectedRoutes><Archive /></ProtectedRoutes>} />
+                        <Route path="/groups" element={<ProtectedRoutes><Groups /></ProtectedRoutes>} />
+                        <Route path="/admin/storage" element={<ProtectedRoutes><AdminStorage /></ProtectedRoutes>} />
                         <Route path="/" element={<Navigate to="/dashboard" replace />} />
                         <Route path="*" element={<Navigate to="/dashboard" replace />} />
                       </Route>
@@ -85,6 +90,8 @@ function App() {
                         },
                       }}
                     />
+                    {/* Shadcn/ui toast notifications */}
+                    <ShadcnToaster />
                   </div>
                 </SearchProvider>
               </BrowserRouter>

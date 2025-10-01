@@ -11,14 +11,14 @@ import {
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import Breadcrumb from "../components/layout/Breadcrumb";
-import FileGrid from "../components/files/FileGrid";
-import FileList from "../components/files/FileList";
+
 import ReadOnlyFileGrid from "../components/dashboard/ReadOnlyFileGrid";
 import ReadOnlyFileList from "../components/dashboard/ReadOnlyFileList";
 import QuickStats from "../components/dashboard/QuickStats";
 import RecentActivity from "../components/dashboard/RecentActivity";
 import WelcomeSection from "../components/dashboard/WelcomeSection";
 import QuickActions from "../components/dashboard/QuickActions";
+import StorageQuotaManagement from "../components/dashboard/StorageQuotaManagement";
 import { useTheme } from "../contexts/ThemeContext";
 
 import { ViewMode } from "../types";
@@ -52,6 +52,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (authenticated) {
       fetchRecentFiles();
+      fetchStarredFiles();
     }
   }, [authenticated]);
 
@@ -60,15 +61,21 @@ export default function Dashboard() {
       setLoading(true);
       const data = await getRecentFiles({ limit: 8, includeArchived: false });
       setRecentFiles(data.files || []);
-      
-      // Filter starred files from recent files
-      const starred = (data.files || []).filter((file: any) => file.is_starred);
-      setStarredFiles(starred);
     } catch (error) {
       console.error('Error fetching recent files:', error);
       toast.error('Failed to load recent files');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchStarredFiles = async () => {
+    try {
+      const { getFiles } = await import('../services/api');
+      const data = await getFiles(undefined, { starred: true });
+      setStarredFiles(data.files || []);
+    } catch (error) {
+      console.error('Error fetching starred files:', error);
     }
   };
 
@@ -113,6 +120,7 @@ export default function Dashboard() {
     const handleRefresh = () => {
       if (authenticated) {
         fetchRecentFiles();
+        fetchStarredFiles();
       }
     };
 
@@ -526,6 +534,17 @@ export default function Dashboard() {
         </motion.div>
       </div>
 
+      {/* Storage Management Section (Admin Only) */}
+      {authenticated && user?.roles?.includes('admin') && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+        >
+          <StorageQuotaManagement />
+        </motion.div>
+      )}
+
 
 
       {/* File Upload Modal */}
@@ -534,11 +553,6 @@ export default function Dashboard() {
           isOpen={showUpload}
           onClose={() => setShowUpload(false)}
           currentPath={[]}
-          onSuccess={() => {
-            fetchRecentFiles();
-            // Refresh stats
-            window.dispatchEvent(new CustomEvent('dashboard:refresh'));
-          }}
         />
       )}
     </div>

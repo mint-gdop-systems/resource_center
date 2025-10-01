@@ -12,7 +12,9 @@ import { UploadProgress } from "../../types";
 import { useFiles } from "../../contexts/FileContext";
 import { CategoryModal } from "./CategoryModal";
 import DuplicateFileModal from "./DuplicateFileModal";
+import UploadValidation from "./UploadValidation";
 import { api } from "../../services/api";
+import { useStorageQuota } from "../../hooks/useStorageQuota";
 
 interface FileUploadProps {
   isOpen: boolean;
@@ -26,8 +28,14 @@ export default function FileUpload({
   currentPath,
 }: FileUploadProps) {
   const { uploadFile } = useFiles();
+  const { refreshQuota } = useStorageQuota();
   const [uploadFiles, setUploadFiles] = useState<UploadProgress[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  
+  // Storage validation state
+  const [showValidation, setShowValidation] = useState(false);
+  const [validationFiles, setValidationFiles] = useState<File[]>([]);
+  const [canUpload, setCanUpload] = useState(false);
   
   // Category modal state
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -44,12 +52,30 @@ export default function FileUpload({
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
-      // Store files and show category modal (like in base.js)
-      setPendingFiles(acceptedFiles);
-      setShowCategoryModal(true);
+      // First validate storage quota
+      setValidationFiles(acceptedFiles);
+      setShowValidation(true);
     },
     [],
   );
+
+  // Handle validation completion
+  const handleValidationComplete = (canUploadFiles: boolean) => {
+    setCanUpload(canUploadFiles);
+    if (canUploadFiles) {
+      // Proceed to category selection
+      setPendingFiles(validationFiles);
+      setShowCategoryModal(true);
+      setShowValidation(false);
+    }
+  };
+
+  // Handle validation cancel
+  const handleValidationCancel = () => {
+    setShowValidation(false);
+    setValidationFiles([]);
+    setCanUpload(false);
+  };
 
   // Handle category selection and upload (like uploadFileWithCategory in base.js)
   const handleCategoryUpload = async (categoryId: number) => {
@@ -130,8 +156,10 @@ export default function FileUpload({
           }),
         );
         
-        // Refresh the file list
+        // Refresh the file list and storage quota
         window.dispatchEvent(new CustomEvent('files:refresh'));
+        window.dispatchEvent(new CustomEvent('files:uploaded'));
+        refreshQuota();
       } catch (error: any) {
         clearInterval(progressInterval);
         
@@ -254,8 +282,10 @@ export default function FileUpload({
           );
         }
         
-        // Refresh the file list
+        // Refresh the file list and storage quota
         window.dispatchEvent(new CustomEvent('files:refresh'));
+        window.dispatchEvent(new CustomEvent('files:uploaded'));
+        refreshQuota();
         
       } else {
         throw new Error(response.data?.error || 'Failed to resolve duplicates');
@@ -372,15 +402,47 @@ export default function FileUpload({
                 </button>
               </div>
 
+              {/* Storage Validation */}
+              {showValidation && (
+                <div className="mb-6">
+                  <UploadValidation
+                    files={validationFiles}
+                    onValidationComplete={handleValidationComplete}
+                    onCancel={handleValidationCancel}
+                  />
+                  <div className="mt-4 flex justify-end space-x-3">
+                    <button
+                      onClick={handleValidationCancel}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                    {canUpload && (
+                      <button
+                        onClick={() => {
+                          setPendingFiles(validationFiles);
+                          setShowCategoryModal(true);
+                          setShowValidation(false);
+                        }}
+                        className="px-4 py-2 text-sm font-medium text-white bg-mint-600 rounded-lg hover:bg-mint-700"
+                      >
+                        Continue Upload
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Upload Area */}
-              <div
-                {...getRootProps()}
-                className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 ${
-                  isDragActive || isDragging
-                    ? "border-mint-400 bg-mint-50"
-                    : "border-gray-300 hover:border-gray-400 hover:bg-gray-50"
-                }`}
-              >
+              {!showValidation && (
+                <div
+                  {...getRootProps()}
+                  className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 ${
+                    isDragActive || isDragging
+                      ? "border-mint-400 bg-mint-50"
+                      : "border-gray-300 hover:border-gray-400 hover:bg-gray-50"
+                  }`}
+                >
                 <input {...getInputProps()} />
                 <motion.div
                   animate={isDragActive ? { scale: 1.05 } : { scale: 1 }}
@@ -407,6 +469,7 @@ export default function FileUpload({
                   </p>
                 </motion.div>
               </div>
+              )}
 
               {/* Upload Progress */}
               {uploadFiles.length > 0 && (

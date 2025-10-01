@@ -1,0 +1,169 @@
+{% extends "admin/index.html" %}
+{% load i18n static %}
+
+{% block content %}
+{{ block.super }}
+
+{% if user.is_superuser and group_stats %}
+<!-- Group Management Overview -->
+<div class="module" id="group-overview">
+    <table>
+        <caption>
+            <a href="{% url 'admin:group_dashboard' %}" class="section">
+                {% trans 'Group Management Overview' %}
+            </a>
+        </caption>
+        <tbody>
+            <tr>
+                <td>
+                    <div class="group-stats-summary">
+                        <div class="stats-row">
+                            <div class="stat-item">
+                                <span class="stat-number">{{ group_stats.totals.groups }}</span>
+                                <span class="stat-label">Active Groups</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-number">{{ group_stats.members.total }}</span>
+                                <span class="stat-label">Total Members</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-number">{{ group_stats.sharing.total }}</span>
+                                <span class="stat-label">Group Shares</span>
+                            </div>
+                        </div>
+                        
+                        {% if group_stats.recent_activity.groups or group_stats.recent_activity.memberships or group_stats.recent_activity.shares %}
+                        <div class="recent-activity">
+                            <h4>Recent Activity (7 days):</h4>
+                            <span class="activity-item">{{ group_stats.recent_activity.groups }} new groups</span>
+                            <span class="activity-item">{{ group_stats.recent_activity.memberships }} new members</span>
+                            <span class="activity-item">{{ group_stats.recent_activity.shares }} new shares</span>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="quick-links">
+                            <a href="{% url 'admin:resource_group_changelist' %}" class="quick-link">Manage Groups</a>
+                            <a href="{% url 'admin:resource_groupmembership_changelist' %}" class="quick-link">Manage Members</a>
+                            <a href="{% url 'admin:group_dashboard' %}" class="quick-link primary">Full Dashboard</a>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<style>
+#group-overview {
+    margin-bottom: 20px;
+}
+
+#group-overview caption a {
+    color: #0066cc;
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.group-stats-summary {
+    padding: 15px;
+}
+
+.stats-row {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.stat-item {
+    text-align: center;
+    min-width: 100px;
+    margin: 5px;
+}
+
+.stat-number {
+    display: block;
+    font-size: 1.8em;
+    font-weight: bold;
+    color: #0066cc;
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.9em;
+    color: #666;
+    margin-top: 2px;
+}
+
+.recent-activity {
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+}
+
+.recent-activity h4 {
+    margin: 0 0 8px 0;
+    color: #333;
+    font-size: 0.95em;
+}
+
+.activity-item {
+    display: inline-block;
+    margin-right: 15px;
+    font-size: 0.85em;
+    color: #666;
+}
+
+.activity-item:before {
+    content: "• ";
+    color: #28a745;
+    font-weight: bold;
+}
+
+.quick-links {
+    text-align: center;
+}
+
+.quick-link {
+    display: inline-block;
+    padding: 8px 15px;
+    margin: 0 5px;
+    background: #f1f1f1;
+    color: #333;
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 0.9em;
+    transition: all 0.3s ease;
+}
+
+.quick-link:hover {
+    background: #e1e1e1;
+    color: #0066cc;
+}
+
+.quick-link.primary {
+    background: #0066cc;
+    color: white;
+}
+
+.quick-link.primary:hover {
+    background: #0052a3;
+    color: white;
+}
+
+@media (max-width: 600px) {
+    .stats-row {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .quick-links {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+}
+</style>
+{% endif %}
+{% endblock %}

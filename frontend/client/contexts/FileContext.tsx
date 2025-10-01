@@ -200,6 +200,7 @@ export function FileProvider({ children }: { children: ReactNode }) {
       toast.success(`${fileIdsToDelete.length + folderIdsToDelete.length} item(s) deleted successfully!`);
       // Dispatch refresh event instead of direct fetchFiles call
       window.dispatchEvent(new CustomEvent('files:refresh'));
+      window.dispatchEvent(new CustomEvent('files:deleted'));
       await refreshFilesCount();
       await refreshRecentCount();
       await refreshArchiveCount();
@@ -278,6 +279,7 @@ export function FileProvider({ children }: { children: ReactNode }) {
       toast.success(res.is_archived ? 'Archived' : 'Unarchived');
       // Dispatch refresh event instead of direct fetchFiles call
       window.dispatchEvent(new CustomEvent('files:refresh'));
+      window.dispatchEvent(new CustomEvent('files:modified'));
       await refreshArchiveCount();
       await refreshRecentCount();
     } catch (error: any) {
