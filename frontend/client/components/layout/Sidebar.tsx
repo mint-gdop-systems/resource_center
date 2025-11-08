@@ -234,7 +234,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
       {/* Storage Quota Widget - Bottom of Sidebar */}
       {!isCollapsed && authenticated && (
-        <div className="mt-auto">
+        <div className="mt-auto pt-4 sm:pt-6 lg:pt-8">
           <StorageQuotaWidget />
         </div>
       )}
@@ -345,7 +345,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
             {/* Storage Quota Widget - Mobile Bottom */}
             {authenticated && (
-              <div className="mt-auto">
+              <div className="mt-auto pt-4 sm:pt-6 lg:pt-8">
                 <StorageQuotaWidget />
               </div>
             )}

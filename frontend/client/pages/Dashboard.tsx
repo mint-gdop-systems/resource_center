@@ -17,7 +17,7 @@ import ReadOnlyFileList from "../components/dashboard/ReadOnlyFileList";
 import QuickStats from "../components/dashboard/QuickStats";
 import RecentActivity from "../components/dashboard/RecentActivity";
 import WelcomeSection from "../components/dashboard/WelcomeSection";
-import QuickActions from "../components/dashboard/QuickActions";
+
 import StorageQuotaManagement from "../components/dashboard/StorageQuotaManagement";
 import { useTheme } from "../contexts/ThemeContext";
 
@@ -148,62 +148,32 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Enhanced Header */}
+      {/* Header with Actions */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className={`rounded-2xl p-6 border ${
-          isDarkMode 
-            ? 'bg-gradient-to-r from-gray-800 to-gray-700 border-gray-600' 
-            : 'bg-gradient-to-r from-mint-50 to-blue-50 border-mint-100'
-        }`}
+        className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0"
       >
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-          <div className="flex-1">
-            <Breadcrumb items={breadcrumbItems} />
-            <div className="mt-3 flex items-center space-x-3">
-              <div>
-                <h1 className={`text-3xl font-bold flex items-center ${
-                  isDarkMode ? 'text-white' : 'text-gray-900'
-                }`}>
-                  <SparklesIcon className="h-8 w-8 text-mint-500 mr-3" />
-                  {getGreeting()}, {getUserName()}!
-                </h1>
-                <p className={`text-lg mt-1 ${
-                  isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                }`}>
-                  {getPersonalizedMessage()}
-                </p>
-              </div>
-            </div>
-            <div className={`mt-4 flex items-center space-x-4 text-sm ${
-              isDarkMode ? 'text-gray-400' : 'text-gray-500'
-            }`}>
-              <div className="flex items-center">
-                <ClockIcon className="h-4 w-4 mr-1" />
-                Last updated: {new Date().toLocaleTimeString()}
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={() => navigate('/files')}
-              className={`inline-flex items-center px-4 py-2 text-mint-600 text-sm font-medium rounded-lg border border-mint-200 hover:bg-mint-50 focus:outline-none focus:ring-2 focus:ring-mint-500 focus:ring-offset-2 transition-colors ${
-                isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-white'
+        <div className="flex-1">
+          <Breadcrumb items={breadcrumbItems} />
+        </div>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => navigate('/files')}
+            className={`inline-flex items-center px-4 py-2 text-mint-600 text-sm font-medium rounded-lg border border-mint-200 hover:bg-mint-50 focus:outline-none focus:ring-2 focus:ring-mint-500 focus:ring-offset-2 transition-colors ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-white'
               }`}
-            >
-              <ViewColumnsIcon className="h-4 w-4 mr-2" />
-              Browse Files
-            </button>
-            <button
-              onClick={() => setShowUpload(true)}
-              className="inline-flex items-center px-6 py-3 bg-mint-600 text-white text-sm font-medium rounded-lg hover:bg-mint-700 focus:outline-none focus:ring-2 focus:ring-mint-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 shadow-lg"
-            >
-              <PlusIcon className="h-4 w-4 mr-2" />
-              Upload Files
-            </button>
-          </div>
+          >
+            <ViewColumnsIcon className="h-4 w-4 mr-2" />
+            Browse Files
+          </button>
+          <button
+            onClick={() => setShowUpload(true)}
+            className="inline-flex items-center px-6 py-3 bg-mint-600 text-white text-sm font-medium rounded-lg hover:bg-mint-700 focus:outline-none focus:ring-2 focus:ring-mint-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 shadow-lg"
+          >
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Upload Files
+          </button>
         </div>
       </motion.div>
 
@@ -216,86 +186,65 @@ export default function Dashboard() {
         <QuickStats />
       </motion.div>
 
-      {/* Quick Actions */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.15 }}
-      >
-        <QuickActions 
-          onUpload={() => setShowUpload(true)}
-        />
-      </motion.div>
+
 
       {/* Enhanced Recent Files Section */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
-        className={`rounded-xl shadow-sm border hover:shadow-md transition-shadow duration-200 ${
-          isDarkMode 
-            ? 'bg-gray-800 border-gray-700' 
-            : 'bg-white border-gray-200'
-        }`}
+        className={`rounded-xl shadow-sm border hover:shadow-md transition-shadow duration-200 ${isDarkMode
+          ? 'bg-gray-800 border-gray-700'
+          : 'bg-white border-gray-200'
+          }`}
       >
-        <div className={`px-6 py-4 border-b ${
-          isDarkMode ? 'border-gray-700' : 'border-gray-200'
-        }`}>
+        <div className={`px-6 py-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'
+          }`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className={`p-2 rounded-lg ${
-                isDarkMode ? 'bg-mint-900' : 'bg-mint-100'
-              }`}>
+              <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-mint-900' : 'bg-mint-100'
+                }`}>
                 <ClockIcon className="h-5 w-5 text-mint-600" />
               </div>
               <div>
-                <h2 className={`text-lg font-semibold ${
-                  isDarkMode ? 'text-white' : 'text-gray-900'
-                }`}>
+                <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'
+                  }`}>
                   Recent Files
                 </h2>
-                <p className={`text-sm ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-600'
-                }`}>
+                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'
+                  }`}>
                   Files you've uploaded recently
                 </p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
               {/* Enhanced View mode toggle */}
-              <div className={`flex items-center rounded-lg p-1 shadow-inner ${
-                isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
-              }`}>
+              <div className={`flex items-center rounded-lg p-1 shadow-inner ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
+                }`}>
                 <button
                   onClick={() => handleViewModeChange("grid")}
-                  className={`p-2 rounded-md transition-all duration-200 ${
-                    viewMode.type === "grid"
-                      ? `text-mint-600 shadow-sm transform scale-105 ${
-                          isDarkMode ? 'bg-gray-600' : 'bg-white'
-                        }`
-                      : `hover:text-gray-700 ${
-                          isDarkMode 
-                            ? 'text-gray-400 hover:bg-gray-600' 
-                            : 'text-gray-500 hover:bg-gray-50'
-                        }`
-                  }`}
+                  className={`p-2 rounded-md transition-all duration-200 ${viewMode.type === "grid"
+                    ? `text-mint-600 shadow-sm transform scale-105 ${isDarkMode ? 'bg-gray-600' : 'bg-white'
+                    }`
+                    : `hover:text-gray-700 ${isDarkMode
+                      ? 'text-gray-400 hover:bg-gray-600'
+                      : 'text-gray-500 hover:bg-gray-50'
+                    }`
+                    }`}
                   title="Grid view"
                 >
                   <ViewColumnsIcon className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => handleViewModeChange("list")}
-                  className={`p-2 rounded-md transition-all duration-200 ${
-                    viewMode.type === "list"
-                      ? `text-mint-600 shadow-sm transform scale-105 ${
-                          isDarkMode ? 'bg-gray-600' : 'bg-white'
-                        }`
-                      : `hover:text-gray-700 ${
-                          isDarkMode 
-                            ? 'text-gray-400 hover:bg-gray-600' 
-                            : 'text-gray-500 hover:bg-gray-50'
-                        }`
-                  }`}
+                  className={`p-2 rounded-md transition-all duration-200 ${viewMode.type === "list"
+                    ? `text-mint-600 shadow-sm transform scale-105 ${isDarkMode ? 'bg-gray-600' : 'bg-white'
+                    }`
+                    : `hover:text-gray-700 ${isDarkMode
+                      ? 'text-gray-400 hover:bg-gray-600'
+                      : 'text-gray-500 hover:bg-gray-50'
+                    }`
+                    }`}
                   title="List view"
                 >
                   <ListBulletIcon className="h-4 w-4" />
@@ -319,15 +268,12 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[...Array(4)].map((_, index) => (
                 <div key={index} className="animate-pulse">
-                  <div className={`rounded-lg h-32 mb-3 ${
-                    isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
-                  }`}></div>
-                  <div className={`h-4 rounded w-3/4 mb-2 ${
-                    isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
-                  }`}></div>
-                  <div className={`h-3 rounded w-1/2 ${
-                    isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
-                  }`}></div>
+                  <div className={`rounded-lg h-32 mb-3 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
+                    }`}></div>
+                  <div className={`h-4 rounded w-3/4 mb-2 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
+                    }`}></div>
+                  <div className={`h-3 rounded w-1/2 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
+                    }`}></div>
                 </div>
               ))}
             </div>
@@ -358,19 +304,16 @@ export default function Dashboard() {
               transition={{ duration: 0.5 }}
               className="text-center py-16"
             >
-              <div className={`w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg ${
-                isDarkMode 
-                  ? 'bg-gradient-to-br from-mint-800 to-mint-700' 
-                  : 'bg-gradient-to-br from-mint-100 to-mint-200'
-              }`}>
+              <div className={`w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg ${isDarkMode
+                ? 'bg-gradient-to-br from-mint-800 to-mint-700'
+                : 'bg-gradient-to-br from-mint-100 to-mint-200'
+                }`}>
                 <ViewColumnsIcon className="h-10 w-10 text-mint-600" />
               </div>
-              <h3 className={`text-2xl font-bold mb-3 ${
-                isDarkMode ? 'text-white' : 'text-gray-900'
-              }`}>Ready to get started?</h3>
-              <p className={`text-lg mb-8 max-w-md mx-auto ${
-                isDarkMode ? 'text-gray-400' : 'text-gray-500'
-              }`}>
+              <h3 className={`text-2xl font-bold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'
+                }`}>Ready to get started?</h3>
+              <p className={`text-lg mb-8 max-w-md mx-auto ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                }`}>
                 Upload your first file to begin organizing and managing your documents with MINT Resource Center.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -383,9 +326,8 @@ export default function Dashboard() {
                 </button>
                 <button
                   onClick={() => navigate('/files')}
-                  className={`inline-flex items-center px-6 py-3 text-mint-600 text-lg font-medium rounded-xl border-2 border-mint-200 hover:border-mint-300 hover:bg-mint-50 focus:outline-none focus:ring-2 focus:ring-mint-500 focus:ring-offset-2 transition-colors ${
-                    isDarkMode ? 'bg-gray-700' : 'bg-white'
-                  }`}
+                  className={`inline-flex items-center px-6 py-3 text-mint-600 text-lg font-medium rounded-xl border-2 border-mint-200 hover:border-mint-300 hover:bg-mint-50 focus:outline-none focus:ring-2 focus:ring-mint-500 focus:ring-offset-2 transition-colors ${isDarkMode ? 'bg-gray-700' : 'bg-white'
+                    }`}
                 >
                   <FolderIcon className="h-5 w-5 mr-2" />
                   Browse Files
@@ -403,33 +345,28 @@ export default function Dashboard() {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className={`rounded-xl shadow-sm border hover:shadow-md transition-shadow duration-200 ${
-            isDarkMode 
-              ? 'bg-gray-800 border-gray-700' 
-              : 'bg-white border-gray-200'
-          }`}
+          className={`rounded-xl shadow-sm border hover:shadow-md transition-shadow duration-200 ${isDarkMode
+            ? 'bg-gray-800 border-gray-700'
+            : 'bg-white border-gray-200'
+            }`}
         >
-          <div className={`px-6 py-4 border-b ${
-            isDarkMode ? 'border-gray-700' : 'border-gray-200'
-          }`}>
+          <div className={`px-6 py-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'
+            }`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className={`p-2 rounded-lg ${
-                  isDarkMode ? 'bg-yellow-900' : 'bg-yellow-100'
-                }`}>
+                <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-yellow-900' : 'bg-yellow-100'
+                  }`}>
                   <svg className="w-5 h-5 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                   </svg>
                 </div>
                 <div>
-                  <h2 className={`text-lg font-semibold ${
-                    isDarkMode ? 'text-white' : 'text-gray-900'
-                  }`}>
+                  <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'
+                    }`}>
                     Starred Files
                   </h2>
-                  <p className={`text-sm ${
-                    isDarkMode ? 'text-gray-400' : 'text-gray-600'
-                  }`}>Your most important files</p>
+                  <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'
+                    }`}>Your most important files</p>
                 </div>
               </div>
               {starredFiles.length > 0 && (
@@ -452,64 +389,55 @@ export default function Dashboard() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: index * 0.1 }}
-                    className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-all duration-200 group ${
-                      isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
-                    }`}
+                    className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-all duration-200 group ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
+                      }`}
                     onClick={() => navigate(`/files?highlight=${file.id}`)}
                   >
                     <div className="flex-shrink-0">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 ${
-                        isDarkMode 
-                          ? 'bg-gradient-to-br from-yellow-800 to-yellow-700 group-hover:from-yellow-700 group-hover:to-yellow-600' 
-                          : 'bg-gradient-to-br from-yellow-100 to-yellow-200 group-hover:from-yellow-200 group-hover:to-yellow-300'
-                      }`}>
-                        <span className={`text-xs font-bold ${
-                          isDarkMode ? 'text-yellow-300' : 'text-yellow-700'
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 ${isDarkMode
+                        ? 'bg-gradient-to-br from-yellow-800 to-yellow-700 group-hover:from-yellow-700 group-hover:to-yellow-600'
+                        : 'bg-gradient-to-br from-yellow-100 to-yellow-200 group-hover:from-yellow-200 group-hover:to-yellow-300'
                         }`}>
+                        <span className={`text-xs font-bold ${isDarkMode ? 'text-yellow-300' : 'text-yellow-700'
+                          }`}>
                           {file.file_type?.toUpperCase().slice(0, 3) || "F"}
                         </span>
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium truncate group-hover:text-mint-700 transition-colors ${
-                        isDarkMode ? 'text-white' : 'text-gray-900'
-                      }`}>
+                      <p className={`text-sm font-medium truncate group-hover:text-mint-700 transition-colors ${isDarkMode ? 'text-white' : 'text-gray-900'
+                        }`}>
                         {file.name}
                       </p>
-                      <p className={`text-xs transition-colors ${
-                        isDarkMode 
-                          ? 'text-gray-400 group-hover:text-gray-300' 
-                          : 'text-gray-500 group-hover:text-gray-600'
-                      }`}>
-                        {file.file_size ? `${Math.round(file.file_size / 1024)} KB` : ""} • 
+                      <p className={`text-xs transition-colors ${isDarkMode
+                        ? 'text-gray-400 group-hover:text-gray-300'
+                        : 'text-gray-500 group-hover:text-gray-600'
+                        }`}>
+                        {file.file_size ? `${Math.round(file.file_size / 1024)} KB` : ""} •
                         {new Date(file.uploaded_at).toLocaleDateString()}
                       </p>
                     </div>
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                      <ArrowRightIcon className={`h-4 w-4 ${
-                        isDarkMode ? 'text-gray-500' : 'text-gray-400'
-                      }`} />
+                      <ArrowRightIcon className={`h-4 w-4 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'
+                        }`} />
                     </div>
                   </motion.div>
                 ))}
               </div>
             ) : (
               <div className="text-center py-12">
-                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg ${
-                  isDarkMode 
-                    ? 'bg-gradient-to-br from-yellow-800 to-yellow-700' 
-                    : 'bg-gradient-to-br from-yellow-100 to-yellow-200'
-                }`}>
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg ${isDarkMode
+                  ? 'bg-gradient-to-br from-yellow-800 to-yellow-700'
+                  : 'bg-gradient-to-br from-yellow-100 to-yellow-200'
+                  }`}>
                   <svg className="w-8 h-8 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                   </svg>
                 </div>
-                <h3 className={`text-lg font-medium mb-2 ${
-                  isDarkMode ? 'text-white' : 'text-gray-900'
-                }`}>No starred files yet</h3>
-                <p className={`text-sm mb-4 ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                }`}>
+                <h3 className={`text-lg font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'
+                  }`}>No starred files yet</h3>
+                <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
                   Star files to access them quickly from here
                 </p>
                 <button

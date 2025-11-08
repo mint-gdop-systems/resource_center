@@ -19,7 +19,7 @@ export const StorageQuotaWidget: React.FC<StorageQuotaWidgetProps> = ({ classNam
 
   const usagePercentage = quota.storage_usage_percentage;
   const usageStatus = getUsageStatus(usagePercentage);
-  
+
   // Color scheme based on usage status
   const getColorScheme = () => {
     switch (usageStatus) {
@@ -60,15 +60,15 @@ export const StorageQuotaWidget: React.FC<StorageQuotaWidgetProps> = ({ classNam
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: 0.2 }}
-      className={`${className} relative p-4 mx-4 mb-4 rounded-xl border ${colors.bg} ${colors.border} transition-all duration-200 hover:shadow-md hover:scale-[1.02] cursor-pointer group`}
+      className={`${className} relative p-2 sm:p-3 mx-3 sm:mx-4 mb-2 sm:mb-3 rounded-lg border ${colors.bg} ${colors.border} transition-all duration-200 hover:shadow-sm cursor-pointer group`}
     >
       {/* Subtle gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-xl pointer-events-none" />
-      
+
       {/* Minimal Header */}
-      <div className="relative flex items-center space-x-2 mb-3">
-        <HardDrive className={`h-4 w-4 ${colors.icon}`} />
-        <span className={`text-sm font-medium ${colors.text}`}>
+      <div className="relative flex items-center space-x-1.5 mb-1.5 sm:mb-2">
+        <HardDrive className={`h-3.5 w-3.5 ${colors.icon}`} />
+        <span className={`text-xs sm:text-sm font-medium ${colors.text}`}>
           Storage
         </span>
         {usageStatus !== 'normal' && (
@@ -76,24 +76,22 @@ export const StorageQuotaWidget: React.FC<StorageQuotaWidgetProps> = ({ classNam
             animate={{ scale: [1, 1.1, 1] }}
             transition={{ duration: 2, repeat: Infinity }}
           >
-            <AlertCircle className={`h-3.5 w-3.5 ${colors.icon}`} />
+            <AlertCircle className={`h-3 w-3 ${colors.icon}`} />
           </motion.div>
         )}
       </div>
 
       {/* Storage Usage Info */}
-      <div className="space-y-3">
-        {/* Usage Text - Clean Format */}
-        <div className={`text-xs ${colors.text} text-center`}>
-          <span className="font-medium">{formatBytes(quota.storage_used)}</span>
-          <span className="opacity-70"> of </span>
-          <span className="font-medium">{formatBytes(quota.storage_quota)}</span>
-          <span className="opacity-70"> used</span>
+      <div className="space-y-1.5 sm:space-y-2">
+        {/* Usage Text - Compact Format */}
+        <div className={`text-xs ${colors.text} text-center leading-tight`}>
+          <div className="font-medium">{formatBytes(quota.storage_used)}</div>
+          <div className="opacity-70 text-xs">of {formatBytes(quota.storage_quota)}</div>
         </div>
 
         {/* Progress Bar */}
         <div className="relative">
-          <div className={`w-full h-3 rounded-full ${colors.progressBg} overflow-hidden shadow-inner`}>
+          <div className={`w-full h-2 rounded-full ${colors.progressBg} overflow-hidden shadow-inner`}>
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${Math.min(usagePercentage, 100)}%` }}
@@ -108,7 +106,7 @@ export const StorageQuotaWidget: React.FC<StorageQuotaWidgetProps> = ({ classNam
 
         {/* Percentage Display */}
         <div className={`text-xs ${colors.text} text-center font-medium`}>
-          {usagePercentage.toFixed(1)}% full
+          {usagePercentage.toFixed(1)}%
         </div>
       </div>
     </motion.div>

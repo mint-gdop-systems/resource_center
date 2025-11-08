@@ -110,13 +110,7 @@ export default function QuickStats() {
           icon: ChartBarIcon,
           color: "purple",
         },
-        {
-          id: "uploads",
-          name: "Uploads This Month",
-          value: data.files_this_month.value.toLocaleString(),
-          icon: CloudArrowUpIcon,
-          color: "green",
-        },
+
       ];
 
       setStats(statsData);
@@ -160,19 +154,13 @@ export default function QuickStats() {
       icon: ChartBarIcon,
       color: "purple",
     },
-    {
-      id: "uploads",
-      name: "Uploads This Month",
-      value: "0",
-      icon: CloudArrowUpIcon,
-      color: "green",
-    },
+
   ];
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {[...Array(5)].map((_, index) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[...Array(4)].map((_, index) => (
           <div
             key={index}
             className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 animate-pulse"
@@ -208,7 +196,7 @@ export default function QuickStats() {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {stats.map((stat, index) => {
         const colors = colorClasses[stat.color as keyof typeof colorClasses];
         const IconComponent = stat.icon;
@@ -244,60 +232,7 @@ export default function QuickStats() {
         );
       })}
 
-      {/* Storage Quota Card */}
-      {authenticated && quota && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: stats.length * 0.1 }}
-          className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow duration-200"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <div className="flex items-center space-x-3">
-                <div
-                  className={`p-2 rounded-lg ring-4 ${
-                    getUsageStatus(quota.storage_usage_percentage) === 'danger'
-                      ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 ring-red-100 dark:ring-red-800/50'
-                      : getUsageStatus(quota.storage_usage_percentage) === 'warning'
-                      ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 ring-orange-100 dark:ring-orange-800/50'
-                      : 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 ring-green-100 dark:ring-green-800/50'
-                  }`}
-                >
-                  <CircleStackIcon className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    Storage Used
-                  </p>
-                  <p className="text-lg font-bold text-gray-900 dark:text-white">
-                    {formatBytes(quota.storage_used)}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    of {formatBytes(quota.storage_quota)} ({quota.storage_usage_percentage.toFixed(1)}%)
-                  </p>
-                </div>
-              </div>
-              
-              {/* Progress bar */}
-              <div className="mt-3">
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                  <div
-                    className={`h-2 rounded-full transition-all duration-300 ${
-                      getUsageStatus(quota.storage_usage_percentage) === 'danger'
-                        ? 'bg-red-500'
-                        : getUsageStatus(quota.storage_usage_percentage) === 'warning'
-                        ? 'bg-orange-500'
-                        : 'bg-green-500'
-                    }`}
-                    style={{ width: `${Math.min(quota.storage_usage_percentage, 100)}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      )}
+
     </div>
   );
 }
