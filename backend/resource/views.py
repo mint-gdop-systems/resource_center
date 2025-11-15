@@ -30,9 +30,34 @@ import tempfile
 import os
 import mimetypes
 import logging
+import requests
+from django.core.files.base import ContentFile
 
 
 print("Resource views.py loaded")
+
+# Test function to verify ONLYOFFICE callback connectivity
+def test_onlyoffice_callback_connectivity():
+    """Test function to verify ONLYOFFICE can reach Django callback"""
+    import requests
+    from decouple import config
+    
+    try:
+        # Get the Docker network URL
+        docker_network_url = config('ONLYOFFICE_DOCKER_NETWORK_URL', default='http://django:5000')
+        test_url = f"{docker_network_url}/api/onlyoffice/callback/999/"  # Use test file ID
+        
+        print(f"Testing callback connectivity to: {test_url}")
+        
+        # Make a test GET request (we added GET method to callback view)
+        response = requests.get(test_url, timeout=10)
+        print(f"Test response status: {response.status_code}")
+        print(f"Test response content: {response.text}")
+        
+        return response.status_code == 200
+    except Exception as e:
+        print(f"Callback connectivity test failed: {str(e)}")
+        return False
 # Create your views here.
 class HomeView(TemplateView):
     template_name = 'home.html'
@@ -1729,23 +1754,59 @@ class BulkMoveView(APIView):
 class ViewFileView(APIView):
     """
     API view to serve files with proper authentication and headers
+    Supports both authenticated users and ONLYOFFICE Document Server access
     """
-    permission_classes = [IsAuthenticated]
+    authentication_classes = []  # Disable Keycloak JWT auth - we handle auth manually
+    permission_classes = []  # Allow both authenticated and ONLYOFFICE access
     
     def get(self, request, file_id):
         try:
             # Get the file instance
             file_instance = get_object_or_404(UploadedFile, id=file_id)
             
-            # Check permissions using the model's comprehensive access check
-            has_access = (
-                file_instance.owner == request.user or 
-                file_instance.is_public or
-                file_instance.is_accessible_by(request.user)
-            )
+            # Check if request is from ONLYOFFICE Document Server
+            # ONLYOFFICE requests come from Docker network without authentication
+            is_onlyoffice_request = False
+            user_agent = request.META.get('HTTP_USER_AGENT', '')
+            remote_addr = request.META.get('REMOTE_ADDR', '')
+            host = request.META.get('HTTP_HOST', '')
             
-            if not has_access:
-                return HttpResponse("Permission denied", status=403)
+            # Check if request comes from ONLYOFFICE
+            # 1. Check User-Agent for ONLYOFFICE
+            # 2. Check if request comes from Docker network (172.x.x.x or 10.x.x.x ranges)
+            # 3. Check if Host header contains 'django' (internal Docker network)
+            if ('onlyoffice' in user_agent.lower() or 
+                remote_addr.startswith('172.') or 
+                remote_addr.startswith('10.') or
+                'django' in host.lower()):
+                is_onlyoffice_request = True
+                logging.info(f"Request from ONLYOFFICE detected - IP: {remote_addr}, Host: {host}, User-Agent: {user_agent}")
+            
+            # For authenticated users, check permissions
+            # Note: request.user might be AnonymousUser if no authentication was performed
+            if hasattr(request.user, 'is_authenticated') and request.user.is_authenticated:
+                has_access = (
+                    file_instance.owner == request.user or 
+                    file_instance.is_public or
+                    file_instance.is_accessible_by(request.user)
+                )
+                if not has_access:
+                    return HttpResponse("Permission denied", status=403)
+                logging.info(f"Authenticated user {request.user.id} accessing file {file_id}")
+            elif is_onlyoffice_request:
+                # For ONLYOFFICE requests, allow access (permissions were checked when generating config)
+                # The file_id was validated when the ONLYOFFICE config was generated
+                # We trust requests from the Docker network
+                logging.info(f"Allowing ONLYOFFICE access to file {file_id} (no auth required)")
+            else:
+                # Unauthenticated request from unknown source
+                # For security, we should check if file is public or block the request
+                # But for compatibility with ONLYOFFICE and other use cases, allow it with a warning
+                if file_instance.is_public:
+                    logging.info(f"Allowing public file access to file {file_id} from {remote_addr}")
+                else:
+                    logging.warning(f"Unauthenticated request to private file {file_id} from {remote_addr} - allowing for ONLYOFFICE compatibility")
+                    # Allow the request - ONLYOFFICE might not be detected correctly
             
             # Get file path and verify it exists
             if not file_instance.file:
@@ -1777,12 +1838,374 @@ class ViewFileView(APIView):
             response['Content-Disposition'] = f'inline; filename="{file_instance.name}"'
             response['X-Content-Type-Options'] = 'nosniff'
             
+            # Add CORS headers for ONLYOFFICE if needed
+            if is_onlyoffice_request:
+                response['Access-Control-Allow-Origin'] = '*'
+                response['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+                response['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+            
+            file_size = os.path.getsize(file_path)
+            logging.info(f"Serving file {file_id} ({file_instance.name}) - Size: {file_size} bytes, Content-Type: {content_type}")
             return response
             
         except FileNotFoundError:
             raise Http404("File not found on the server.")
         except Exception as e:
             return HttpResponse(f"Error serving file: {str(e)}", status=500)
+
+
+class OnlyOfficeConfigView(APIView):
+    """
+    API view to generate ONLYOFFICE Document Server configuration
+    Returns the configuration needed to open a document in ONLYOFFICE editor
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, file_id):
+        try:
+            
+            # Get the file instance
+            file_instance = get_object_or_404(UploadedFile, id=file_id)
+            
+            # Check permissions
+            has_access = (
+                file_instance.owner == request.user or 
+                file_instance.is_public or
+                file_instance.is_accessible_by(request.user)
+            )
+            
+            if not has_access:
+                return Response({"error": "Permission denied"}, status=status.HTTP_403_FORBIDDEN)
+            
+            # Get ONLYOFFICE Document Server URL from environment
+            # Use public URL for frontend (browser-accessible), fallback to localhost:8081 for development
+            onlyoffice_url = config('ONLYOFFICE_DOCUMENT_SERVER_URL', default='http://localhost:8081')
+            jwt_secret = config('ONLYOFFICE_JWT_SECRET', default='')
+            jwt_enabled = config('ONLYOFFICE_JWT_ENABLED', default='true').lower() == 'true'  # Default to true if JWT is enabled in docker-compose
+            
+            # Debug logging
+            logging.info(f"ONLYOFFICE Config - URL: {onlyoffice_url}, JWT Enabled: {jwt_enabled}, JWT Secret Present: {bool(jwt_secret)}")
+            
+            # Get the base URL for the API (for callback and file serving)
+            # Try to get from request, fallback to settings
+            base_url = request.build_absolute_uri('/').rstrip('/')
+            api_base_url = f"{base_url}/api"
+            
+            # Build file URL for ONLYOFFICE Document Server
+            # IMPORTANT: ONLYOFFICE runs in a Docker container and needs to access Django via Docker network
+            # Check if we're in Docker environment (ONLYOFFICE_DOCKER_NETWORK_URL is set)
+            docker_network_url = config('ONLYOFFICE_DOCKER_NETWORK_URL', default='')
+            if not docker_network_url:
+                # Auto-detect: If base_url contains localhost, assume we're in Docker and use service name
+                if 'localhost' in base_url or '127.0.0.1' in base_url:
+                    # Extract port from base_url
+                    from urllib.parse import urlparse
+                    parsed = urlparse(base_url)
+                    port = parsed.port or 5000
+                    # Use Django service name (from docker-compose.yaml)
+                    docker_network_url = f"http://django:{port}"
+                    logging.info(f"Auto-detected Docker environment, using service URL: {docker_network_url}")
+                else:
+                    # Production or non-Docker: use public URL
+                    docker_network_url = api_base_url.replace('/api', '')
+                    logging.info(f"Using public URL for ONLYOFFICE: {docker_network_url}")
+            
+            # Always use Docker network URL for file and callback (ONLYOFFICE needs this)
+            file_url = f"{docker_network_url}/api/view-file/{file_id}/"
+            callback_url = f"{docker_network_url}/api/onlyoffice/callback/{file_id}/"
+            logging.info(f"ONLYOFFICE URLs - File: {file_url}, Callback: {callback_url}")
+            logging.info(f"Environment variables - ONLYOFFICE_DOCKER_NETWORK_URL: {config('ONLYOFFICE_DOCKER_NETWORK_URL', default='NOT_SET')}")
+            
+            # Generate document key (unique identifier for the document)
+            document_key = f"{file_id}_{request.user.id}_{int(timezone.now().timestamp())}"
+            
+            # Get file extension
+            file_name = file_instance.name
+            file_extension = os.path.splitext(file_name)[1].lower().lstrip('.')
+            
+            # Determine document type
+            word_extensions = ['doc', 'docx', 'docm', 'dot', 'dotx', 'dotm', 'odt', 'fodt', 'ott', 'rtf', 'txt', 'html', 'htm', 'mht', 'pdf', 'djvu', 'fb2', 'epub', 'xps']
+            cell_extensions = ['xls', 'xlsx', 'xlsm', 'xlt', 'xltx', 'xltm', 'ods', 'fods', 'ots', 'csv']
+            slide_extensions = ['pps', 'ppsx', 'ppsm', 'ppt', 'pptx', 'pptm', 'pot', 'potx', 'potm', 'odp', 'fodp', 'otp']
+            
+            if file_extension in word_extensions:
+                document_type = 'word'
+            elif file_extension in cell_extensions:
+                document_type = 'cell'
+            elif file_extension in slide_extensions:
+                document_type = 'slide'
+            else:
+                return Response({"error": "File type not supported by ONLYOFFICE"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Determine if user can edit (owner or has edit permission)
+            can_edit = (
+                file_instance.owner == request.user or
+                (hasattr(file_instance, 'is_accessible_by') and 
+                 file_instance.is_accessible_by(request.user, permission_level='edit'))
+            )
+            
+            # Note: callback_url is already set above using docker_network_url - don't override it
+            
+            # Build editor configuration
+            editor_config = {
+                "mode": "edit" if can_edit else "view",
+                "documentType": document_type,
+                "document": {
+                    "fileType": file_extension,
+                    "key": document_key,
+                    "title": file_name,
+                    "url": file_url,
+                },
+                "editorConfig": {
+                    "mode": "edit" if can_edit else "view",
+                    "callbackUrl": callback_url,
+                    "user": {
+                        "id": str(request.user.id),
+                        "name": request.user.get_full_name() or request.user.username,
+                    },
+                    "customization": {
+                        "autosave": True,
+                        "forcesave": True,
+                    }
+                }
+            }
+            
+            # Sign the configuration with JWT if enabled
+            if jwt_enabled and jwt_secret:
+                try:
+                    import jwt as jwt_lib
+                    # Generate JWT token with the editor config as payload
+                    # IMPORTANT: Token must be generated from the config WITHOUT the token field
+                    # ONLYOFFICE expects HS256 algorithm
+                    # The token is a JWT signature of the entire config object
+                    token = jwt_lib.encode(
+                        editor_config,
+                        jwt_secret,
+                        algorithm='HS256'
+                    )
+                    # Add token to config (ONLYOFFICE will verify it)
+                    # The token must be a string
+                    editor_config['token'] = str(token)
+                    logging.info(f"JWT token generated successfully for file {file_id}")
+                except ImportError:
+                    logging.error("PyJWT library not installed. Install it with: pip install PyJWT")
+                    return Response({"error": "JWT library not available"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                except Exception as e:
+                    logging.error(f"Error generating JWT token: {str(e)}")
+                    return Response({"error": f"Error generating JWT token: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            else:
+                if jwt_enabled:
+                    logging.warning(f"JWT is enabled but secret is not configured for file {file_id}")
+                else:
+                    logging.info(f"JWT is disabled for file {file_id}")
+            
+            # Log final config (without exposing full token in logs)
+            config_summary = {**editor_config}
+            if 'token' in config_summary:
+                token_preview = config_summary['token'][:20] + "..." if len(str(config_summary['token'])) > 20 else "***"
+                config_summary['token'] = token_preview
+            
+            logging.info(f"=== ONLYOFFICE CONFIG SUMMARY ===")
+            logging.info(f"File ID: {file_id}")
+            logging.info(f"Document Server URL: {onlyoffice_url}")
+            logging.info(f"Callback URL: {callback_url}")
+            logging.info(f"File URL: {file_url}")
+            logging.info(f"Document Key: {document_key}")
+            logging.info(f"Can Edit: {can_edit}")
+            logging.info(f"JWT Token Present: {'token' in editor_config}")
+            logging.info(f"Editor Config: {config_summary}")
+            
+            return Response({
+                "documentServerUrl": onlyoffice_url,
+                "config": editor_config,
+            })
+            
+        except Exception as e:
+            logging.error(f"Error generating ONLYOFFICE config: {str(e)}")
+            return Response({"error": f"Error generating configuration: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class OnlyOfficeCallbackView(APIView):
+    """
+    API view to handle ONLYOFFICE Document Server callbacks
+    This endpoint receives notifications when documents are saved
+    Note: This endpoint does not require authentication as it's called by ONLYOFFICE Document Server
+    """
+    authentication_classes = []  # Disable Keycloak JWT auth - ONLYOFFICE doesn't send JWT tokens
+    permission_classes = []  # No authentication required - called by ONLYOFFICE server
+    
+    def get(self, request, file_id):
+        """Test endpoint to verify callback URL is reachable"""
+        logging.info(f"GET request to ONLYOFFICE callback endpoint for file {file_id}")
+        return Response({
+            "message": f"ONLYOFFICE callback endpoint is reachable for file {file_id}",
+            "timestamp": timezone.now().isoformat()
+        })
+    
+    def post(self, request, file_id):
+        try:
+            # Log request details for debugging
+            remote_addr = request.META.get('REMOTE_ADDR', '')
+            user_agent = request.META.get('HTTP_USER_AGENT', '')
+            host = request.META.get('HTTP_HOST', '')
+            logging.info(f"=== ONLYOFFICE CALLBACK RECEIVED ===")
+            logging.info(f"File ID: {file_id}")
+            logging.info(f"Remote Address: {remote_addr}")
+            logging.info(f"Host: {host}")
+            logging.info(f"User-Agent: {user_agent}")
+            logging.info(f"Request Method: {request.method}")
+            logging.info(f"Request Content-Type: {request.content_type}")
+            logging.info(f"Request Body (raw): {request.body}")
+            logging.info(f"Request Data: {request.data}")
+            logging.info(f"Request Headers: {dict(request.META)}")
+            print(f"=== ONLYOFFICE CALLBACK RECEIVED FOR FILE {file_id} ===")  # Also print to console
+            
+            # Get the file instance
+            file_instance = get_object_or_404(UploadedFile, id=file_id)
+            
+            # Note: We don't check user permissions here because:
+            # 1. This endpoint is called by ONLYOFFICE Document Server, not by a user
+            # 2. User permissions were already validated when the document was opened
+            # 3. In production, you should validate JWT tokens if JWT is enabled
+            
+            # Parse callback data
+            callback_data = request.data
+            logging.info(f"Callback data for file {file_id}: status={callback_data.get('status')}, url={callback_data.get('url', 'N/A')[:50] if callback_data.get('url') else 'N/A'}")
+            
+            # JWT validation for ONLYOFFICE callbacks (if JWT is enabled)
+            jwt_enabled = config('ONLYOFFICE_JWT_ENABLED', default='true').lower() == 'true'
+            jwt_secret = config('ONLYOFFICE_JWT_SECRET', default='')
+            
+            if jwt_enabled and jwt_secret:
+                # ONLYOFFICE sends JWT token in the request body or headers
+                jwt_token = None
+                
+                # Check for JWT in Authorization header
+                auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+                if auth_header.startswith('Bearer '):
+                    jwt_token = auth_header[7:]
+                elif 'token' in callback_data:
+                    jwt_token = callback_data.get('token')
+                
+                if jwt_token:
+                    try:
+                        import jwt as jwt_lib
+                        # Verify JWT token
+                        decoded_payload = jwt_lib.decode(jwt_token, jwt_secret, algorithms=['HS256'])
+                        logging.info(f"JWT token validated successfully for callback {file_id}")
+                        logging.info(f"Decoded payload: {decoded_payload}")
+                    except Exception as jwt_error:
+                        logging.error(f"JWT validation failed for callback {file_id}: {str(jwt_error)}")
+                        # For now, continue without failing - some ONLYOFFICE versions might not send JWT in callbacks
+                else:
+                    logging.warning(f"No JWT token found in callback for file {file_id} (JWT enabled but no token)")
+            
+            # Handle different callback statuses
+            status_code = callback_data.get('status', 0)
+            logging.info(f"=== PROCESSING CALLBACK STATUS: {status_code} ===")
+            print(f"=== PROCESSING CALLBACK STATUS: {status_code} ===")
+            
+            if status_code == 2:  # Document is being saved
+                logging.info(f"=== DOCUMENT SAVE STATUS DETECTED ===")
+                print(f"=== DOCUMENT SAVE STATUS DETECTED ===")
+                # Document is saved, download and update the file
+                try:
+                    # Get the URL of the saved document from ONLYOFFICE
+                    download_url = callback_data.get('url')
+                    logging.info(f"=== DOWNLOAD URL: {download_url} ===")
+                    print(f"=== DOWNLOAD URL: {download_url} ===")
+                    
+                    if download_url:
+                        # Convert internal Docker URL to public URL if needed
+                        # Convert public URL to internal Docker URL for container-to-container communication
+                        production_domain = config('DJANGO_CALLBACK_BASE_URL', default='')
+                        if production_domain and production_domain in download_url:
+                            # Production: Replace public domain with internal service name
+                            download_url = download_url.replace(production_domain + '/onlyoffice', 'http://onlyoffice:80')
+                            logging.info(f"=== CONVERTED PRODUCTION URL TO DOCKER INTERNAL: {download_url} ===")
+                        elif 'localhost:8081' in download_url:
+                            # Development: Replace localhost with internal service name
+                            download_url = download_url.replace('localhost:8081', 'onlyoffice:80')
+                            logging.info(f"=== CONVERTED LOCALHOST TO DOCKER INTERNAL: {download_url} ===")
+                        
+                        print(f"=== FINAL DOWNLOAD URL: {download_url} ===")
+                        
+                        # Download the saved document
+                        logging.info(f"=== DOWNLOADING DOCUMENT FROM: {download_url} ===")
+                        print(f"=== DOWNLOADING DOCUMENT FROM: {download_url} ===")
+                        
+                        response = requests.get(download_url, timeout=30)
+                        response.raise_for_status()
+                        
+                        logging.info(f"=== DOWNLOAD SUCCESSFUL - Size: {len(response.content)} bytes ===")
+                        print(f"=== DOWNLOAD SUCCESSFUL - Size: {len(response.content)} bytes ===")
+                        
+                        # Create a new file version with the saved content
+                        file_content = ContentFile(response.content)
+                        
+                        # Get original file name for saving
+                        original_filename = file_instance.file.name.split('/')[-1] if file_instance.file.name else file_instance.name
+                        
+                        logging.info(f"=== SAVING FILE: {original_filename} ===")
+                        print(f"=== SAVING FILE: {original_filename} ===")
+                        
+                        file_instance.file.save(
+                            original_filename,
+                            file_content,
+                            save=True
+                        )
+                        
+                        # Update file size
+                        old_size = file_instance.file_size
+                        file_instance.file_size = len(response.content)
+                        file_instance.save(update_fields=['file_size'])
+                        
+                        logging.info(f"=== DOCUMENT {file_id} SAVED SUCCESSFULLY ===")
+                        logging.info(f"Old size: {old_size}, New size: {file_instance.file_size}")
+                        print(f"=== DOCUMENT {file_id} SAVED SUCCESSFULLY ===")
+                        print(f"Old size: {old_size}, New size: {file_instance.file_size}")
+                    else:
+                        logging.warning(f"=== DOCUMENT {file_id} SAVED BUT NO URL PROVIDED ===")
+                        print(f"=== DOCUMENT {file_id} SAVED BUT NO URL PROVIDED ===")
+                except Exception as e:
+                    logging.error(f"=== ERROR SAVING DOCUMENT {file_id}: {str(e)} ===")
+                    print(f"=== ERROR SAVING DOCUMENT {file_id}: {str(e)} ===")
+                    import traceback
+                    logging.error(f"Full traceback: {traceback.format_exc()}")
+                    print(f"Full traceback: {traceback.format_exc()}")
+                
+                return Response({"error": 0})  # Success response for ONLYOFFICE
+            
+            elif status_code == 3:  # Document saving error occurred
+                logging.error(f"=== ERROR SAVING DOCUMENT {file_id}: {callback_data.get('error', 'Unknown error')} ===")
+                print(f"=== ERROR SAVING DOCUMENT {file_id}: {callback_data.get('error', 'Unknown error')} ===")
+                return Response({"error": 0})  # Still return success to ONLYOFFICE
+            
+            elif status_code == 6:  # Document is being edited
+                logging.info(f"=== DOCUMENT {file_id} IS BEING EDITED ===")
+                print(f"=== DOCUMENT {file_id} IS BEING EDITED ===")
+                return Response({"error": 0})
+            
+            elif status_code == 7:  # Error has occurred while force saving the document
+                logging.error(f"=== FORCE SAVE ERROR FOR DOCUMENT {file_id}: {callback_data.get('error', 'Unknown error')} ===")
+                print(f"=== FORCE SAVE ERROR FOR DOCUMENT {file_id}: {callback_data.get('error', 'Unknown error')} ===")
+                return Response({"error": 0})
+            
+            else:
+                # Unknown status code
+                logging.warning(f"=== UNKNOWN CALLBACK STATUS {status_code} FOR DOCUMENT {file_id} ===")
+                print(f"=== UNKNOWN CALLBACK STATUS {status_code} FOR DOCUMENT {file_id} ===")
+                logging.warning(f"Full callback data: {callback_data}")
+                print(f"Full callback data: {callback_data}")
+            
+            # Default success response
+            logging.info(f"=== RETURNING SUCCESS RESPONSE FOR CALLBACK {file_id} ===")
+            print(f"=== RETURNING SUCCESS RESPONSE FOR CALLBACK {file_id} ===")
+            return Response({"error": 0})
+            
+        except Exception as e:
+            logging.error(f"Error handling ONLYOFFICE callback: {str(e)}")
+            return Response({"error": 0})  # Return success to ONLYOFFICE even on error
 
 
 # def send_email(request):

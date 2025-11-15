@@ -1,7 +1,8 @@
 from django.urls import path, include
+from django.http import JsonResponse
 from rest_framework.routers import DefaultRouter
 from .views import (
-    FileUploadView, ResolveDuplicateFilesView, CreateFolderView, FolderContentsView, ToggleStarredView, ToggleArchivedView, ToggleFolderStarredView, EditFileView, EditFolderView, UploadNewVersionView, FileVersionHistoryView, RevertVersionView, DeleteUploadedFileView, BulkDeleteView, ReminderViewSet, UpcomingRemindersView, get_categories, TestAuthView, RecentFilesView, ViewFileView, DownloadFileView, BulkDownloadView, CopyFileView, BulkCopyView, MoveFileView, MoveFolderView, BulkMoveView, PublicShareView, ShareLinkManagementView, SearchView, DashboardStatsView, DashboardRecentActivityView, UserProfileView
+    FileUploadView, ResolveDuplicateFilesView, CreateFolderView, FolderContentsView, ToggleStarredView, ToggleArchivedView, ToggleFolderStarredView, EditFileView, EditFolderView, UploadNewVersionView, FileVersionHistoryView, RevertVersionView, DeleteUploadedFileView, BulkDeleteView, ReminderViewSet, UpcomingRemindersView, get_categories, TestAuthView, RecentFilesView, ViewFileView, DownloadFileView, BulkDownloadView, CopyFileView, BulkCopyView, MoveFileView, MoveFolderView, BulkMoveView, PublicShareView, ShareLinkManagementView, SearchView, DashboardStatsView, DashboardRecentActivityView, UserProfileView, OnlyOfficeConfigView, OnlyOfficeCallbackView
 )
 from .storage_views import (
     StorageQuotaView, UserStorageQuotaView, recalculate_storage_usage,
@@ -50,6 +51,11 @@ urlpatterns = [
     path('view-file/<int:file_id>/', ViewFileView.as_view(), name='view-file'),
     path('download-file/<int:file_id>/', DownloadFileView.as_view(), name='download-file'),
     path('bulk-download/', BulkDownloadView.as_view(), name='bulk-download'),
+    
+    # ONLYOFFICE Document Server integration
+    path('onlyoffice/config/<int:file_id>/', OnlyOfficeConfigView.as_view(), name='onlyoffice-config'),
+    path('onlyoffice/callback/<int:file_id>/', OnlyOfficeCallbackView.as_view(), name='onlyoffice-callback'),
+    path('onlyoffice/test-callback/', lambda request: JsonResponse({"status": "ok", "message": "Callback endpoint is reachable"}), name='onlyoffice-test-callback'),
     path('copy-file/<int:file_id>/', CopyFileView.as_view(), name='copy-file'),
     path('bulk-copy/', BulkCopyView.as_view(), name='bulk-copy'),
     path('move-file/<int:file_id>/', MoveFileView.as_view(), name='move-file'),

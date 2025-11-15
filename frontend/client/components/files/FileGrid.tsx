@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import {
   StarIcon,
@@ -14,6 +14,8 @@ import { useFiles } from "../../contexts/FileContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { usePagination } from "../../hooks/usePagination";
 import PaginationComponent from "../ui/PaginationComponent";
+import OnlyOfficeModal from "./OnlyOfficeModal";
+import { isOnlyOfficeSupported } from "../../utils/onlyoffice";
 // FontAwesome imports
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -81,6 +83,8 @@ export default function FileGrid({
     useFiles();
   const { actualTheme } = useTheme();
   const isDarkMode = actualTheme === 'dark';
+  const [onlyOfficeFile, setOnlyOfficeFile] = useState<FileItem | null>(null);
+  const [isOpeningFile, setIsOpeningFile] = useState(false);
 
   // Pagination
   const pagination = usePagination({
@@ -107,27 +111,79 @@ export default function FileGrid({
     return <FontAwesomeIcon icon={icon} className={`${colorClass} h-8 w-8`} />;
   };
 
-  const handleFileClick = async (file: FileItem) => {
+  const handleFileClick = async (file: FileItem, e?: React.MouseEvent) => {
+    console.log('=== FILE CLICK DEBUG ===');
+    console.log('File:', file.name, 'ID:', file.id, 'Type:', file.type);
+    console.log('Current onlyOfficeFile:', onlyOfficeFile?.id);
+    console.log('isOpeningFile:', isOpeningFile);
+    console.log('Event target:', e?.target);
+    console.log('Current URL:', window.location.href);
+    
+    // Prevent event propagation to avoid triggering other handlers
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      console.log('Event propagation stopped');
+    }
+    
+    // Prevent multiple rapid clicks
+    if (isOpeningFile) {
+      console.log('File opening in progress, ignoring click');
+      return;
+    }
+    
     if (file.type === "folder") {
+      console.log('Navigating to folder:', file.id);
       onNavigateToFolder?.(file.id);
     } else {
-      try {
-        // Import the viewFile API function
-        const { viewFile } = await import('../../services/api');
+      // Check if file is supported by ONLYOFFICE
+      if (isOnlyOfficeSupported(file.extension)) {
+        console.log('File is ONLYOFFICE supported');
+        
+        // Prevent opening the same file multiple times
+        if (onlyOfficeFile && onlyOfficeFile.id === file.id) {
+          console.log('ONLYOFFICE modal already open for this file');
+          return;
+        }
+        
+        console.log(`Opening ONLYOFFICE file: ${file.name} (ID: ${file.id})`);
+        console.log('Setting isOpeningFile to true');
+        setIsOpeningFile(true);
+        
+        console.log('Setting onlyOfficeFile state');
+        setOnlyOfficeFile(file);
+        
+        // Reset the opening flag after a short delay
+        setTimeout(() => {
+          console.log('Resetting isOpeningFile to false');
+          setIsOpeningFile(false);
+        }, 1000);
+      } else {
+        console.log('File is not ONLYOFFICE supported, using regular viewer');
+        // For non-ONLYOFFICE files (PDFs, images, etc.), use the existing viewer
+        try {
+          setIsOpeningFile(true);
+          
+          // Import the viewFile API function
+          const { viewFile } = await import('../../services/api');
 
-        // Use the API to get the file
-        const url = await viewFile(file.id);
-        window.open(url, '_blank');
+          // Use the API to get the file
+          const url = await viewFile(file.id);
+          window.open(url, '_blank');
 
-        // Clean up the blob URL after a delay
-        setTimeout(() => URL.revokeObjectURL(url), 100);
-      } catch (error) {
-        console.error('Error viewing file:', error);
-        // Show user-friendly error message
-        const { default: toast } = await import('react-hot-toast');
-        toast.error('Failed to open file. Please try again.');
+          // Clean up the blob URL after a delay
+          setTimeout(() => URL.revokeObjectURL(url), 100);
+        } catch (error) {
+          console.error('Error viewing file:', error);
+          // Show user-friendly error message
+          const { default: toast } = await import('react-hot-toast');
+          toast.error('Failed to open file. Please try again.');
+        } finally {
+          setIsOpeningFile(false);
+        }
       }
     }
+    console.log('=== END FILE CLICK DEBUG ===');
   };
 
   const toggleFileSelection = (fileId: string) => {
@@ -234,6 +290,13 @@ export default function FileGrid({
 
             // Handler to prevent card click when clicking on interactive elements
             const handleCardClick = (e: React.MouseEvent) => {
+              // Don't handle card clicks if ONLYOFFICE modal is open or file is being opened
+              if (onlyOfficeFile || isOpeningFile) {
+                e.stopPropagation();
+                e.preventDefault();
+                return;
+              }
+              
               const target = e.target as HTMLElement;
               if (
                 target.closest('button') ||
@@ -326,7 +389,8 @@ export default function FileGrid({
                       }`}
                     onClick={async (e) => {
                       e.stopPropagation();
-                      await handleFileClick(file);
+                      e.preventDefault();
+                      await handleFileClick(file, e);
                     }}
                   >
                     {file.name}
@@ -428,6 +492,23 @@ export default function FileGrid({
             </div>
           )}
         </div>
+      )}
+
+      {/* ONLYOFFICE Modal */}
+      {onlyOfficeFile && (
+        <OnlyOfficeModal
+          isOpen={!!onlyOfficeFile}
+          onClose={() => {
+            console.log('=== MODAL CLOSE HANDLER ===');
+            console.log('Current onlyOfficeFile:', onlyOfficeFile?.id);
+            console.log('Current URL before close:', window.location.href);
+            setOnlyOfficeFile(null);
+            setIsOpeningFile(false);
+            console.log('Modal state cleared');
+            console.log('Current URL after close:', window.location.href);
+          }}
+          file={onlyOfficeFile}
+        />
       )}
     </div>
   );

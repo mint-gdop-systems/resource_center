@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import {
   StarIcon,
@@ -18,6 +18,8 @@ import { useFiles } from "../../contexts/FileContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { usePagination } from "../../hooks/usePagination";
 import PaginationComponent from "../ui/PaginationComponent";
+import OnlyOfficeModal from "./OnlyOfficeModal";
+import { isOnlyOfficeSupported } from "../../utils/onlyoffice";
 
 
 // FontAwesome imports
@@ -94,6 +96,7 @@ export default function FileList({
     useFiles();
   const { actualTheme } = useTheme();
   const isDarkMode = actualTheme === 'dark';
+  const [onlyOfficeFile, setOnlyOfficeFile] = useState<FileItem | null>(null);
 
   // Pagination
   const pagination = usePagination({
@@ -142,25 +145,40 @@ export default function FileList({
     return <FontAwesomeIcon icon={icon} className={`${colorClass} h-5 w-5`} />;
   };
 
-  const handleFileClick = async (file: FileItem) => {
+  const handleFileClick = async (file: FileItem, e?: React.MouseEvent) => {
+    // Prevent event propagation to avoid triggering other handlers
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    
     if (file.type === "folder") {
       onNavigateToFolder?.(file.id);
     } else {
-      try {
-        // Import the viewFile API function
-        const { viewFile } = await import('../../services/api');
+      // Check if file is supported by ONLYOFFICE
+      if (isOnlyOfficeSupported(file.extension)) {
+        // Only set if modal is not already open for this file
+        if (!onlyOfficeFile || onlyOfficeFile.id !== file.id) {
+          setOnlyOfficeFile(file);
+        }
+      } else {
+        // For non-ONLYOFFICE files (PDFs, images, etc.), use the existing viewer
+        try {
+          // Import the viewFile API function
+          const { viewFile } = await import('../../services/api');
 
-        // Use the API to get the file
-        const url = await viewFile(file.id);
-        window.open(url, '_blank');
+          // Use the API to get the file
+          const url = await viewFile(file.id);
+          window.open(url, '_blank');
 
-        // Clean up the blob URL after a delay
-        setTimeout(() => URL.revokeObjectURL(url), 100);
-      } catch (error) {
-        console.error('Error viewing file:', error);
-        // Show user-friendly error message
-        const { default: toast } = await import('react-hot-toast');
-        toast.error('Failed to open file. Please try again.');
+          // Clean up the blob URL after a delay
+          setTimeout(() => URL.revokeObjectURL(url), 100);
+        } catch (error) {
+          console.error('Error viewing file:', error);
+          // Show user-friendly error message
+          const { default: toast } = await import('react-hot-toast');
+          toast.error('Failed to open file. Please try again.');
+        }
       }
     }
   };
@@ -365,7 +383,8 @@ export default function FileList({
                       }`}
                     onClick={async (e) => {
                       e.stopPropagation();
-                      await handleFileClick(file);
+                      e.preventDefault();
+                      await handleFileClick(file, e);
                     }}
                   >
                     {file.name}
@@ -554,6 +573,17 @@ export default function FileList({
             </div>
           )}
         </div>
+      )}
+
+      {/* ONLYOFFICE Modal */}
+      {onlyOfficeFile && (
+        <OnlyOfficeModal
+          isOpen={!!onlyOfficeFile}
+          onClose={() => {
+            setOnlyOfficeFile(null);
+          }}
+          file={onlyOfficeFile}
+        />
       )}
     </div>
   );

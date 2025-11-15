@@ -17,7 +17,7 @@ SECRET_KEY = 'django-insecure-gko%l37t30+r4=%h0l=@npj&_o!06%fsnrd8!=#j6yem@x5)&t
 DEBUG = True
 
 # ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'doc-management.onrender.com', '*']
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '[::1]', '0.0.0.0']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '[::1]', '0.0.0.0', 'django']
 
 
 INSTALLED_APPS = [
@@ -210,11 +210,11 @@ LOGGING = {
     'loggers': {
         'resource.keycloak_jwt_auth': {
             'handlers': ['console'],
-            'level': 'DEBUG',
+            'level': 'INFO',
         },
         'django.request': {
             'handlers': ['console'],
-            'level': 'DEBUG',
+            'level': 'INFO',
         },
     },
 }

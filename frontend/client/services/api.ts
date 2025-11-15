@@ -21,11 +21,36 @@ api.interceptors.request.use(
 // Add response interceptor for better error handling
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    console.log('=== API INTERCEPTOR ERROR ===');
+    console.log('Error status:', error.response?.status);
+    console.log('Error URL:', error.config?.url);
+    console.log('Current URL:', window.location.href);
+    
     if (error.response?.status === 401) {
-      // Token expired or invalid, redirect to login
-      keycloak.login();
+      console.log('401 Unauthorized detected, attempting token refresh');
+      // Token expired or invalid, try to refresh token first
+      try {
+        const refreshed = await keycloak.updateToken(60);
+        console.log('Token refresh result:', refreshed);
+        if (refreshed) {
+          // Token was refreshed, retry the original request
+          console.log('Token refreshed, retrying original request');
+          const originalRequest = error.config;
+          originalRequest.headers.Authorization = `Bearer ${keycloak.token}`;
+          return api.request(originalRequest);
+        }
+      } catch (refreshError) {
+        // Token refresh failed
+        console.error('Token refresh failed:', refreshError);
+        console.warn('Token refresh failed - NOT redirecting to login to debug the issue');
+        
+        // Instead of redirecting, let's see what happens if we just reject the error
+        // This will help us identify if keycloak.login() is causing the redirect
+        // keycloak.login();
+      }
     }
+    console.log('=== END API INTERCEPTOR ERROR ===');
     return Promise.reject(error);
   }
 );
@@ -935,6 +960,25 @@ export const getUserProfile = async (): Promise<{
     return response.data;
   } catch (error) {
     console.error('Error fetching user profile:', error);
+    throw error;
+  }
+};
+
+// ============ ONLYOFFICE DOCUMENT SERVER ============
+
+/**
+ * Get ONLYOFFICE configuration for a file
+ * @param fileId The ID of the file to open in ONLYOFFICE
+ */
+export const getOnlyOfficeConfig = async (fileId: string): Promise<{
+  documentServerUrl: string;
+  config: any;
+}> => {
+  try {
+    const response = await api.get(`/onlyoffice/config/${fileId}/`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching ONLYOFFICE config:', error);
     throw error;
   }
 };

@@ -1,13 +1,26 @@
 import { FileItem } from "../types";
 import toast from "react-hot-toast";
+import { isOnlyOfficeSupported } from "../utils/onlyoffice";
 
 export function useFileActions() {
-  const openFile = async (file: FileItem) => {
+  const openFile = async (file: FileItem, onOpenOnlyOffice?: (file: FileItem) => void) => {
     if (file.type === "folder") {
       // This will be handled by navigation hook
       return { action: "navigate", target: file.name };
     }
 
+    // Check if file is supported by ONLYOFFICE
+    if (isOnlyOfficeSupported(file.extension)) {
+      if (onOpenOnlyOffice) {
+        onOpenOnlyOffice(file);
+        return { action: "open_onlyoffice", target: file.id };
+      } else {
+        toast.error('ONLYOFFICE editor not available');
+        return { action: "error", target: file.id };
+      }
+    }
+
+    // For non-ONLYOFFICE files (PDFs, images, etc.), use the existing viewer
     try {
       // Import the viewFile API function
       const { viewFile } = await import('../services/api');

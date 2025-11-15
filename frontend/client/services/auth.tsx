@@ -93,11 +93,46 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     initKeycloak();
 
     keycloak.onTokenExpired = () => {
-      keycloak.updateToken(60).catch(() => {
+      console.log('Token expired, attempting refresh...');
+      keycloak.updateToken(60).then((refreshed) => {
+        if (refreshed) {
+          console.log('Token refreshed successfully');
+        } else {
+          console.log('Token is still valid');
+        }
+      }).catch((error) => {
+        console.error('Token refresh failed:', error);
         setAuthenticated(false);
         setUser(null);
       });
     };
+
+    // Also set up automatic token refresh before expiration
+    const setupTokenRefresh = () => {
+      if (keycloak.token && keycloak.tokenParsed) {
+        const now = Math.floor(Date.now() / 1000);
+        const exp = keycloak.tokenParsed.exp || 0;
+        const timeUntilExpiry = (exp - now) * 1000;
+        
+        // Refresh token 60 seconds before expiry
+        const refreshTime = Math.max(timeUntilExpiry - 60000, 5000);
+        
+        setTimeout(() => {
+          keycloak.updateToken(60).then((refreshed) => {
+            if (refreshed) {
+              console.log('Proactive token refresh successful');
+              setupTokenRefresh(); // Set up next refresh
+            }
+          }).catch((error) => {
+            console.error('Proactive token refresh failed:', error);
+          });
+        }, refreshTime);
+      }
+    };
+
+    if (keycloak.authenticated) {
+      setupTokenRefresh();
+    }
   }, [initKeycloak]);
 
   const login = useCallback(() => {

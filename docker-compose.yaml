@@ -1,5 +1,6 @@
 services:
   django:
+    container_name: django
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
@@ -47,10 +48,28 @@ services:
     networks:
       - rc_network
 
+  onlyoffice:
+    image: onlyoffice/documentserver:latest
+    container_name: onlyoffice
+    ports:
+      - "8081:80"
+    environment:
+      - JWT_ENABLED=true
+      - JWT_SECRET=a4f8b9c331d7c4e5c9012fd993bb2aead4f187cb52efcbf3dd8970c19e7c2f5a
+      - JWT_HEADER=Authorization
+    volumes:
+      - onlyoffice_data:/var/www/onlyoffice/Data
+      - onlyoffice_logs:/var/log/onlyoffice
+    networks:
+      - rc_network
+    restart: unless-stopped
+
 volumes:
   keycloak_data:
   django_node_modules:
   react_node_modules:
+  onlyoffice_data:
+  onlyoffice_logs:
 
 networks:
   rc_network:
