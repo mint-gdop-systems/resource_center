@@ -1,5 +1,7 @@
 from django.urls import path, include
 from django.http import JsonResponse
+from django.utils import timezone
+from decouple import config
 from rest_framework.routers import DefaultRouter
 from .views import (
     FileUploadView, ResolveDuplicateFilesView, CreateFolderView, FolderContentsView, ToggleStarredView, ToggleArchivedView, ToggleFolderStarredView, EditFileView, EditFolderView, UploadNewVersionView, FileVersionHistoryView, RevertVersionView, DeleteUploadedFileView, BulkDeleteView, ReminderViewSet, UpcomingRemindersView, get_categories, TestAuthView, RecentFilesView, ViewFileView, DownloadFileView, BulkDownloadView, CopyFileView, BulkCopyView, MoveFileView, MoveFolderView, BulkMoveView, PublicShareView, ShareLinkManagementView, SearchView, DashboardStatsView, DashboardRecentActivityView, UserProfileView, OnlyOfficeConfigView, OnlyOfficeCallbackView
@@ -56,6 +58,13 @@ urlpatterns = [
     path('onlyoffice/config/<int:file_id>/', OnlyOfficeConfigView.as_view(), name='onlyoffice-config'),
     path('onlyoffice/callback/<int:file_id>/', OnlyOfficeCallbackView.as_view(), name='onlyoffice-callback'),
     path('onlyoffice/test-callback/', lambda request: JsonResponse({"status": "ok", "message": "Callback endpoint is reachable"}), name='onlyoffice-test-callback'),
+    path('onlyoffice/health/', lambda request: JsonResponse({
+        "status": "ok", 
+        "message": "ONLYOFFICE integration is healthy",
+        "timestamp": timezone.now().isoformat(),
+        "document_server_url": config('ONLYOFFICE_DOCUMENT_SERVER_URL', default='http://localhost:8081'),
+        "jwt_enabled": config('ONLYOFFICE_JWT_ENABLED', default='true').lower() == 'true'
+    }), name='onlyoffice-health'),
     path('copy-file/<int:file_id>/', CopyFileView.as_view(), name='copy-file'),
     path('bulk-copy/', BulkCopyView.as_view(), name='bulk-copy'),
     path('move-file/<int:file_id>/', MoveFileView.as_view(), name='move-file'),

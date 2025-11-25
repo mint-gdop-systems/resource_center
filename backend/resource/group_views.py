@@ -422,6 +422,12 @@ class GroupSharingView(APIView, GroupSharingMixin):
             can_download = request.data.get('can_download', True)
             can_reshare = request.data.get('can_reshare', False)
             is_reshare = request.data.get('is_reshare', False)
+            permission_level = request.data.get('permission_level', 'view')  # Default to view-only
+            
+            # Validate permission level
+            valid_permissions = ['view', 'edit', 'comment', 'owner']
+            if permission_level not in valid_permissions:
+                permission_level = 'view'  # Default to view if invalid
             
             # Get user's resources with proper permission checks for resharing
             files, folders = self.get_user_resources(request.user, file_ids, folder_ids, is_reshare)
@@ -438,7 +444,7 @@ class GroupSharingView(APIView, GroupSharingMixin):
             
             # Create group shares with permissions
             created_shares = self.create_group_shares(
-                files, folders, groups, request.user, message, can_download, can_reshare
+                files, folders, groups, request.user, message, can_download, can_reshare, permission_level
             )
             
             # Prepare response

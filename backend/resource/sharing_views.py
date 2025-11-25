@@ -40,6 +40,7 @@ class ShareItemView(APIView):
         emails = request.data.get("emails", [])
         message = request.data.get("message", "")
         is_reshare = request.data.get("is_reshare", False)
+        permission_level = request.data.get("permission_level", "view")  # Default to view-only
         
         # Validate input
         if not emails:
@@ -101,6 +102,11 @@ class ShareItemView(APIView):
                 user_shared = []
                 user_errors = []
 
+                # Validate permission level
+                valid_permissions = ['view', 'edit', 'comment', 'owner']
+                if permission_level not in valid_permissions:
+                    permission_level = 'view'  # Default to view if invalid
+                
                 # Share files
                 for file in files:
                     share, created = FileSharing.objects.get_or_create(
@@ -110,9 +116,15 @@ class ShareItemView(APIView):
                             'shared_by': request.user,
                             'message': message,
                             'share_type': FileSharing.FILE,
-                            'shared_at': timezone.now()
+                            'shared_at': timezone.now(),
+                            'permission_level': permission_level
                         }
                     )
+                    # Update permission level if share already exists
+                    if not created and share.permission_level != permission_level:
+                        share.permission_level = permission_level
+                        share.save(update_fields=['permission_level'])
+                    
                     if created:
                         user_shared.append(f"File: {file.name}")
                         created_shares.append(share)
@@ -128,9 +140,15 @@ class ShareItemView(APIView):
                             'shared_by': request.user,
                             'message': message,
                             'share_type': FileSharing.FOLDER,
-                            'shared_at': timezone.now()
+                            'shared_at': timezone.now(),
+                            'permission_level': permission_level
                         }
                     )
+                    # Update permission level if share already exists
+                    if not created and share.permission_level != permission_level:
+                        share.permission_level = permission_level
+                        share.save(update_fields=['permission_level'])
+                    
                     if created:
                         user_shared.append(f"Folder: {folder.name}")
                         created_shares.append(share)

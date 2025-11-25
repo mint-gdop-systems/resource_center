@@ -48,6 +48,11 @@ export default function OnlyOfficeModal({
         setDocumentServerUrl('');
         setLoading(true);
         setError(null);
+        
+        // Trigger refresh events after editor closes
+        // This ensures file metadata and version list are updated
+        window.dispatchEvent(new CustomEvent('files:refresh'));
+        window.dispatchEvent(new CustomEvent('file:updated', { detail: { fileId: file?.id } }));
       }
       return;
     }

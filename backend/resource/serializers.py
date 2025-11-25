@@ -113,7 +113,7 @@ class FileSharingSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'file', 'folder', 'shared_to', 'shared_to_email', 'shared_to_name',
             'shared_by', 'shared_by_email', 'shared_by_name', 'shared_at', 
-            'message', 'share_type', 'is_seen', 'item_name', 'item_type'
+            'message', 'share_type', 'is_seen', 'item_name', 'item_type', 'permission_level'
         ]
         read_only_fields = ['shared_by', 'shared_at']
 

@@ -55,6 +55,9 @@ export default function ShareModal({
   const [canReshare, setCanReshare] = useState(false);
   const [groupsLoading, setGroupsLoading] = useState(false);
   
+  // Permission level state
+  const [permissionLevel, setPermissionLevel] = useState<'view' | 'edit' | 'comment'>('view');
+  
   const { actualTheme } = useTheme();
   const isDarkMode = actualTheme === 'dark';
 
@@ -70,6 +73,7 @@ export default function ShareModal({
       setSearchQuery('');
       setSearchResults([]);
       setSelectedUsers([]);
+      setPermissionLevel('view');
       loadUserGroups();
     }
   }, [isOpen]);
@@ -158,7 +162,8 @@ export default function ShareModal({
         folder_ids: folders.map(f => f.id),
         emails: userEmails,
         message: message.trim(),
-        is_reshare: isReshareMode
+        is_reshare: isReshareMode,
+        permission_level: permissionLevel
       };
 
       const response = await shareItems(data);
@@ -233,7 +238,8 @@ export default function ShareModal({
         message: message.trim(),
         can_download: canDownload,
         can_reshare: canReshare,
-        is_reshare: isReshareMode
+        is_reshare: isReshareMode,
+        permission_level: permissionLevel
       };
 
       console.log('ShareModal: Sharing with groups, data:', data);
@@ -383,6 +389,61 @@ export default function ShareModal({
                 </p>
               )}
             </div>
+
+            {/* Permission Level Selection - for internal and group sharing */}
+            {(shareMethod === 'internal' || shareMethod === 'groups') && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Access Level
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPermissionLevel('view')}
+                    className={`flex flex-col items-center justify-center px-3 py-2 border rounded-md text-sm font-medium transition-colors ${
+                      permissionLevel === 'view'
+                        ? 'border-mint-600 bg-mint-50 text-mint-700'
+                        : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                    disabled={loading}
+                  >
+                    <span className="font-semibold">View Only</span>
+                    <span className="text-xs mt-1 opacity-75">Read-only access</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPermissionLevel('comment')}
+                    className={`flex flex-col items-center justify-center px-3 py-2 border rounded-md text-sm font-medium transition-colors ${
+                      permissionLevel === 'comment'
+                        ? 'border-mint-600 bg-mint-50 text-mint-700'
+                        : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                    disabled={loading}
+                  >
+                    <span className="font-semibold">Comment</span>
+                    <span className="text-xs mt-1 opacity-75">Can comment</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPermissionLevel('edit')}
+                    className={`flex flex-col items-center justify-center px-3 py-2 border rounded-md text-sm font-medium transition-colors ${
+                      permissionLevel === 'edit'
+                        ? 'border-mint-600 bg-mint-50 text-mint-700'
+                        : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                    disabled={loading}
+                  >
+                    <span className="font-semibold">Edit</span>
+                    <span className="text-xs mt-1 opacity-75">Can edit</span>
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  {permissionLevel === 'view' && 'Recipients can view the file but cannot make changes.'}
+                  {permissionLevel === 'comment' && 'Recipients can view and add comments to the file.'}
+                  {permissionLevel === 'edit' && 'Recipients can view, edit, and save changes to the file.'}
+                </p>
+              </div>
+            )}
 
             {/* User Search - for internal sharing */}
             {shareMethod === 'internal' && (

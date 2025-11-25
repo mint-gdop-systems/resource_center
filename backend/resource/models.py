@@ -199,18 +199,39 @@ class Folder(models.Model):
     def __str__(self):
         return self.name
     
-    def is_accessible_by(self, user):
-        """Check if user can access this folder through ownership, individual sharing, or group sharing"""
-        # Owner access
+    def is_accessible_by(self, user, permission_level=None):
+        """
+        Check if user can access this folder through ownership, individual sharing, or group sharing.
+        
+        Args:
+            user: User to check access for
+            permission_level: Optional permission level to check ('view', 'edit', 'comment', 'owner')
+                            If None, just checks if user has any access
+        
+        Returns:
+            bool: True if user has access (and required permission level if specified)
+        """
+        # Owner access - always has full access
         if self.owner == user:
+            if permission_level:
+                return permission_level in ['view', 'edit', 'comment', 'owner']
             return True
         
-        # Public access
+        # Public access - view only by default
         if self.is_public:
+            if permission_level:
+                return permission_level == 'view'
             return True
         
         # Individual sharing access
-        if FileSharing.objects.filter(folder=self, shared_to=user).exists():
+        individual_share = FileSharing.objects.filter(folder=self, shared_to=user).first()
+        if individual_share:
+            if permission_level:
+                user_level = individual_share.permission_level
+                permission_hierarchy = {'view': 1, 'comment': 2, 'edit': 3, 'owner': 4}
+                required_level = permission_hierarchy.get(permission_level, 0)
+                user_level_value = permission_hierarchy.get(user_level, 0)
+                return user_level_value >= required_level
             return True
         
         # Group sharing access
@@ -219,17 +240,69 @@ class Folder(models.Model):
             is_active=True
         ).values_list('group_id', flat=True)
         
-        if user_groups and GroupSharing.objects.filter(
-            folder=self,
-            group_id__in=user_groups
-        ).exists():
-            return True
+        if user_groups:
+            group_share = GroupSharing.objects.filter(
+                folder=self,
+                group_id__in=user_groups
+            ).first()
+            
+            if group_share:
+                if permission_level:
+                    user_level = group_share.permission_level
+                    permission_hierarchy = {'view': 1, 'comment': 2, 'edit': 3, 'owner': 4}
+                    required_level = permission_hierarchy.get(permission_level, 0)
+                    user_level_value = permission_hierarchy.get(user_level, 0)
+                    return user_level_value >= required_level
+                return True
         
         # Parent folder inheritance
-        if self.parent and self.parent.is_accessible_by(user):
+        if self.parent and self.parent.is_accessible_by(user, permission_level):
             return True
         
         return False
+    
+    def get_user_permission_level(self, user):
+        """
+        Get the permission level for a specific user.
+        
+        Returns:
+            str: Permission level ('owner', 'edit', 'comment', 'view', or None if no access)
+        """
+        # Owner always has 'owner' permission
+        if self.owner == user:
+            return 'owner'
+        
+        # Check individual sharing
+        individual_share = FileSharing.objects.filter(folder=self, shared_to=user).first()
+        if individual_share:
+            return individual_share.permission_level
+        
+        # Check group sharing
+        user_groups = GroupMembership.objects.filter(
+            user=user, 
+            is_active=True
+        ).values_list('group_id', flat=True)
+        
+        if user_groups:
+            group_share = GroupSharing.objects.filter(
+                folder=self,
+                group_id__in=user_groups
+            ).first()
+            
+            if group_share:
+                return group_share.permission_level
+        
+        # Check parent folder
+        if self.parent:
+            folder_permission = self.parent.get_user_permission_level(user)
+            if folder_permission:
+                return folder_permission
+        
+        # Public folders default to view-only
+        if self.is_public:
+            return 'view'
+        
+        return None
     
     def get_shared_groups(self):
         """Get all groups this folder is shared with"""
@@ -273,6 +346,10 @@ class UploadedFile(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owned_files', null=True, blank=True)
     is_public = models.BooleanField(default=False)
     meta_tags = models.ManyToManyField(Tag, blank=True, related_name="files")
+    
+    # ONLYOFFICE document key for collaborative editing
+    current_document_key = models.CharField(max_length=64, blank=True, null=True, 
+                                          help_text="Current ONLYOFFICE document key for collaborative editing")
 
 
     def rollback_to_version(self, version: 'FileVersion'):
@@ -328,18 +405,42 @@ class UploadedFile(models.Model):
             
             print(f"DEBUG: Updated storage for user {owner}: {old_usage} -> {profile.storage_used} (reduced by {file_size})")
 
-    def is_accessible_by(self, user):
-        """Check if user can access this file through ownership, individual sharing, or group sharing"""
-        # Owner access
+    def is_accessible_by(self, user, permission_level=None):
+        """
+        Check if user can access this file through ownership, individual sharing, or group sharing.
+        
+        Args:
+            user: User to check access for
+            permission_level: Optional permission level to check ('view', 'edit', 'comment', 'owner')
+                            If None, just checks if user has any access
+        
+        Returns:
+            bool: True if user has access (and required permission level if specified)
+        """
+        # Owner access - always has full access
         if self.owner == user:
+            if permission_level:
+                # Owner always has 'owner' permission level
+                return permission_level in ['view', 'edit', 'comment', 'owner']
             return True
         
-        # Public access
+        # Public access - view only by default
         if self.is_public:
+            if permission_level:
+                # Public files are view-only unless explicitly shared with higher permissions
+                return permission_level == 'view'
             return True
         
         # Individual sharing access
-        if FileSharing.objects.filter(file=self, shared_to=user).exists():
+        individual_share = FileSharing.objects.filter(file=self, shared_to=user).first()
+        if individual_share:
+            if permission_level:
+                # Check if user's permission level meets requirement
+                user_level = individual_share.permission_level
+                permission_hierarchy = {'view': 1, 'comment': 2, 'edit': 3, 'owner': 4}
+                required_level = permission_hierarchy.get(permission_level, 0)
+                user_level_value = permission_hierarchy.get(user_level, 0)
+                return user_level_value >= required_level
             return True
         
         # Group sharing access
@@ -348,17 +449,70 @@ class UploadedFile(models.Model):
             is_active=True
         ).values_list('group_id', flat=True)
         
-        if user_groups and GroupSharing.objects.filter(
-            file=self,
-            group_id__in=user_groups
-        ).exists():
-            return True
+        if user_groups:
+            group_share = GroupSharing.objects.filter(
+                file=self,
+                group_id__in=user_groups
+            ).first()
+            
+            if group_share:
+                if permission_level:
+                    # Check if user's permission level meets requirement
+                    user_level = group_share.permission_level
+                    permission_hierarchy = {'view': 1, 'comment': 2, 'edit': 3, 'owner': 4}
+                    required_level = permission_hierarchy.get(permission_level, 0)
+                    user_level_value = permission_hierarchy.get(user_level, 0)
+                    return user_level_value >= required_level
+                return True
         
         # Parent folder inheritance
-        if self.folder and self.folder.is_accessible_by(user):
+        if self.folder and self.folder.is_accessible_by(user, permission_level):
             return True
         
         return False
+    
+    def get_user_permission_level(self, user):
+        """
+        Get the permission level for a specific user.
+        
+        Returns:
+            str: Permission level ('owner', 'edit', 'comment', 'view', or None if no access)
+        """
+        # Owner always has 'owner' permission
+        if self.owner == user:
+            return 'owner'
+        
+        # Check individual sharing
+        individual_share = FileSharing.objects.filter(file=self, shared_to=user).first()
+        if individual_share:
+            return individual_share.permission_level
+        
+        # Check group sharing
+        user_groups = GroupMembership.objects.filter(
+            user=user, 
+            is_active=True
+        ).values_list('group_id', flat=True)
+        
+        if user_groups:
+            group_share = GroupSharing.objects.filter(
+                file=self,
+                group_id__in=user_groups
+            ).first()
+            
+            if group_share:
+                return group_share.permission_level
+        
+        # Check parent folder
+        if self.folder:
+            folder_permission = self.folder.get_user_permission_level(user)
+            if folder_permission:
+                return folder_permission
+        
+        # Public files default to view-only
+        if self.is_public:
+            return 'view'
+        
+        return None
     
     def get_shared_groups(self):
         """Get all groups this file is shared with"""
@@ -380,6 +534,19 @@ class FileSharing(models.Model):
         (FILE, 'File'),
         (FOLDER, 'Folder'),
     ]
+    
+    # Permission levels for collaborative editing
+    VIEW = 'view'
+    EDIT = 'edit'
+    COMMENT = 'comment'
+    OWNER = 'owner'
+    
+    PERMISSION_LEVEL_CHOICES = [
+        (VIEW, 'View Only'),
+        (EDIT, 'Edit'),
+        (COMMENT, 'Comment'),
+        (OWNER, 'Owner'),
+    ]
 
     file = models.ForeignKey('UploadedFile', on_delete=models.CASCADE, null=True, blank=True)
     folder = models.ForeignKey('Folder', on_delete=models.CASCADE, null=True, blank=True)
@@ -391,6 +558,14 @@ class FileSharing(models.Model):
     shared_at = models.DateTimeField(default=timezone.now)
     share_type = models.CharField(max_length=10, choices=SHARE_TYPE_CHOICES)
     is_seen = models.BooleanField(default=False)
+    
+    # Permission level for the shared resource
+    permission_level = models.CharField(
+        max_length=10,
+        choices=PERMISSION_LEVEL_CHOICES,
+        default=VIEW,
+        help_text="Permission level: view (read-only), edit (can modify), comment (can comment), owner (full control)"
+    )
 
     class Meta:
         constraints = [
@@ -414,6 +589,19 @@ class GroupSharing(models.Model):
         (FILE, 'File'),
         (FOLDER, 'Folder'),
     ]
+    
+    # Permission levels for collaborative editing
+    VIEW = 'view'
+    EDIT = 'edit'
+    COMMENT = 'comment'
+    OWNER = 'owner'
+    
+    PERMISSION_LEVEL_CHOICES = [
+        (VIEW, 'View Only'),
+        (EDIT, 'Edit'),
+        (COMMENT, 'Comment'),
+        (OWNER, 'Owner'),
+    ]
 
     # Either file OR folder (not both)
     file = models.ForeignKey('UploadedFile', on_delete=models.CASCADE, null=True, blank=True)
@@ -427,7 +615,15 @@ class GroupSharing(models.Model):
     shared_at = models.DateTimeField(default=timezone.now)
     share_type = models.CharField(max_length=10, choices=SHARE_TYPE_CHOICES)
     
-    # Permissions (future extensibility)
+    # Permission level for the shared resource
+    permission_level = models.CharField(
+        max_length=10,
+        choices=PERMISSION_LEVEL_CHOICES,
+        default=VIEW,
+        help_text="Permission level: view (read-only), edit (can modify), comment (can comment), owner (full control)"
+    )
+    
+    # Legacy permissions (kept for backward compatibility)
     can_download = models.BooleanField(default=True)
     can_reshare = models.BooleanField(default=False)
     
@@ -460,6 +656,44 @@ class GroupSharing(models.Model):
     def is_accessible_by_user(self, user):
         """Check if user can access this shared item through group membership"""
         return self.group.is_user_member(user)
+
+
+class OnlyOfficeDocumentKey(models.Model):
+    """
+    Maps ONLYOFFICE document keys to files for collaborative editing sessions
+    """
+    document_key = models.CharField(max_length=64, unique=True, db_index=True)
+    file = models.ForeignKey(UploadedFile, on_delete=models.CASCADE, related_name='document_keys')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, help_text="User who initiated the editing session")
+    version_number = models.PositiveIntegerField(help_text="Version number when key was generated")
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(help_text="When this document key expires")
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['document_key']),
+            models.Index(fields=['file', 'is_active']),
+        ]
+    
+    def __str__(self):
+        return f"Document key {self.document_key[:16]}... for {self.file.name}"
+    
+    @classmethod
+    def get_file_by_document_key(cls, document_key):
+        """
+        Get the file associated with a document key
+        """
+        try:
+            doc_key_obj = cls.objects.select_related('file').get(
+                document_key=document_key,
+                is_active=True,
+                expires_at__gt=timezone.now()
+            )
+            return doc_key_obj.file, doc_key_obj.user
+        except cls.DoesNotExist:
+            return None, None
 
 
 class FileVersion(models.Model):

@@ -225,7 +225,7 @@ class GroupSharingMixin:
         
         return groups
     
-    def create_group_shares(self, files, folders, groups, user, message="", can_download=True, can_reshare=False):
+    def create_group_shares(self, files, folders, groups, user, message="", can_download=True, can_reshare=False, permission_level='view'):
         """Create group sharing records"""
         created_shares = []
         
@@ -241,8 +241,14 @@ class GroupSharingMixin:
                         'share_type': GroupSharing.FILE,
                         'can_download': can_download,
                         'can_reshare': can_reshare,
+                        'permission_level': permission_level,
                     }
                 )
+                # Update permission level if share already exists
+                if not created and share.permission_level != permission_level:
+                    share.permission_level = permission_level
+                    share.save(update_fields=['permission_level'])
+                
                 if created:
                     created_shares.append(share)
             
@@ -257,8 +263,14 @@ class GroupSharingMixin:
                         'share_type': GroupSharing.FOLDER,
                         'can_download': can_download,
                         'can_reshare': can_reshare,
+                        'permission_level': permission_level,
                     }
                 )
+                # Update permission level if share already exists
+                if not created and share.permission_level != permission_level:
+                    share.permission_level = permission_level
+                    share.save(update_fields=['permission_level'])
+                
                 if created:
                     created_shares.append(share)
         

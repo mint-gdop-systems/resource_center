@@ -10,7 +10,10 @@ import {
   EnvelopeIcon,
   CheckCircleIcon,
   ClockIcon,
-  TrashIcon
+  TrashIcon,
+  PencilIcon,
+  ChatBubbleLeftRightIcon,
+  ClockIcon as HistoryIcon
 } from "@heroicons/react/24/outline";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -24,12 +27,16 @@ import {
   faFile,
   faFolder,
 } from '@fortawesome/free-solid-svg-icons';
-import { getSharedWithMe, downloadFile, downloadFolder, deleteSharedItems } from "../services/api";
+import { getSharedWithMe, downloadFile, downloadFolder, deleteSharedItems, getFileVersionHistory, revertFileVersion } from "../services/api";
 import { useNotifications } from "../contexts/NotificationContext";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { usePagination } from "../hooks/usePagination";
 import PaginationComponent from "../components/ui/PaginationComponent";
+import OnlyOfficeModal from "../components/files/OnlyOfficeModal";
+import VersionHistoryModal from "../components/files/VersionHistoryModal";
+import { isOnlyOfficeSupported } from "../utils/onlyoffice";
+import { FileItem } from "../types";
 
 interface SharedItem {
   id: string;
@@ -43,6 +50,7 @@ interface SharedItem {
   is_seen: boolean;
   item_name: string;
   item_type: string;
+  permission_level?: 'view' | 'edit' | 'comment' | 'owner';
 }
 
 export default function SharedWithMe() {
@@ -56,6 +64,8 @@ export default function SharedWithMe() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const { refreshNotifications } = useNotifications();
   const navigate = useNavigate();
+  const [onlyOfficeFile, setOnlyOfficeFile] = useState<FileItem | null>(null);
+  const [versionHistoryFile, setVersionHistoryFile] = useState<FileItem | null>(null);
 
   useEffect(() => {
     loadSharedItems();
@@ -118,15 +128,30 @@ export default function SharedWithMe() {
   const handleView = async (shareItem: SharedItem) => {
     try {
       if (shareItem.share_type === 'FILE' && shareItem.file) {
-        // Import the viewFile API function
-        const { viewFile } = await import('../services/api');
-        
-        // Use the API to get the file
-        const url = await viewFile(shareItem.file.id);
-        window.open(url, '_blank');
-        
-        // Clean up the blob URL after a delay
-        setTimeout(() => URL.revokeObjectURL(url), 100);
+        // Check if file is supported by ONLYOFFICE
+        const fileExtension = shareItem.file.file_type?.toLowerCase() || '';
+        if (isOnlyOfficeSupported(fileExtension)) {
+          // Open in ONLYOFFICE
+          const fileItem: FileItem = {
+            id: shareItem.file.id,
+            name: shareItem.file.name,
+            type: 'file',
+            extension: fileExtension,
+            size: shareItem.file.file_size,
+            uploadedAt: shareItem.file.uploaded_at,
+            owner: shareItem.file.owner_email,
+            isStarred: shareItem.file.is_starred,
+            isArchived: shareItem.file.is_archived,
+            isPublic: shareItem.file.is_public,
+          };
+          setOnlyOfficeFile(fileItem);
+        } else {
+          // Use regular viewer for non-ONLYOFFICE files
+          const { viewFile } = await import('../services/api');
+          const url = await viewFile(shareItem.file.id);
+          window.open(url, '_blank');
+          setTimeout(() => URL.revokeObjectURL(url), 100);
+        }
       } else if (shareItem.share_type === 'FOLDER' && shareItem.folder) {
         // Navigate to folder contents
         navigate(`/folders/${shareItem.folder.id}`);
@@ -136,6 +161,66 @@ export default function SharedWithMe() {
     } catch (error) {
       toast.error('Error viewing item');
       console.error('Error viewing item:', error);
+    }
+  };
+
+  const getPermissionBadgeColor = (permission?: string) => {
+    switch (permission) {
+      case 'owner':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'edit':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'comment':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'view':
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getPermissionLabel = (permission?: string) => {
+    switch (permission) {
+      case 'owner':
+        return 'Owner';
+      case 'edit':
+        return 'Can Edit';
+      case 'comment':
+        return 'Can Comment';
+      case 'view':
+      default:
+        return 'View Only';
+    }
+  };
+
+  const getPermissionIcon = (permission?: string) => {
+    switch (permission) {
+      case 'owner':
+        return <UserIcon className="h-3 w-3" />;
+      case 'edit':
+        return <PencilIcon className="h-3 w-3" />;
+      case 'comment':
+        return <ChatBubbleLeftRightIcon className="h-3 w-3" />;
+      case 'view':
+      default:
+        return <EyeIcon className="h-3 w-3" />;
+    }
+  };
+
+  const handleVersionHistory = (shareItem: SharedItem) => {
+    if (shareItem.share_type === 'FILE' && shareItem.file) {
+      const fileItem: FileItem = {
+        id: shareItem.file.id,
+        name: shareItem.file.name,
+        type: 'file',
+        extension: shareItem.file.file_type?.toLowerCase() || '',
+        size: shareItem.file.file_size,
+        uploadedAt: shareItem.file.uploaded_at,
+        owner: shareItem.file.owner_email,
+        isStarred: shareItem.file.is_starred,
+        isArchived: shareItem.file.is_archived,
+        isPublic: shareItem.file.is_public,
+      };
+      setVersionHistoryFile(fileItem);
     }
   };
 
@@ -396,6 +481,15 @@ export default function SharedWithMe() {
                       <span className="mx-2"></span>
                       <EnvelopeIcon className="h-4 w-4 mr-1" />
                       <span>{shareItem.shared_by_email}</span>
+                      {shareItem.permission_level && (
+                        <>
+                          <span className="mx-2">•</span>
+                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border ${getPermissionBadgeColor(shareItem.permission_level)}`}>
+                            {getPermissionIcon(shareItem.permission_level)}
+                            {getPermissionLabel(shareItem.permission_level)}
+                          </span>
+                        </>
+                      )}
                     </div>
 
                     {/* Date */}
@@ -431,10 +525,19 @@ export default function SharedWithMe() {
                     onChange={(e) => handleSelectShare(shareItem.id, e.target.checked)}
                     className={`h-4 w-4 text-mint-600 focus:ring-mint-500 border-gray-300 rounded ${isDarkMode ? 'bg-gray-700 border-gray-600' : ''}`}
                   />
+                  {shareItem.share_type === 'FILE' && shareItem.file && (
+                    <button
+                      onClick={() => handleVersionHistory(shareItem)}
+                      className={`p-2 rounded-md transition-colors ${isDarkMode ? 'text-blue-300 hover:text-blue-100 hover:bg-blue-900' : 'text-blue-600 hover:text-blue-700 hover:bg-blue-100'}`}
+                      title="View version history"
+                    >
+                      <HistoryIcon className="h-5 w-5" />
+                    </button>
+                  )}
                   <button
                     onClick={() => handleView(shareItem)}
                     className={`p-2 rounded-md transition-colors ${isDarkMode ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}
-                    title={shareItem.share_type === 'FILE' ? 'View file' : 'Open folder'}
+                    title={shareItem.share_type === 'FILE' ? 'View/Edit file' : 'Open folder'}
                   >
                     <EyeIcon className="h-5 w-5" />
                   </button>
@@ -566,6 +669,36 @@ export default function SharedWithMe() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ONLYOFFICE Modal */}
+      {onlyOfficeFile && (
+        <OnlyOfficeModal
+          isOpen={!!onlyOfficeFile}
+          onClose={() => {
+            setOnlyOfficeFile(null);
+            // Refresh shared items after closing editor
+            loadSharedItems();
+          }}
+          file={onlyOfficeFile}
+        />
+      )}
+
+      {/* Version History Modal */}
+      {versionHistoryFile && (
+        <VersionHistoryModal
+          isOpen={!!versionHistoryFile}
+          onClose={() => {
+            setVersionHistoryFile(null);
+            // Refresh shared items after closing version history
+            loadSharedItems();
+          }}
+          file={versionHistoryFile}
+          onSuccess={() => {
+            // Refresh after reverting
+            loadSharedItems();
+          }}
+        />
       )}
     </div>
   );

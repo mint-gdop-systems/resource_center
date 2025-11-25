@@ -8,11 +8,24 @@ from django.utils.safestring import mark_safe
 from django.db.models import Count, Q
 from django.http import HttpResponseRedirect
 from django.core.exceptions import ValidationError
-from .models import UploadedFile, Category, Folder, FileSharing, Tag, FileVersion, Reminder, Group, GroupMembership, GroupSharing
+from .models import UploadedFile, Category, Folder, FileSharing, Tag, FileVersion, Reminder, Group, GroupMembership, GroupSharing, OnlyOfficeDocumentKey
 
 
 admin.site.register(Category)
 admin.site.register(FileVersion)
+
+
+@admin.register(OnlyOfficeDocumentKey)
+class OnlyOfficeDocumentKeyAdmin(admin.ModelAdmin):
+    list_display = ('document_key_short', 'file', 'user', 'version_number', 'created_at', 'expires_at', 'is_active')
+    list_filter = ('is_active', 'created_at', 'expires_at')
+    search_fields = ('document_key', 'file__name', 'user__username')
+    readonly_fields = ('document_key', 'created_at')
+    ordering = ['-created_at']
+    
+    def document_key_short(self, obj):
+        return f"{obj.document_key[:16]}..." if obj.document_key else ""
+    document_key_short.short_description = "Document Key"
 
 
 @admin.register(UploadedFile)

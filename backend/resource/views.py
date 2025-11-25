@@ -1917,7 +1917,59 @@ class OnlyOfficeConfigView(APIView):
             logging.info(f"Environment variables - ONLYOFFICE_DOCKER_NETWORK_URL: {config('ONLYOFFICE_DOCKER_NETWORK_URL', default='NOT_SET')}")
             
             # Generate document key (unique identifier for the document)
-            document_key = f"{file_id}_{request.user.id}_{int(timezone.now().timestamp())}"
+            # Include version number to ensure proper version tracking
+            # Get current version number
+            from .models import FileVersion, OnlyOfficeDocumentKey
+            latest_version = FileVersion.objects.filter(
+                uploaded_file=file_instance
+            ).order_by('-version_number').first()
+            version_number = latest_version.version_number if latest_version else 0
+            
+            # Generate key with file_id, user_id, version, and timestamp for uniqueness
+            # This ensures each version gets a unique key and collaborative sessions work correctly
+            import hashlib
+            from datetime import timedelta
+            key_string = f"{file_id}_{request.user.id}_{version_number}_{int(timezone.now().timestamp())}"
+            document_key = hashlib.md5(key_string.encode()).hexdigest()[:32]  # Use MD5 hash for consistent length
+            
+            # Store the document key in the database for callback mapping
+            # Set expiration to 24 hours from now
+            expires_at = timezone.now() + timedelta(hours=24)
+            
+            # Clean up expired keys and deactivate existing active keys for this file
+            # This prevents conflicts and keeps the database clean
+            now = timezone.now()
+            
+            # Delete expired keys
+            expired_count = OnlyOfficeDocumentKey.objects.filter(
+                expires_at__lt=now
+            ).delete()[0]
+            if expired_count > 0:
+                logging.info(f"Cleaned up {expired_count} expired document keys")
+            
+            # Deactivate any existing active keys for this file to prevent conflicts
+            deactivated_count = OnlyOfficeDocumentKey.objects.filter(
+                file=file_instance,
+                is_active=True
+            ).update(is_active=False)
+            if deactivated_count > 0:
+                logging.info(f"Deactivated {deactivated_count} existing document keys for file {file_id}")
+            
+            # Create new document key mapping
+            OnlyOfficeDocumentKey.objects.create(
+                document_key=document_key,
+                file=file_instance,
+                user=request.user,
+                version_number=version_number,
+                expires_at=expires_at,
+                is_active=True
+            )
+            
+            # Update the file's current document key
+            file_instance.current_document_key = document_key
+            file_instance.save(update_fields=['current_document_key'])
+            
+            logging.info(f"Created document key mapping: {document_key} -> file {file_id} (version {version_number})")
             
             # Get file extension
             file_name = file_instance.name
@@ -1937,18 +1989,94 @@ class OnlyOfficeConfigView(APIView):
             else:
                 return Response({"error": "File type not supported by ONLYOFFICE"}, status=status.HTTP_400_BAD_REQUEST)
             
-            # Determine if user can edit (owner or has edit permission)
-            can_edit = (
-                file_instance.owner == request.user or
-                (hasattr(file_instance, 'is_accessible_by') and 
-                 file_instance.is_accessible_by(request.user, permission_level='edit'))
-            )
+            # Get user's permission level for this file
+            user_permission = file_instance.get_user_permission_level(request.user)
+            
+            # Determine editor mode based on permission level
+            # IMPORTANT: User's assigned permission always determines editor mode, even for public files
+            # If a public file is shared with edit/comment permissions, those permissions take precedence
+            if user_permission == 'owner' or user_permission == 'edit':
+                editor_mode = "edit"
+            elif user_permission == 'comment':
+                editor_mode = "comment"
+            elif user_permission == 'view':
+                editor_mode = "view"
+            elif file_instance.owner == request.user:
+                # Owner always has edit access
+                editor_mode = "edit"
+            elif file_instance.is_public:
+                # Public file with no explicit sharing: default to view-only
+                editor_mode = "view"
+            else:
+                # Fallback to view for safety
+                editor_mode = "view"
+            
+            # Get all users who have access to this file for collaboration
+            # This includes owner, individually shared users, and group members
+            # ONLYOFFICE expects users with id, name, and color
+            collaborating_users = []
+            
+            # Color palette for collaborators (excluding current user's color)
+            import random
+            colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E2", "#F8B739", "#52BE80"]
+            used_colors = set()
+            
+            # Helper function to get a unique color
+            def get_unique_color():
+                available_colors = [c for c in colors if c not in used_colors]
+                if not available_colors:
+                    # If all colors used, generate random color
+                    return f"#{''.join([random.choice('0123456789ABCDEF') for _ in range(6)])}"
+                color = random.choice(available_colors)
+                used_colors.add(color)
+                return color
+            
+            # Add owner with special color (green for owner)
+            if file_instance.owner:
+                owner_color = "#52BE80"  # Green for owner
+                used_colors.add(owner_color)
+                collaborating_users.append({
+                    "id": str(file_instance.owner.id),
+                    "name": file_instance.owner.get_full_name() or file_instance.owner.username,
+                    "color": owner_color
+                })
+            
+            # Add individually shared users
+            from .models import FileSharing, GroupSharing, GroupMembership
+            individual_shares = FileSharing.objects.filter(file=file_instance).select_related('shared_to')
+            for share in individual_shares:
+                if share.shared_to and share.shared_to != file_instance.owner:
+                    # Check if user already added (avoid duplicates)
+                    if not any(u["id"] == str(share.shared_to.id) for u in collaborating_users):
+                        collaborating_users.append({
+                            "id": str(share.shared_to.id),
+                            "name": share.shared_to.get_full_name() or share.shared_to.username,
+                            "color": get_unique_color()
+                        })
+            
+            # Add group members who have access
+            group_shares = GroupSharing.objects.filter(file=file_instance).select_related('group')
+            for group_share in group_shares:
+                group_members = GroupMembership.objects.filter(
+                    group=group_share.group,
+                    is_active=True
+                ).select_related('user')
+                
+                for membership in group_members:
+                    if membership.user and membership.user != file_instance.owner:
+                        # Check if user already added (avoid duplicates)
+                        if not any(u["id"] == str(membership.user.id) for u in collaborating_users):
+                            collaborating_users.append({
+                                "id": str(membership.user.id),
+                                "name": membership.user.get_full_name() or membership.user.username,
+                                "color": get_unique_color()
+                            })
             
             # Note: callback_url is already set above using docker_network_url - don't override it
             
-            # Build editor configuration
+            # Build editor configuration with collaboration support
             editor_config = {
-                "mode": "edit" if can_edit else "view",
+                "mode": editor_mode,
                 "documentType": document_type,
                 "document": {
                     "fileType": file_extension,
@@ -1957,18 +2085,44 @@ class OnlyOfficeConfigView(APIView):
                     "url": file_url,
                 },
                 "editorConfig": {
-                    "mode": "edit" if can_edit else "view",
+                    "mode": editor_mode,
                     "callbackUrl": callback_url,
                     "user": {
                         "id": str(request.user.id),
                         "name": request.user.get_full_name() or request.user.username,
                     },
+                    "coEditing": {
+                        "mode": "fast",  # Enable fast co-editing for real-time collaboration
+                        "change": True,
+                    },
                     "customization": {
                         "autosave": True,
-                        "forcesave": True,
+                        "forcesave": False,  # Disable forcesave - we'll handle versioning on final saves only
+                        "compactToolbar": False,
+                        "compactHeader": False,
+                        # Disable content modification for comment-only users
+                        "hideRightMenu": editor_mode == "comment",
+                        "hideRulers": editor_mode == "view",
+                    },
+                    # For comment mode: allow commenting but restrict content modification
+                    # ONLYOFFICE permissions object provides granular control
+                    "permissions": {
+                        "edit": editor_mode in ["edit"] or user_permission == "owner" or (file_instance.owner == request.user),
+                        "comment": editor_mode in ["comment", "edit"] or user_permission in ["owner", "edit", "comment"] or (file_instance.owner == request.user),
+                        "review": editor_mode == "comment" or user_permission == "comment",
+                        "fillForms": editor_mode in ["edit"] or user_permission in ["owner", "edit"] or (file_instance.owner == request.user),
+                        "modifyContentControl": editor_mode in ["edit"] or user_permission in ["owner", "edit"] or (file_instance.owner == request.user),
+                        "modifyFilter": editor_mode in ["edit"] or user_permission in ["owner", "edit"] or (file_instance.owner == request.user),
+                        "copy": True,  # Allow copying for all users
+                        "print": True,  # Allow printing for all users
+                        "download": True,  # Allow downloading for all users
                     }
                 }
             }
+            
+            # Add users list for collaboration (if there are other users)
+            if len(collaborating_users) > 1:  # More than just the current user
+                editor_config["editorConfig"]["users"] = collaborating_users
             
             # Sign the configuration with JWT if enabled
             if jwt_enabled and jwt_secret:
@@ -2011,7 +2165,8 @@ class OnlyOfficeConfigView(APIView):
             logging.info(f"Callback URL: {callback_url}")
             logging.info(f"File URL: {file_url}")
             logging.info(f"Document Key: {document_key}")
-            logging.info(f"Can Edit: {can_edit}")
+            logging.info(f"User Permission Level: {user_permission}")
+            logging.info(f"Editor Mode: {editor_mode}")
             logging.info(f"JWT Token Present: {'token' in editor_config}")
             logging.info(f"Editor Config: {config_summary}")
             
@@ -2033,6 +2188,154 @@ class OnlyOfficeCallbackView(APIView):
     """
     authentication_classes = []  # Disable Keycloak JWT auth - ONLYOFFICE doesn't send JWT tokens
     permission_classes = []  # No authentication required - called by ONLYOFFICE server
+    
+    def _is_comment_only_save(self, callback_data):
+        """
+        Analyze callback data to determine if this is a comment-only save.
+        
+        ONLYOFFICE sends different data structures for different types of saves:
+        - Content changes: Include document modifications in actions/changeshistory
+        - Comment-only changes: Only include comment-related actions
+        
+        This method uses multiple detection strategies to accurately identify
+        comment-only saves vs content modifications.
+        
+        Args:
+            callback_data: The callback data from ONLYOFFICE
+            
+        Returns:
+            bool: True if this is a comment-only save, False if content was modified
+        """
+        try:
+            # Method 1: Check actions array for comment-only actions
+            actions = callback_data.get('actions', [])
+            if actions:
+                # Use more specific patterns to avoid false matches
+                comment_patterns = ['comment', 'addcomment', 'removecomment', 'editcomment', 'resolvecomment', 'annotation']
+                content_patterns = ['insert', 'delete', 'format', 'replace', 'modify']
+                # Note: 'edit' is too generic and matches 'editComment', so we handle it separately
+                
+                has_content_actions = False
+                has_comment_actions = False
+                
+                for action in actions:
+                    action_str = str(action).lower()
+                    
+                    # Check for content patterns (but exclude comment-related actions)
+                    if any(pattern in action_str for pattern in content_patterns):
+                        # Make sure it's not a comment action that happens to contain content words
+                        if not any(comment_pattern in action_str for comment_pattern in comment_patterns):
+                            has_content_actions = True
+                    
+                    # Check for comment patterns
+                    if any(comment_pattern in action_str for comment_pattern in comment_patterns):
+                        has_comment_actions = True
+                    
+                    # Special case: standalone 'edit' that's not 'editComment'
+                    if action_str == 'edit':
+                        has_content_actions = True
+                
+                logging.info(f"Actions analysis: has_content_actions={has_content_actions}, has_comment_actions={has_comment_actions}")
+                
+                # If we have comment actions but no content actions, it's comment-only
+                if has_comment_actions and not has_content_actions:
+                    return True
+                
+                # If we have content actions, it's not comment-only
+                if has_content_actions:
+                    return False
+            
+            # Method 2: Check changeshistory for the type of changes
+            changes_history = callback_data.get('changeshistory', [])
+            if changes_history:
+                has_content_changes = False
+                has_comment_changes = False
+                
+                for change in changes_history:
+                    if isinstance(change, dict):
+                        change_str = str(change).lower()
+                        
+                        # Check for content change indicators (excluding comment-related)
+                        content_indicators = ['insert', 'delete', 'replace', 'format']
+                        if any(indicator in change_str for indicator in content_indicators):
+                            # Make sure it's not a comment-related change
+                            if not any(comment_word in change_str for comment_word in ['comment', 'annotation']):
+                                has_content_changes = True
+                        
+                        # Check for comment change indicators
+                        comment_indicators = ['comment', 'annotation']
+                        if any(indicator in change_str for indicator in comment_indicators):
+                            has_comment_changes = True
+                
+                logging.info(f"Changes history analysis: has_content_changes={has_content_changes}, has_comment_changes={has_comment_changes}")
+                
+                if has_comment_changes and not has_content_changes:
+                    return True
+                elif has_content_changes:
+                    return False
+            
+            # Method 3: Heuristic based on file size change
+            # If ONLYOFFICE provides file size info, we can use it as a hint
+            # Comments typically don't change file size significantly
+            # This is a fallback method and not 100% reliable
+            
+            # Method 4: Check for specific ONLYOFFICE comment indicators
+            # Some versions of ONLYOFFICE include specific fields for comments
+            if 'comments' in callback_data or 'annotations' in callback_data:
+                # If only comments/annotations are present, likely comment-only
+                has_other_changes = any(
+                    key in callback_data for key in ['content', 'text', 'document_changes', 'modifications']
+                )
+                if not has_other_changes:
+                    logging.info("Found comments/annotations without other changes, treating as comment-only")
+                    return True
+            
+            # Method 5: Check callback status and user permission context
+            # This is a heuristic based on the user's permission level
+            # If a comment-only user triggered the save, it's likely comment-only
+            # This is not foolproof but provides additional context
+            
+            # Method 6: Default behavior
+            # If we can't determine the save type from the callback data,
+            # we need to make a decision based on ONLYOFFICE behavior.
+            # 
+            # ONLYOFFICE behavior analysis:
+            # - Status 2 callbacks are sent for both content and comment changes
+            # - The distinction must be made based on callback data analysis
+            # - If analysis fails, we should be conservative
+            #
+            # However, blocking all ambiguous saves would break comment functionality
+            # So we'll use a balanced approach:
+            # - If we have any indicators of comments, allow as comment-only
+            # - If we have clear indicators of content changes, treat as content
+            # - If completely ambiguous, allow but log for monitoring
+            
+            logging.info("Could not definitively determine save type from callback data")
+            
+            # Check if there are any comment-related keywords in the entire callback
+            callback_str = str(callback_data).lower()
+            comment_keywords = ['comment', 'annotation', 'review', 'remark']
+            content_keywords = ['insert', 'delete', 'replace', 'modify', 'edit', 'change', 'text']
+            
+            has_comment_keywords = any(keyword in callback_str for keyword in comment_keywords)
+            has_content_keywords = any(keyword in callback_str for keyword in content_keywords)
+            
+            if has_comment_keywords and not has_content_keywords:
+                logging.info("Found comment keywords without content keywords, treating as comment-only")
+                return True
+            elif has_content_keywords:
+                logging.info("Found content keywords, treating as content change")
+                return False
+            else:
+                # Completely ambiguous - log for monitoring and default to content change
+                # This ensures security while allowing us to monitor for false positives
+                logging.warning("Ambiguous save type - no clear indicators found, defaulting to content change")
+                return False
+            
+        except Exception as e:
+            logging.error(f"Error analyzing callback data for save type: {str(e)}")
+            # On error, assume content change for security
+            return False
     
     def get(self, request, file_id):
         """Test endpoint to verify callback URL is reachable"""
@@ -2060,25 +2363,49 @@ class OnlyOfficeCallbackView(APIView):
             logging.info(f"Request Headers: {dict(request.META)}")
             print(f"=== ONLYOFFICE CALLBACK RECEIVED FOR FILE {file_id} ===")  # Also print to console
             
-            # Get the file instance
-            file_instance = get_object_or_404(UploadedFile, id=file_id)
-            
-            # Note: We don't check user permissions here because:
-            # 1. This endpoint is called by ONLYOFFICE Document Server, not by a user
-            # 2. User permissions were already validated when the document was opened
-            # 3. In production, you should validate JWT tokens if JWT is enabled
-            
-            # Parse callback data
+            # Parse callback data first to get document key
             callback_data = request.data
+            document_key = callback_data.get('key', '')
+            logging.info(f"Document key from callback: {document_key}")
+            
+            # Map document key to file and user
+            from .models import OnlyOfficeDocumentKey
+            
+            if not document_key:
+                logging.error("No document key provided in callback")
+                return Response({"error": 1, "message": "Document key required"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            mapped_file, mapped_user = OnlyOfficeDocumentKey.get_file_by_document_key(document_key)
+            
+            if not mapped_file:
+                logging.error(f"Document key {document_key} not found or expired")
+                # Try to find the file by URL parameter as fallback for debugging
+                try:
+                    fallback_file = UploadedFile.objects.get(id=file_id)
+                    logging.info(f"Fallback: Found file {file_id} ({fallback_file.name}) but no valid document key mapping")
+                except UploadedFile.DoesNotExist:
+                    logging.error(f"File {file_id} not found in database")
+                return Response({"error": 1, "message": "Invalid or expired document key"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Verify the file ID matches the URL parameter
+            if mapped_file.id != file_id:
+                logging.error(f"File ID mismatch in callback: URL has {file_id}, document key maps to {mapped_file.id}")
+                return Response({"error": 1, "message": "File ID mismatch"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Use the mapped file instance
+            file_instance = mapped_file
+            logging.info(f"Successfully mapped document key {document_key} to file {file_instance.id}")
+            
             logging.info(f"Callback data for file {file_id}: status={callback_data.get('status')}, url={callback_data.get('url', 'N/A')[:50] if callback_data.get('url') else 'N/A'}")
             
-            # JWT validation for ONLYOFFICE callbacks (if JWT is enabled)
+            # SECURITY VALIDATION: Validate JWT token, document key, file ID, and user permissions
             jwt_enabled = config('ONLYOFFICE_JWT_ENABLED', default='true').lower() == 'true'
             jwt_secret = config('ONLYOFFICE_JWT_SECRET', default='')
             
+            # Validate JWT token if enabled
             if jwt_enabled and jwt_secret:
-                # ONLYOFFICE sends JWT token in the request body or headers
                 jwt_token = None
+                decoded_payload = None
                 
                 # Check for JWT in Authorization header
                 auth_header = request.META.get('HTTP_AUTHORIZATION', '')
@@ -2093,22 +2420,140 @@ class OnlyOfficeCallbackView(APIView):
                         # Verify JWT token
                         decoded_payload = jwt_lib.decode(jwt_token, jwt_secret, algorithms=['HS256'])
                         logging.info(f"JWT token validated successfully for callback {file_id}")
-                        logging.info(f"Decoded payload: {decoded_payload}")
-                    except Exception as jwt_error:
+                        
+                        # Validate document key from JWT payload matches expected format
+                        # The JWT should contain the editor config which includes the document key
+                        if 'document' in decoded_payload:
+                            jwt_doc_key = decoded_payload.get('document', {}).get('key', '')
+                            callback_doc_key = callback_data.get('key', '')
+                            if jwt_doc_key and callback_doc_key and jwt_doc_key != callback_doc_key:
+                                logging.warning(f"Document key mismatch in callback {file_id}: JWT={jwt_doc_key[:20]}..., Callback={callback_doc_key[:20]}...")
+                    except Exception as jwt_exception:
+                        # Check if it's a JWT-specific error
+                        exception_type = str(type(jwt_exception))
+                        exception_msg = str(jwt_exception).lower()
+                        
+                        if 'expired' in exception_msg or 'ExpiredSignatureError' in exception_type:
+                            logging.error(f"JWT token expired for callback {file_id}")
+                            return Response({"error": 1, "message": "JWT token expired"}, status=status.HTTP_401_UNAUTHORIZED)
+                        elif 'InvalidTokenError' in exception_type or 'invalid' in exception_msg or 'decode' in exception_msg:
+                            logging.error(f"JWT validation failed for callback {file_id}: {str(jwt_exception)}")
+                            return Response({"error": 1, "message": "Invalid JWT token"}, status=status.HTTP_401_UNAUTHORIZED)
+                        else:
+                            # Other JWT errors - log but allow in development
+                            logging.error(f"JWT validation error for callback {file_id}: {str(jwt_exception)}")
+                            # In production, you might want to fail here for security
+                            # For now, log and continue with warning
                         logging.error(f"JWT validation failed for callback {file_id}: {str(jwt_error)}")
-                        # For now, continue without failing - some ONLYOFFICE versions might not send JWT in callbacks
+                        return Response({"error": 1, "message": "Invalid JWT token"}, status=status.HTTP_401_UNAUTHORIZED)
+                    except Exception as jwt_error:
+                        logging.error(f"JWT validation error for callback {file_id}: {str(jwt_error)}")
+                        # In production, you might want to fail here for security
+                        # For now, log and continue with warning
                 else:
                     logging.warning(f"No JWT token found in callback for file {file_id} (JWT enabled but no token)")
+                    # In production with JWT enabled, you should reject the request
+                    # For development, we allow it but log a warning
+            
+            # Document key validation is now handled above through database mapping
             
             # Handle different callback statuses
             status_code = callback_data.get('status', 0)
             logging.info(f"=== PROCESSING CALLBACK STATUS: {status_code} ===")
             print(f"=== PROCESSING CALLBACK STATUS: {status_code} ===")
             
-            if status_code == 2:  # Document is being saved
-                logging.info(f"=== DOCUMENT SAVE STATUS DETECTED ===")
-                print(f"=== DOCUMENT SAVE STATUS DETECTED ===")
-                # Document is saved, download and update the file
+            # Status codes:
+            # 0 - document is being edited (autosave) - DO NOT create version
+            # 1 - document is ready for saving (autosave) - DO NOT create version
+            # 2 - document is being saved (final save) - CREATE VERSION
+            # 3 - document saving error occurred
+            # 4 - document is closed with no changes
+            # 6 - document is being edited, but the current document state is saved (final save) - CREATE VERSION
+            # 7 - error has occurred while force saving the document (final save attempt) - CREATE VERSION
+            
+            # Only create versions on final saves (status 2, 6, 7)
+            # Skip autosave events (status 0, 1)
+            should_create_version = status_code in [2, 6, 7]
+            
+            if should_create_version:
+                logging.info(f"=== FINAL SAVE DETECTED (status {status_code}) - CREATING VERSION ===")
+                print(f"=== FINAL SAVE DETECTED (status {status_code}) - CREATING VERSION ===")
+                
+                # Get user ID from callback data if available
+                # ONLYOFFICE may include user information in the callback
+                user_id = callback_data.get('users', [None])[0] if callback_data.get('users') else None
+                saving_user = None
+                
+                if user_id:
+                    try:
+                        from django.contrib.auth.models import User
+                        saving_user = User.objects.get(id=int(user_id))
+                        logging.info(f"=== SAVE BY USER: {saving_user.username} (ID: {user_id}) ===")
+                    except (User.DoesNotExist, ValueError, TypeError):
+                        logging.warning(f"=== USER ID {user_id} NOT FOUND, USING MAPPED USER ===")
+                        saving_user = mapped_user
+                else:
+                    # Use the mapped user from document key (user who initiated the editing session)
+                    saving_user = mapped_user
+                    logging.info(f"=== NO USER ID IN CALLBACK, USING MAPPED USER: {saving_user.username if saving_user else 'None'} ===")
+                
+                # ANALYZE CALLBACK DATA TO DETERMINE SAVE TYPE
+                # Check if this is a comment-only save or content modification
+                is_comment_only_save = self._is_comment_only_save(callback_data)
+                
+                logging.info(f"=== SAVE TYPE ANALYSIS ===")
+                logging.info(f"Is comment-only save: {is_comment_only_save}")
+                logging.info(f"Callback actions: {callback_data.get('actions', 'Not provided')}")
+                logging.info(f"Callback changeshistory: {callback_data.get('changeshistory', 'Not provided')}")
+                
+                # Log additional callback data for debugging comment detection
+                additional_fields = ['comments', 'annotations', 'review', 'modifications']
+                for field in additional_fields:
+                    if field in callback_data:
+                        logging.info(f"Callback {field}: {callback_data[field]}")
+                
+                print(f"=== SAVE TYPE: {'COMMENT-ONLY' if is_comment_only_save else 'CONTENT CHANGE'} ===")
+                
+                # ENFORCE PERMISSION RULES - Check if user has permission to save
+                if saving_user:
+                    user_permission = file_instance.get_user_permission_level(saving_user)
+                    
+                    # Reject saves for view-only users (no saves allowed)
+                    if user_permission == 'view':
+                        logging.warning(f"=== PERMISSION DENIED: User {saving_user.username} has 'view' permission, cannot save ===")
+                        return Response({"error": 1, "message": "Permission denied: View-only access does not allow saving"}, status=status.HTTP_403_FORBIDDEN)
+                    
+                    # For comment-only users: allow comment-only saves, reject content modifications
+                    if user_permission == 'comment':
+                        if is_comment_only_save:
+                            logging.info(f"=== COMMENT-ONLY SAVE ALLOWED: User {saving_user.username} adding comments ===")
+                            # Allow the save but don't create a new version (handled below)
+                        else:
+                            logging.warning(f"=== PERMISSION DENIED: User {saving_user.username} has 'comment' permission, cannot modify content ===")
+                            return Response({"error": 1, "message": "Permission denied: Comment-only access does not allow content modifications"}, status=status.HTTP_403_FORBIDDEN)
+                    
+                    # Allow all saves for edit, owner, or if user is the file owner
+                    elif user_permission not in ['edit', 'owner'] and saving_user != file_instance.owner:
+                        logging.warning(f"=== PERMISSION DENIED: User {saving_user.username} has insufficient permission ({user_permission}) ===")
+                        return Response({"error": 1, "message": "Permission denied: Insufficient permissions to save"}, status=status.HTTP_403_FORBIDDEN)
+                    
+                    logging.info(f"=== PERMISSION GRANTED: User {saving_user.username} has '{user_permission}' permission ===")
+                else:
+                    # If no user identified, we can't verify permissions - this is a security risk
+                    # In production, you should always have user identification
+                    logging.warning(f"=== WARNING: No user identified for save operation, proceeding with caution ===")
+                
+                # Determine if we should create a new version
+                should_create_new_version = not is_comment_only_save
+                
+                if is_comment_only_save:
+                    logging.info(f"=== COMMENT-ONLY SAVE: Not creating new version ===")
+                    print(f"=== COMMENT-ONLY SAVE: Not creating new version ===")
+                    # For comment-only saves, we still need to acknowledge the save
+                    # but we don't create a new version or update the file content
+                    return Response({"error": 0})  # Success response for ONLYOFFICE
+                
+                # Document content was modified, download and update the file
                 try:
                     # Get the URL of the saved document from ONLYOFFICE
                     download_url = callback_data.get('url')
@@ -2149,6 +2594,7 @@ class OnlyOfficeCallbackView(APIView):
                         logging.info(f"=== SAVING FILE: {original_filename} ===")
                         print(f"=== SAVING FILE: {original_filename} ===")
                         
+                        # Save the new file content
                         file_instance.file.save(
                             original_filename,
                             file_content,
@@ -2160,10 +2606,59 @@ class OnlyOfficeCallbackView(APIView):
                         file_instance.file_size = len(response.content)
                         file_instance.save(update_fields=['file_size'])
                         
-                        logging.info(f"=== DOCUMENT {file_id} SAVED SUCCESSFULLY ===")
+                        # Create version history entry with atomic transaction to prevent race conditions
+                        from .models import FileVersion
+                        from django.db import transaction
+                        
+                        with transaction.atomic():
+                            # Use select_for_update to lock the row and prevent concurrent version creation
+                            latest_version = FileVersion.objects.filter(
+                                uploaded_file=file_instance
+                            ).select_for_update().order_by('-version_number').first()
+                            
+                            # If no versions exist, create base version from current file
+                            if not latest_version:
+                                FileVersion.objects.create(
+                                    uploaded_file=file_instance,
+                                    version_number=0,
+                                    file=file_instance.file,
+                                    file_name=original_filename,
+                                    file_size=old_size or 0,
+                                    file_type=file_instance.file_type,
+                                    uploaded_by=file_instance.owner,
+                                    change_note="Base version",
+                                    is_current=False
+                                )
+                                version_number = 1
+                            else:
+                                # Get next version number atomically
+                                version_number = latest_version.version_number + 1
+                            
+                            # Set all previous versions to not current
+                            FileVersion.objects.filter(uploaded_file=file_instance).update(is_current=False)
+                            
+                            # Create new version entry with proper metadata
+                            change_note = f"Content modified via ONLYOFFICE by {saving_user.get_full_name() or saving_user.username if saving_user else 'Unknown user'}"
+                            new_version = FileVersion.objects.create(
+                                uploaded_file=file_instance,
+                                version_number=version_number,
+                                file=file_instance.file,
+                                file_name=original_filename,
+                                file_size=file_instance.file_size,
+                                file_type=file_instance.file_type,
+                                uploaded_by=saving_user,
+                                change_note=change_note,
+                                is_current=True
+                            )
+                            
+                            logging.info(f"=== VERSION {version_number} CREATED ATOMICALLY - ID: {new_version.id} ===")
+                        
+                        logging.info(f"=== DOCUMENT {file_id} SAVED SUCCESSFULLY - VERSION {version_number} CREATED ===")
                         logging.info(f"Old size: {old_size}, New size: {file_instance.file_size}")
-                        print(f"=== DOCUMENT {file_id} SAVED SUCCESSFULLY ===")
+                        logging.info(f"Saved by: {saving_user.username if saving_user else 'Unknown'}")
+                        print(f"=== DOCUMENT {file_id} SAVED SUCCESSFULLY - VERSION {version_number} CREATED ===")
                         print(f"Old size: {old_size}, New size: {file_instance.file_size}")
+                        print(f"Saved by: {saving_user.username if saving_user else 'Unknown'}")
                     else:
                         logging.warning(f"=== DOCUMENT {file_id} SAVED BUT NO URL PROVIDED ===")
                         print(f"=== DOCUMENT {file_id} SAVED BUT NO URL PROVIDED ===")
@@ -2176,19 +2671,20 @@ class OnlyOfficeCallbackView(APIView):
                 
                 return Response({"error": 0})  # Success response for ONLYOFFICE
             
+            elif status_code == 0 or status_code == 1:
+                # Autosave events - do not create versions, just acknowledge
+                logging.info(f"=== AUTOSAVE EVENT (status {status_code}) - NO VERSION CREATED ===")
+                print(f"=== AUTOSAVE EVENT (status {status_code}) - NO VERSION CREATED ===")
+                return Response({"error": 0})
+            
             elif status_code == 3:  # Document saving error occurred
                 logging.error(f"=== ERROR SAVING DOCUMENT {file_id}: {callback_data.get('error', 'Unknown error')} ===")
                 print(f"=== ERROR SAVING DOCUMENT {file_id}: {callback_data.get('error', 'Unknown error')} ===")
                 return Response({"error": 0})  # Still return success to ONLYOFFICE
             
-            elif status_code == 6:  # Document is being edited
-                logging.info(f"=== DOCUMENT {file_id} IS BEING EDITED ===")
-                print(f"=== DOCUMENT {file_id} IS BEING EDITED ===")
-                return Response({"error": 0})
-            
-            elif status_code == 7:  # Error has occurred while force saving the document
-                logging.error(f"=== FORCE SAVE ERROR FOR DOCUMENT {file_id}: {callback_data.get('error', 'Unknown error')} ===")
-                print(f"=== FORCE SAVE ERROR FOR DOCUMENT {file_id}: {callback_data.get('error', 'Unknown error')} ===")
+            elif status_code == 4:  # Document is closed with no changes
+                logging.info(f"=== DOCUMENT {file_id} CLOSED WITH NO CHANGES ===")
+                print(f"=== DOCUMENT {file_id} CLOSED WITH NO CHANGES ===")
                 return Response({"error": 0})
             
             else:
@@ -2452,13 +2948,23 @@ class UploadNewVersionView(APIView):
 
 
 class FileVersionHistoryView(APIView):
-    permission_classes = []
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, file_id):
         try:
             uploaded_file = UploadedFile.objects.get(id=file_id)
-
             
+            # Check if user has access to this file
+            has_access = (
+                uploaded_file.owner == request.user or 
+                uploaded_file.is_public or
+                uploaded_file.is_accessible_by(request.user)
+            )
+            
+            if not has_access:
+                return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+            
+            # Create base version if it doesn't exist
             if not FileVersion.objects.filter(uploaded_file=uploaded_file, version_number=0).exists():
                 FileVersion.objects.create(
                     uploaded_file=uploaded_file,
@@ -2477,8 +2983,12 @@ class FileVersionHistoryView(APIView):
 
             version_history = []
 
+            # Check if user is owner (only owners can revert)
             is_owner = request.user == uploaded_file.owner
-            current_file_path = uploaded_file.file.name
+            # Get user's permission level
+            user_permission = uploaded_file.get_user_permission_level(request.user)
+            # Users with edit/owner permissions can view version history
+            can_view_history = is_owner or user_permission in ['edit', 'owner']
 
             for version in versions:
                 version_history.append({
@@ -2493,6 +3003,8 @@ class FileVersionHistoryView(APIView):
                 })
             return Response({
                 "is_owner": is_owner,
+                "can_view_history": can_view_history,
+                "user_permission": user_permission,
                 "versions": sorted(version_history, key=lambda x: x["uploaded_at"], reverse=True)
             })
 
@@ -2503,27 +3015,37 @@ class FileVersionHistoryView(APIView):
 
 
 class RevertVersionView(APIView):
-    permission_classes = []
+    permission_classes = [IsAuthenticated]
 
     def post(self, request, file_id, version_id):
         try:
             version = FileVersion.objects.get(id=version_id, uploaded_file__id=file_id)
             uploaded_file = version.uploaded_file
+            
+            # Only file owner can revert versions
+            if uploaded_file.owner != request.user:
+                return Response(
+                    {'error': 'Only the file owner can revert versions'}, 
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Use atomic transaction to prevent race conditions
+            from django.db import transaction
+            with transaction.atomic():
+                # Update uploaded_file to match selected version
+                uploaded_file.file = version.file
+                uploaded_file.name = version.file.name.split("/")[-1]
+                uploaded_file.file_size = version.file_size
+                uploaded_file.file_type = version.file_type
+                uploaded_file.save()
 
-            # Update uploaded_file to match selected version
-            uploaded_file.file = version.file
-            uploaded_file.name = version.file.name.split("/")[-1]
-            uploaded_file.file_size = version.file_size
-            uploaded_file.file_type = version.file_type
-            uploaded_file.save()
+                # Update all other versions to is_current=False
+                FileVersion.objects.filter(uploaded_file=uploaded_file).exclude(id=version.id).update(is_current=False)
 
-            # Update all other versions to is_current=False
-            FileVersion.objects.filter(uploaded_file=uploaded_file).exclude(id=version.id).update(is_current=False)
-
-            # Mark this version as current
-            version.is_current = True
-            version.uploaded_at = now()
-            version.save(update_fields=["is_current", "uploaded_at"])
+                # Mark this version as current
+                version.is_current = True
+                version.uploaded_at = now()
+                version.save(update_fields=["is_current", "uploaded_at"])
 
             return Response({'message': 'Reverted successfully'})
 
