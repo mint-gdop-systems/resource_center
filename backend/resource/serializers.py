@@ -10,10 +10,23 @@ class FolderSerializer(serializers.ModelSerializer):
     files = serializers.SerializerMethodField()
     owner_email = serializers.SerializerMethodField()
     owner_first_name = serializers.SerializerMethodField()
+    archived_at = serializers.DateTimeField(read_only=True)
+    archived_by_email = serializers.SerializerMethodField()
+    archived_by_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Folder
-        fields = ['id', 'name', 'parent', 'created_at', 'subfolders', 'files', 'is_starred', 'owner_email', 'owner_first_name']
+        fields = ['id', 'name', 'parent', 'created_at', 'subfolders', 'files', 'is_starred', 'is_archived', 'owner_email', 'owner_first_name', 'archived_at', 'archived_by_email', 'archived_by_name']
+    
+    def get_archived_by_email(self, obj):
+        if obj.archived_by:
+            return obj.archived_by.email
+        return None
+    
+    def get_archived_by_name(self, obj):
+        if obj.archived_by:
+            return f"{obj.archived_by.first_name} {obj.archived_by.last_name}".strip() or obj.archived_by.email
+        return None
 
     def get_subfolders(self, obj):
         return FolderSerializer(obj.subfolders.all(), many=True).data
@@ -52,6 +65,9 @@ class UploadedFileSerializer(serializers.ModelSerializer):
     owner_email = serializers.SerializerMethodField()
     owner_first_name = serializers.SerializerMethodField()
     is_owner = serializers.SerializerMethodField()
+    archived_at = serializers.DateTimeField(read_only=True)
+    archived_by_email = serializers.SerializerMethodField()
+    archived_by_name = serializers.SerializerMethodField()
 
     meta_tags = TagSerializer(many=True, read_only=True)
     meta_tag_names = serializers.ListField(
@@ -60,7 +76,17 @@ class UploadedFileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UploadedFile
-        fields = ["id", "name", "file", "file_type", "file_size", "category", "category_id", "uploaded_at", 'folder', 'is_starred', 'is_archived', 'is_public', 'owner_email',  'owner_first_name', 'meta_tags', 'meta_tag_names', 'is_owner']
+        fields = ["id", "name", "file", "file_type", "file_size", "category", "category_id", "uploaded_at", 'folder', 'is_starred', 'is_archived', 'is_public', 'owner_email',  'owner_first_name', 'meta_tags', 'meta_tag_names', 'is_owner', 'archived_at', 'archived_by_email', 'archived_by_name']
+    
+    def get_archived_by_email(self, obj):
+        if obj.archived_by:
+            return obj.archived_by.email
+        return None
+    
+    def get_archived_by_name(self, obj):
+        if obj.archived_by:
+            return f"{obj.archived_by.first_name} {obj.archived_by.last_name}".strip() or obj.archived_by.email
+        return None
 
     def get_owner_email(self, obj):
         if obj.owner:

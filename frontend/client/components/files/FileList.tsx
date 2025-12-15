@@ -19,6 +19,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { usePagination } from "../../hooks/usePagination";
 import PaginationComponent from "../ui/PaginationComponent";
 import OnlyOfficeModal from "./OnlyOfficeModal";
+import ArchiveMetadata from "./ArchiveMetadata";
 import { isOnlyOfficeSupported } from "../../utils/onlyoffice";
 
 
@@ -92,11 +93,12 @@ export default function FileList({
   onToggleStar,
   onBulkStar,
 }: FileListProps) {
-  const { deleteFiles, renameFile, moveFiles, toggleStar, starFiles, toggleArchive } =
+  const { deleteFiles, renameFile, moveFiles, toggleStar, starFiles, toggleArchive, toggleFolderArchive } =
     useFiles();
   const { actualTheme } = useTheme();
   const isDarkMode = actualTheme === 'dark';
   const [onlyOfficeFile, setOnlyOfficeFile] = useState<FileItem | null>(null);
+  const [showArchiveDetails, setShowArchiveDetails] = useState<string | null>(null);
 
   // Pagination
   const pagination = usePagination({
@@ -338,27 +340,33 @@ export default function FileList({
             ) {
               return;
             }
-            // Toggle selection instead of opening file
-            toggleFileSelection(file.id);
+            
+            // In archive mode, show archive details instead of toggling selection
+            if (actionsMode === "archive") {
+              setShowArchiveDetails(showArchiveDetails === file.id ? null : file.id);
+            } else {
+              // Toggle selection instead of opening file
+              toggleFileSelection(file.id);
+            }
           };
 
           return (
-            <motion.div
-              key={`${file.type}-${file.id}`}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.2, delay: index * 0.03 }}
-              className={`group grid grid-cols-12 gap-4 px-4 py-3 rounded-lg cursor-pointer transition-all duration-200 ${isSelected
-                ? `border border-mint-200 ${isDarkMode ? 'bg-mint-900' : 'bg-mint-50'
-                }`
-                : `border border-transparent ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
-                }`
-                }`}
-              onClick={handleRowClick}
-              tabIndex={0}
-              role="row"
-              aria-selected={isSelected}
-            >
+            <div key={`${file.type}-${file.id}`}>
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.2, delay: index * 0.03 }}
+                className={`group grid grid-cols-12 gap-4 px-4 py-3 rounded-lg cursor-pointer transition-all duration-200 ${isSelected
+                  ? `border border-mint-200 ${isDarkMode ? 'bg-mint-900' : 'bg-mint-50'
+                  }`
+                  : `border border-transparent ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
+                  }`
+                  }`}
+                onClick={handleRowClick}
+                tabIndex={0}
+                role="row"
+                aria-selected={isSelected}
+              >
               {/* Checkbox */}
               <div className="col-span-1 flex items-center">
                 <input
@@ -423,6 +431,11 @@ export default function FileList({
                       : 'text-gray-600 bg-gray-100'
                       }`}>Archived</span>
                   )}
+                  {actionsMode === "archive" && file.archivedAt && (
+                    <span className={`ml-2 text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {new Date(file.archivedAt).toLocaleDateString()}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -479,9 +492,20 @@ export default function FileList({
                 {actionsMode === "archive" ? (
                   <div className="flex items-center gap-2">
                     <button
-                      aria-label="Unarchive"
-                      title="Unarchive"
-                      onClick={(e) => { e.stopPropagation(); (onArchiveOverride ? onArchiveOverride(file.id) : toggleArchive(file.id)); }}
+                      aria-label="Restore"
+                      title="Restore"
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        if (onArchiveOverride) {
+                          onArchiveOverride(file.id);
+                        } else {
+                          if (file.type === 'folder' && toggleFolderArchive) {
+                            toggleFolderArchive(file.id);
+                          } else {
+                            toggleArchive(file.id);
+                          }
+                        }
+                      }}
                       className="p-2 rounded-md hover:bg-gray-100"
                     >
                       <ArchiveBoxIcon className="h-4 w-4 text-gray-600" />
@@ -505,12 +529,52 @@ export default function FileList({
                         // This is handled by the FolderSelectionModal in FileActions now
                       }}
                       onStar={(fileId) => onToggleStar ? onToggleStar(fileId) : toggleStar(fileId)}
-                      onArchive={(fileId) => (onArchiveOverride ? onArchiveOverride(fileId) : toggleArchive(fileId))}
+                      onArchive={(fileId, archived) => {
+                        if (onArchiveOverride) {
+                          onArchiveOverride(fileId);
+                        } else {
+                          const file = files.find(f => f.id === fileId);
+                          if (file?.type === 'folder' && toggleFolderArchive) {
+                            toggleFolderArchive(fileId);
+                          } else {
+                            toggleArchive(fileId);
+                          }
+                        }
+                      }}
                     />
                   </div>
                 )}
               </div>
-            </motion.div>
+              </motion.div>
+              
+              {/* Archive Metadata Details */}
+              {actionsMode === "archive" && showArchiveDetails === file.id && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mt-2"
+                >
+                  <ArchiveMetadata
+                    item={{
+                      id: file.id,
+                      name: file.name,
+                      type: file.type as 'file' | 'folder',
+                      size: file.size,
+                      archivedAt: file.archivedAt,
+                      archivedBy: file.archivedBy,
+                      archivedByName: file.archivedByName,
+                      folderId: file.folderId,
+                      folderName: file.folderName,
+                      extension: file.extension,
+                      createdAt: file.createdAt,
+                      owner: file.owner,
+                    }}
+                    showDetails={true}
+                  />
+                </motion.div>
+              )}
+            </div>
           );
         })}
       </div>

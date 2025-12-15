@@ -575,11 +575,20 @@ class ResolveDuplicateFilesView(APIView):
 
 
         if is_archived:
-            files = UploadedFile.objects.filter(is_archived=True).order_by("-uploaded_at")
-            file_serializer = UploadedFileSerializer(files, many=True)
+            # Filter archived files and folders by owner to show only user's archived items
+            files = UploadedFile.objects.filter(
+                is_archived=True,
+                owner=request.user
+            ).order_by("-uploaded_at")
+            folders = Folder.objects.filter(
+                is_archived=True,
+                owner=request.user
+            ).order_by("-created_at")
+            file_serializer = UploadedFileSerializer(files, many=True, context={'request': request})
+            folder_serializer = FolderSerializer(folders, many=True, context={'request': request})
             return Response({
                 "files": file_serializer.data,
-                "folders": [],  
+                "folders": folder_serializer.data,
                 "current_folder": None  
             })
 
@@ -970,6 +979,29 @@ class FolderContentsView(generics.RetrieveAPIView):
             is_starred = request.GET.get("starred") == "true"
             is_archived = request.GET.get("archived") == "true"
 
+            # Special case: when requesting archived items, return ALL archived files/folders regardless of folder location
+            if is_archived:
+                # Filter archived files and folders by owner to show only user's archived items
+                # This includes files from ALL folders, not just root level
+                files = UploadedFile.objects.filter(
+                    is_archived=True,
+                    owner=request.user
+                ).order_by("-uploaded_at")
+                subfolders = Folder.objects.filter(
+                    is_archived=True,
+                    owner=request.user
+                ).order_by("-created_at")
+                
+                files_serializer = UploadedFileSerializer(files, many=True, context={'request': request})
+                folders_serializer = FolderSerializer(subfolders, many=True, context={'request': request})
+                
+                return Response({
+                    "files": files_serializer.data,
+                    "folders": folders_serializer.data,
+                    "current_folder": None,
+                    "current_email": current_email,
+                    "current_first_name": current_first_name
+                }, status=status.HTTP_200_OK)
             
             if folder_id:
                 # Fetch files and subfolders for the given folder
@@ -1026,7 +1058,12 @@ class FolderContentsView(generics.RetrieveAPIView):
                 subfolders = subfolders.filter(is_starred=True)
 
             if is_archived is not None:  
-                files = files.filter(is_archived=is_archived)    
+                files = files.filter(is_archived=is_archived)
+                subfolders = subfolders.filter(is_archived=is_archived)
+            else:
+                # By default, exclude archived items
+                files = files.filter(is_archived=False)
+                subfolders = subfolders.filter(is_archived=False)    
 
             files = files.order_by("-uploaded_at")
             subfolders = subfolders.order_by("-created_at")    
@@ -2857,21 +2894,98 @@ class ToggleFolderStarredView(APIView):
 class ToggleArchivedView(APIView):
     """
     View to toggle the 'is_archived' status of a file.
+    Only file owner or users with 'edit' permission can archive/unarchive.
     """
+    permission_classes = [IsAuthenticated]
+    
     def post(self, request, file_id):
         try:
             file = UploadedFile.objects.get(id=file_id)
-            file.is_archived = not file.is_archived  # Toggle the status
+            
+            # Check permissions: owner or user with edit permission
+            if file.owner != request.user:
+                # Check if user has edit permission through sharing
+                permission_level = file.get_user_permission_level(request.user)
+                if permission_level not in ['edit', 'owner']:
+                    return Response(
+                        {"error": "You don't have permission to archive/unarchive this file. Only the owner or users with edit permission can perform this action."},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            
+            # Toggle archive status
+            file.is_archived = not file.is_archived
+            
+            # Update archive metadata
+            if file.is_archived:
+                file.archived_at = timezone.now()
+                file.archived_by = request.user
+            else:
+                file.archived_at = None
+                file.archived_by = None
+            
             file.save()
+            
             return Response(
-                {"message": "File archived status updated", "is_archived": file.is_archived},
+                {
+                    "message": "File archived status updated",
+                    "is_archived": file.is_archived,
+                    "archived_at": file.archived_at.isoformat() if file.archived_at else None,
+                    "archived_by": file.archived_by.email if file.archived_by else None,
+                },
                 status=status.HTTP_200_OK,
             )
         except UploadedFile.DoesNotExist:
             return Response(
                 {"error": "File not found"},
                 status=status.HTTP_404_NOT_FOUND
-            )        
+            )
+
+
+class ToggleFolderArchivedView(APIView):
+    """
+    View to toggle the 'is_archived' status of a folder.
+    Archives/unarchives the folder and all its child files and subfolders recursively.
+    Only folder owner or users with 'edit' permission can archive/unarchive.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, folder_id):
+        try:
+            folder = Folder.objects.get(id=folder_id)
+            
+            # Check permissions: owner or user with edit permission
+            if folder.owner != request.user:
+                # Check if user has edit permission through sharing
+                permission_level = folder.get_user_permission_level(request.user)
+                if permission_level not in ['edit', 'owner']:
+                    return Response(
+                        {"error": "You don't have permission to archive/unarchive this folder. Only the owner or users with edit permission can perform this action."},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            
+            # Determine new archive status
+            new_archived_status = not folder.is_archived
+            
+            # Use cascade archive method to archive/unarchive folder and all children
+            folder.archive_cascade(request.user, new_archived_status)
+            
+            # Refresh folder from database to get updated metadata
+            folder.refresh_from_db()
+            
+            return Response(
+                {
+                    "message": "Folder archived status updated",
+                    "is_archived": folder.is_archived,
+                    "archived_at": folder.archived_at.isoformat() if folder.archived_at else None,
+                    "archived_by": folder.archived_by.email if folder.archived_by else None,
+                },
+                status=status.HTTP_200_OK,
+            )
+        except Folder.DoesNotExist:
+            return Response(
+                {"error": "Folder not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 
 def logout_view(request):
@@ -3329,7 +3443,7 @@ class SearchView(APIView):
             folders_qs = folders_qs.filter(is_starred=True)
         elif scope == 'archived':
             files_qs = files_qs.filter(is_archived=True)
-            folders_qs = folders_qs.filter(is_archived=True)
+            folders_qs = folders_qs.filter(is_archived=True)  # Now supported with is_archived field on Folder
         elif scope == 'shared':
             # Files shared with the user
             shared_file_ids = FileSharing.objects.filter(

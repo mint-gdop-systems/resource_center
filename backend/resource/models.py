@@ -195,6 +195,9 @@ class Folder(models.Model):
     is_starred = models.BooleanField(default=False, blank=True, null=True) 
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='folders', null=True, blank=True) 
     is_public = models.BooleanField(default=False)
+    is_archived = models.BooleanField(default=False, blank=True, null=True)
+    archived_at = models.DateTimeField(null=True, blank=True, help_text="When this folder was archived")
+    archived_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='archived_folders', help_text="User who archived this folder")
 
     def __str__(self):
         return self.name
@@ -312,6 +315,40 @@ class Folder(models.Model):
         """Check if this folder is shared with a specific group"""
         return GroupSharing.objects.filter(folder=self, group=group).exists()
     
+    def archive_cascade(self, user, archived=True):
+        """
+        Archive or unarchive this folder and all its child files and subfolders recursively.
+        
+        Args:
+            user: User performing the archive action
+            archived: True to archive, False to unarchive
+        """
+        from django.utils import timezone
+        
+        self.is_archived = archived
+        if archived:
+            self.archived_at = timezone.now()
+            self.archived_by = user
+        else:
+            self.archived_at = None
+            self.archived_by = None
+        self.save()
+        
+        # Archive/unarchive all child files
+        for file in self.files.all():
+            file.is_archived = archived
+            if archived:
+                file.archived_at = timezone.now()
+                file.archived_by = user
+            else:
+                file.archived_at = None
+                file.archived_by = None
+            file.save()
+        
+        # Recursively archive/unarchive all subfolders
+        for subfolder in self.subfolders.all():
+            subfolder.archive_cascade(user, archived)
+    
     def delete(self, *args, **kwargs):
         """Override delete to ensure storage usage is updated when folder and its contents are deleted"""
         owner = self.owner
@@ -341,8 +378,10 @@ class UploadedFile(models.Model):
     )
     uploaded_at = models.DateTimeField(auto_now_add=True)
     folder = models.ForeignKey(Folder, on_delete=models.CASCADE, null=True, blank=True, related_name='files')
-    is_starred = models.BooleanField(default=False, blank=True, null=True)  
+    is_starred = models.BooleanField(default=False, blank=True, null=True) 
     is_archived = models.BooleanField(default=False, blank=True, null=True) 
+    archived_at = models.DateTimeField(null=True, blank=True, help_text="When this file was archived")
+    archived_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='archived_files', help_text="User who archived this file")
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owned_files', null=True, blank=True)
     is_public = models.BooleanField(default=False)
     meta_tags = models.ManyToManyField(Tag, blank=True, related_name="files")

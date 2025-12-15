@@ -4,7 +4,7 @@ from django.utils import timezone
 from decouple import config
 from rest_framework.routers import DefaultRouter
 from .views import (
-    FileUploadView, ResolveDuplicateFilesView, CreateFolderView, FolderContentsView, ToggleStarredView, ToggleArchivedView, ToggleFolderStarredView, EditFileView, EditFolderView, UploadNewVersionView, FileVersionHistoryView, RevertVersionView, DeleteUploadedFileView, BulkDeleteView, ReminderViewSet, UpcomingRemindersView, get_categories, TestAuthView, RecentFilesView, ViewFileView, DownloadFileView, BulkDownloadView, CopyFileView, BulkCopyView, MoveFileView, MoveFolderView, BulkMoveView, PublicShareView, ShareLinkManagementView, SearchView, DashboardStatsView, DashboardRecentActivityView, UserProfileView, OnlyOfficeConfigView, OnlyOfficeCallbackView
+    FileUploadView, ResolveDuplicateFilesView, CreateFolderView, FolderContentsView, ToggleStarredView, ToggleArchivedView, ToggleFolderArchivedView, ToggleFolderStarredView, EditFileView, EditFolderView, UploadNewVersionView, FileVersionHistoryView, RevertVersionView, DeleteUploadedFileView, BulkDeleteView, ReminderViewSet, UpcomingRemindersView, get_categories, TestAuthView, RecentFilesView, ViewFileView, DownloadFileView, BulkDownloadView, CopyFileView, BulkCopyView, MoveFileView, MoveFolderView, BulkMoveView, PublicShareView, ShareLinkManagementView, SearchView, DashboardStatsView, DashboardRecentActivityView, UserProfileView, OnlyOfficeConfigView, OnlyOfficeCallbackView
 )
 from .storage_views import (
     StorageQuotaView, UserStorageQuotaView, recalculate_storage_usage,
@@ -42,6 +42,7 @@ urlpatterns = [
     path('files/<int:file_id>/toggle-star/', ToggleStarredView.as_view(), name='toggle-star'),
     path('folders/<int:folder_id>/toggle-star/', ToggleFolderStarredView.as_view(), name='toggle-folder-star'),
     path('files/<int:file_id>/toggle-archive/', ToggleArchivedView.as_view(), name='toggle-archive'),
+    path('folders/<int:folder_id>/toggle-archive/', ToggleFolderArchivedView.as_view(), name='toggle-folder-archive'),
     path('share/', ShareItemView.as_view(), name='share-item'),
     path('shared-with-me/', SharedWithMeView.as_view(), name='shared-with-me'),
     path('shared-with-me/unseen-count/', shared_unseen_count),

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from "react";
 import { FileItem } from "../types";
 import toast from "react-hot-toast";
-import { uploadFileApi, getFiles, createFolder as createFolderApi, bulkDeleteApi, toggleFileStar, toggleFolderStar, toggleFileArchive, getRecentFiles } from "../services/api";
+import { uploadFileApi, getFiles, createFolder as createFolderApi, bulkDeleteApi, toggleFileStar, toggleFolderStar, toggleFileArchive, toggleFolderArchive, getRecentFiles } from "../services/api";
 import { useAuth } from "../services/auth";
 import ConfirmationModal from "../components/ui/ConfirmationModal";
 import { useNotifications } from "./NotificationContext";
@@ -16,6 +16,7 @@ interface FileContextType {
   toggleStar: (fileId: string) => void;
   starFiles: (fileIds: string[], starred: boolean) => void;
   toggleArchive: (fileId: string) => void;
+  toggleFolderArchive?: (folderId: string) => void;
   archiveFiles?: (fileIds: string[], archived: boolean) => void;
   createFolder: (name: string, path: string[]) => void;
   archiveCount: number;
@@ -276,7 +277,7 @@ export function FileProvider({ children }: { children: ReactNode }) {
   const toggleArchive = async (fileId: string) => {
     try {
       const res = await toggleFileArchive(fileId);
-      toast.success(res.is_archived ? 'Archived' : 'Unarchived');
+      toast.success(res.is_archived ? 'Archived' : 'Restored');
       // Dispatch refresh event instead of direct fetchFiles call
       window.dispatchEvent(new CustomEvent('files:refresh'));
       window.dispatchEvent(new CustomEvent('files:modified'));
@@ -288,6 +289,19 @@ export function FileProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const toggleFolderArchiveAction = async (folderId: string) => {
+    try {
+      const res = await toggleFolderArchive(folderId);
+      toast.success(res.is_archived ? 'Folder archived' : 'Folder restored');
+      window.dispatchEvent(new CustomEvent('files:refresh'));
+      window.dispatchEvent(new CustomEvent('files:modified'));
+      await refreshArchiveCount();
+      await refreshRecentCount();
+    } catch (error: any) {
+      const msg = error?.response?.data?.error || error?.message || 'Failed to toggle folder archive';
+      toast.error(msg);
+    }
+  };
 
   const archiveFiles = async (itemIds: string[], archived: boolean) => {
     try {
@@ -299,7 +313,7 @@ export function FileProvider({ children }: { children: ReactNode }) {
           toggled++;
         }
       }
-      toast.success(`${toggled} item(s) ${archived ? 'archived' : 'unarchived'}`);
+      toast.success(`${toggled} item(s) ${archived ? 'archived' : 'restored'}`);
       // Dispatch refresh event instead of direct fetchFiles call
       window.dispatchEvent(new CustomEvent('files:refresh'));
     } catch (error: any) {
@@ -339,6 +353,7 @@ export function FileProvider({ children }: { children: ReactNode }) {
         toggleStar,
         starFiles,
         toggleArchive,
+        toggleFolderArchive: toggleFolderArchiveAction,
         archiveFiles,
         createFolder,
         archiveCount,

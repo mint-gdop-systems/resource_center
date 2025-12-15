@@ -169,7 +169,16 @@ export const toggleFolderStar = async (folderId: string) => {
  */
 export const toggleFileArchive = async (fileId: string) => {
   const response = await api.post(`/files/${fileId}/toggle-archive/`);
-  return response.data as { message: string; is_archived: boolean };
+  return response.data as { message: string; is_archived: boolean; archived_at?: string; archived_by?: string };
+};
+
+/**
+ * Toggle archive status of a folder (cascades to all children)
+ * @param folderId The ID of the folder to toggle archive
+ */
+export const toggleFolderArchive = async (folderId: string) => {
+  const response = await api.post(`/folders/${folderId}/toggle-archive/`);
+  return response.data as { message: string; is_archived: boolean; archived_at?: string; archived_by?: string };
 };
 
 /**

@@ -114,7 +114,7 @@ export default function FileActions({
 
   const handleArchive = () => {
     onArchive?.(file.id, !file.archived);
-    toast.success(file.archived ? "Moved out of archive" : "Archived");
+      toast.success(file.archived ? "Restored" : "Archived");
     setShowMenu(false);
   };
 
@@ -188,7 +188,7 @@ export default function FileActions({
     },
     {
       icon: ArchiveBoxIcon,
-      label: file.archived ? "Unarchive" : "Archive",
+      label: file.archived ? "Restore" : "Archive",
       onClick: handleArchive,
       className: file.archived ? "text-gray-700" : "",
     },

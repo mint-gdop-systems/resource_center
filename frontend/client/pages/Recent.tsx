@@ -291,8 +291,8 @@ export default function Recent() {
                     )}
                   </button>
                   <button
-                    aria-label={file.archived ? 'Unarchive' : 'Archive'}
-                    title={file.archived ? 'Unarchive' : 'Archive'}
+                    aria-label={file.archived ? 'Restore' : 'Archive'}
+                    title={file.archived ? 'Restore' : 'Archive'}
                     onClick={async () => { await toggleArchive(file.id); await refresh(); }}
                     className={`p-2 rounded-md ${
                       isDarkMode ? 'hover:bg-gray-600' : 'hover:bg-gray-100'
@@ -379,8 +379,8 @@ export default function Recent() {
                     )}
                   </button>
                   <button
-                    aria-label={file.archived ? 'Unarchive' : 'Archive'}
-                    title={file.archived ? 'Unarchive' : 'Archive'}
+                    aria-label={file.archived ? 'Restore' : 'Archive'}
+                    title={file.archived ? 'Restore' : 'Archive'}
                     onClick={async () => { await toggleArchive(file.id); await refresh(); }}
                     className={`inline-flex items-center px-2 py-1 rounded-md border text-xs ${
                       isDarkMode 
@@ -389,7 +389,7 @@ export default function Recent() {
                     }`}
                   >
                     <ArchiveBoxIcon className={cn("h-3.5 w-3.5 mr-1", file.archived ? "text-mint-700" : "text-gray-400")} />
-                    {file.archived ? 'Unarchive' : 'Archive'}
+                    {file.archived ? 'Restore' : 'Archive'}
                   </button>
                   <button
                     aria-label="Download"

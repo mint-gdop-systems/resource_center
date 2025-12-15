@@ -79,7 +79,7 @@ export default function FileGrid({
   onToggleStar,
   onBulkStar,
 }: FileGridProps) {
-  const { deleteFiles, renameFile, moveFiles, toggleStar, starFiles, toggleArchive } =
+  const { deleteFiles, renameFile, moveFiles, toggleStar, starFiles, toggleArchive, toggleFolderArchive } =
     useFiles();
   const { actualTheme } = useTheme();
   const isDarkMode = actualTheme === 'dark';
@@ -350,7 +350,18 @@ export default function FileGrid({
                       // This is handled by the FolderSelectionModal in FileActions now
                     }}
                     onStar={(fileId) => onToggleStar ? onToggleStar(fileId) : toggleStar(fileId)}
-                    onArchive={(fileId) => (onArchiveOverride ? onArchiveOverride(fileId) : toggleArchive(fileId))}
+                    onArchive={(fileId, archived) => {
+                      if (onArchiveOverride) {
+                        onArchiveOverride(fileId);
+                      } else {
+                        const file = files.find(f => f.id === fileId);
+                        if (file?.type === 'folder' && toggleFolderArchive) {
+                          toggleFolderArchive(fileId);
+                        } else {
+                          toggleArchive(fileId);
+                        }
+                      }
+                    }}
                   />
                 </div>
 
