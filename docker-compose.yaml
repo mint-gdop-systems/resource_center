@@ -15,6 +15,11 @@ services:
       - ./backend/.env
     depends_on:
       - keycloak
+    # Support large file uploads
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
 
   react:
     build:

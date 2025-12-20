@@ -8,11 +8,296 @@ from django.utils.safestring import mark_safe
 from django.db.models import Count, Q
 from django.http import HttpResponseRedirect
 from django.core.exceptions import ValidationError
-from .models import UploadedFile, Category, Folder, FileSharing, Tag, FileVersion, Reminder, Group, GroupMembership, GroupSharing, OnlyOfficeDocumentKey
+from django import forms
+import json
+from .models import UploadedFile, Category, Folder, FileSharing, Tag, FileVersion, Reminder, Group, GroupMembership, GroupSharing, OnlyOfficeDocumentKey, SystemConfiguration
 
 
 admin.site.register(Category)
 admin.site.register(FileVersion)
+
+
+class SystemConfigurationForm(forms.ModelForm):
+    """Custom form for SystemConfiguration with JSON validation"""
+    
+    class Meta:
+        model = SystemConfiguration
+        fields = '__all__'
+        widgets = {
+            'value': forms.Textarea(attrs={'rows': 10, 'cols': 80}),
+            'description': forms.Textarea(attrs={'rows': 3, 'cols': 80}),
+        }
+    
+    def clean_value(self):
+        """Validate JSON format and content based on configuration key"""
+        value = self.cleaned_data.get('value')
+        key = self.cleaned_data.get('key')
+        
+        if not value:
+            return value
+        
+        # Try to parse as JSON
+        try:
+            parsed_value = json.loads(value)
+        except json.JSONDecodeError as e:
+            raise ValidationError(f"Invalid JSON format: {e}")
+        
+        # Validate content based on key type
+        if key == SystemConfiguration.MAX_FILE_SIZE:
+            if not isinstance(parsed_value, int) or parsed_value <= 0:
+                raise ValidationError("Max file size must be a positive integer (bytes)")
+            
+            # Reasonable limits (1MB to 100GB)
+            if parsed_value < 1024 * 1024:  # Less than 1MB
+                raise ValidationError("Max file size should be at least 1MB (1048576 bytes)")
+            if parsed_value > 100 * 1024 * 1024 * 1024:  # More than 100GB
+                raise ValidationError("Max file size should not exceed 100GB (107374182400 bytes)")
+        
+        elif key == SystemConfiguration.ALLOWED_FILE_CATEGORIES:
+            if not isinstance(parsed_value, dict):
+                raise ValidationError("Allowed file categories must be a JSON object")
+            
+            # Validate category names and boolean values
+            valid_categories = {
+                'documents', 'images', 'audio', 'video', 'data_files', 
+                'archives', 'web_files', 'markdown'
+            }
+            
+            for category, enabled in parsed_value.items():
+                if category not in valid_categories:
+                    raise ValidationError(f"Invalid category '{category}'. Valid categories: {', '.join(valid_categories)}")
+                if not isinstance(enabled, bool):
+                    raise ValidationError(f"Category '{category}' value must be true or false")
+        
+        elif key == SystemConfiguration.SECURITY_SETTINGS:
+            if not isinstance(parsed_value, dict):
+                raise ValidationError("Security settings must be a JSON object")
+            
+            # Validate security setting names and boolean values
+            valid_settings = {
+                'enable_mime_validation', 'force_secure_download_web_files', 
+                'block_executable_files', 'log_security_events'
+            }
+            
+            for setting, enabled in parsed_value.items():
+                if setting not in valid_settings:
+                    raise ValidationError(f"Invalid security setting '{setting}'. Valid settings: {', '.join(valid_settings)}")
+                if not isinstance(enabled, bool):
+                    raise ValidationError(f"Security setting '{setting}' value must be true or false")
+        
+        return value
+
+
+@admin.register(SystemConfiguration)
+class SystemConfigurationAdmin(admin.ModelAdmin):
+    """Admin interface for system configuration management"""
+    
+    form = SystemConfigurationForm
+    list_display = ('get_key_display', 'get_value_preview', 'updated_at', 'updated_by', 'get_status')
+    list_filter = ('key', 'updated_at')
+    search_fields = ('key', 'description', 'value')
+    readonly_fields = ('created_at', 'updated_at', 'get_parsed_value_display')
+    
+    fieldsets = (
+        ('Configuration', {
+            'fields': ('key', 'value', 'description')
+        }),
+        ('Parsed Value Preview', {
+            'fields': ('get_parsed_value_display',),
+            'classes': ('collapse',)
+        }),
+        ('Metadata', {
+            'fields': ('updated_by', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('updated_by')
+    
+    def get_key_display(self, obj):
+        """Display configuration key with icon"""
+        icons = {
+            SystemConfiguration.MAX_FILE_SIZE: '📏',
+            SystemConfiguration.ALLOWED_FILE_CATEGORIES: '📂',
+            SystemConfiguration.SECURITY_SETTINGS: '🔒',
+        }
+        
+        icon = icons.get(obj.key, '⚙️')
+        return format_html(
+            '<span style="font-weight: bold;">{} {}</span>',
+            icon,
+            obj.get_key_display()
+        )
+    get_key_display.short_description = 'Configuration'
+    get_key_display.admin_order_field = 'key'
+    
+    def get_value_preview(self, obj):
+        """Display a preview of the configuration value"""
+        try:
+            parsed = obj.get_parsed_value()
+            
+            if obj.key == SystemConfiguration.MAX_FILE_SIZE:
+                # Convert bytes to human readable format
+                size_mb = int(parsed) / (1024 * 1024)
+                if size_mb >= 1024:
+                    size_gb = size_mb / 1024
+                    return format_html('<strong>{:.1f} GB</strong>', size_gb)
+                else:
+                    return format_html('<strong>{:.0f} MB</strong>', size_mb)
+            
+            elif obj.key == SystemConfiguration.ALLOWED_FILE_CATEGORIES:
+                if isinstance(parsed, dict):
+                    enabled_count = sum(1 for v in parsed.values() if v)
+                    total_count = len(parsed)
+                    return format_html(
+                        '<strong>{}/{} categories enabled</strong>',
+                        enabled_count, total_count
+                    )
+            
+            elif obj.key == SystemConfiguration.SECURITY_SETTINGS:
+                if isinstance(parsed, dict):
+                    enabled_count = sum(1 for v in parsed.values() if v)
+                    total_count = len(parsed)
+                    return format_html(
+                        '<strong>{}/{} security features enabled</strong>',
+                        enabled_count, total_count
+                    )
+            
+            # Fallback to truncated string representation
+            value_str = str(parsed)
+            if len(value_str) > 50:
+                return f"{value_str[:47]}..."
+            return value_str
+            
+        except Exception:
+            return format_html('<span style="color: red;">Invalid JSON</span>')
+    
+    get_value_preview.short_description = 'Current Value'
+    
+    def get_status(self, obj):
+        """Display configuration status"""
+        try:
+            obj.get_parsed_value()  # Test if JSON is valid
+            return format_html('<span style="color: green; font-weight: bold;">✓ Valid</span>')
+        except Exception:
+            return format_html('<span style="color: red; font-weight: bold;">✗ Invalid JSON</span>')
+    
+    get_status.short_description = 'Status'
+    
+    def get_parsed_value_display(self, obj):
+        """Display the parsed JSON value in a readable format"""
+        try:
+            parsed = obj.get_parsed_value()
+            
+            if obj.key == SystemConfiguration.MAX_FILE_SIZE:
+                size_bytes = int(parsed)
+                size_mb = size_bytes / (1024 * 1024)
+                size_gb = size_mb / 1024
+                
+                return format_html(
+                    '<strong>File Size Limit:</strong><br>'
+                    '• Bytes: {:,}<br>'
+                    '• Megabytes: {:.1f} MB<br>'
+                    '• Gigabytes: {:.2f} GB',
+                    size_bytes, size_mb, size_gb
+                )
+            
+            elif obj.key == SystemConfiguration.ALLOWED_FILE_CATEGORIES:
+                if isinstance(parsed, dict):
+                    enabled = []
+                    disabled = []
+                    
+                    for category, is_enabled in parsed.items():
+                        category_display = category.replace('_', ' ').title()
+                        if is_enabled:
+                            enabled.append(category_display)
+                        else:
+                            disabled.append(category_display)
+                    
+                    result = '<strong>File Categories:</strong><br>'
+                    if enabled:
+                        result += f'<span style="color: green;">✓ Enabled:</span> {", ".join(enabled)}<br>'
+                    if disabled:
+                        result += f'<span style="color: red;">✗ Disabled:</span> {", ".join(disabled)}'
+                    
+                    return format_html(result)
+            
+            elif obj.key == SystemConfiguration.SECURITY_SETTINGS:
+                if isinstance(parsed, dict):
+                    enabled = []
+                    disabled = []
+                    
+                    setting_names = {
+                        'enable_mime_validation': 'MIME Type Validation',
+                        'force_secure_download_web_files': 'Secure Web File Downloads',
+                        'block_executable_files': 'Block Executable Files',
+                        'log_security_events': 'Security Event Logging'
+                    }
+                    
+                    for setting, is_enabled in parsed.items():
+                        setting_display = setting_names.get(setting, setting.replace('_', ' ').title())
+                        if is_enabled:
+                            enabled.append(setting_display)
+                        else:
+                            disabled.append(setting_display)
+                    
+                    result = '<strong>Security Settings:</strong><br>'
+                    if enabled:
+                        result += f'<span style="color: green;">✓ Enabled:</span> {", ".join(enabled)}<br>'
+                    if disabled:
+                        result += f'<span style="color: red;">✗ Disabled:</span> {", ".join(disabled)}'
+                    
+                    return format_html(result)
+            
+            # Fallback to formatted JSON
+            return format_html('<pre>{}</pre>', json.dumps(parsed, indent=2))
+            
+        except Exception as e:
+            return format_html('<span style="color: red;">Error parsing JSON: {}</span>', str(e))
+    
+    get_parsed_value_display.short_description = 'Parsed Configuration'
+    
+    def save_model(self, request, obj, form, change):
+        """Set the updated_by field when saving"""
+        obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
+    
+    def get_form(self, request, obj=None, **kwargs):
+        """Customize form based on configuration key"""
+        form = super().get_form(request, obj, **kwargs)
+        
+        # Add help text based on configuration type
+        if obj and obj.key:
+            if obj.key == SystemConfiguration.MAX_FILE_SIZE:
+                form.base_fields['value'].help_text = (
+                    'Maximum file size in bytes. This is the global limit for all users. '
+                    'Example: 2147483648 (2GB), 5368709120 (5GB). '
+                    'Must be between 1MB (1048576) and 100GB (107374182400).'
+                )
+            elif obj.key == SystemConfiguration.ALLOWED_FILE_CATEGORIES:
+                form.base_fields['value'].help_text = (
+                    'JSON object specifying which file categories are allowed. '
+                    'Example: {"documents": true, "images": true, "web_files": false}'
+                )
+            elif obj.key == SystemConfiguration.SECURITY_SETTINGS:
+                form.base_fields['value'].help_text = (
+                    'JSON object specifying security settings. '
+                    'Example: {"enable_mime_validation": true, "force_secure_download_web_files": true}'
+                )
+        
+        return form
+    
+    def has_delete_permission(self, request, obj=None):
+        """Prevent deletion of system configurations"""
+        return False  # Don't allow deletion of system configs
+    
+    def get_readonly_fields(self, request, obj=None):
+        """Make key field readonly for existing objects"""
+        readonly = list(self.readonly_fields)
+        if obj:  # Editing existing object
+            readonly.append('key')
+        return readonly
 
 
 @admin.register(OnlyOfficeDocumentKey)

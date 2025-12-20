@@ -161,6 +161,11 @@ WHITENOISE_KEEP_ONLY_HASHED_FILES = True
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# File upload settings - support up to 2GB files
+FILE_UPLOAD_MAX_MEMORY_SIZE = 2147483648  # 2GB in bytes
+DATA_UPLOAD_MAX_MEMORY_SIZE = 2147483648  # 2GB in bytes
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 1000  # Allow more form fields if needed
+
 # REST_FRAMEWORK = {
 #     'DEFAULT_PERMISSION_CLASSES': [
 #         'rest_framework.permissions.AllowAny',  # Allow anyone to use the API

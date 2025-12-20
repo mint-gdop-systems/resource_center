@@ -480,6 +480,10 @@ class FileUploadView(APIView):
             folder=folder,
             owner=request.user,
             is_public=request.data.get("is_public", False),
+            # Security fields
+            requires_secure_download=validation_result.get('requires_secure_download', False),
+            mime_validated=validation_result.get('mime_validated', False),
+            detected_mime_type=validation_result.get('detected_mime_type', ''),
         )
         
         # Handle shared_with if provided (if the model supports it)
@@ -1083,9 +1087,35 @@ class FolderContentsView(generics.RetrieveAPIView):
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class DownloadFileView(APIView):
+class SecurityFileViewMixin:
     """
-    API view to download files with proper authentication and headers
+    Mixin to add security enhancements for file serving
+    """
+    
+    def apply_security_headers(self, response, file_instance, force_download=False):
+        """Apply security headers based on file type and security settings"""
+        # Always add basic security headers
+        response['X-Content-Type-Options'] = 'nosniff'
+        response['X-Frame-Options'] = 'DENY'
+        response['X-XSS-Protection'] = '1; mode=block'
+        
+        # Check if file requires secure download (web files)
+        if file_instance.requires_secure_download or force_download:
+            # Force download for web files to prevent XSS
+            response['Content-Disposition'] = f'attachment; filename="{file_instance.name}"'
+            response['Content-Security-Policy'] = "default-src 'none'"
+            # Override content type to force download
+            response['Content-Type'] = 'application/octet-stream'
+        else:
+            # Normal inline display
+            response['Content-Disposition'] = f'inline; filename="{file_instance.name}"'
+        
+        return response
+
+
+class DownloadFileView(SecurityFileViewMixin, APIView):
+    """
+    API view to download files with proper authentication and security headers
     """
     permission_classes = [IsAuthenticated]
     
@@ -1131,10 +1161,11 @@ class DownloadFileView(APIView):
             file_handle = open(file_path, 'rb')
             response = FileResponse(file_handle, content_type=content_type, as_attachment=True)
             
-            # Set headers for proper file download
-            response['Content-Disposition'] = f'attachment; filename="{file_instance.name}"'
+            # Apply security headers (force download for all files in download view)
+            response = self.apply_security_headers(response, file_instance, force_download=True)
+            
+            # Set additional headers for download
             response['Content-Length'] = os.path.getsize(file_path)
-            response['X-Content-Type-Options'] = 'nosniff'
             
             return response
             
@@ -1788,9 +1819,10 @@ class BulkMoveView(APIView):
         return False
 
 
-class ViewFileView(APIView):
+
+class ViewFileView(SecurityFileViewMixin, APIView):
     """
-    API view to serve files with proper authentication and headers
+    API view to serve files with proper authentication and security headers
     Supports both authenticated users and ONLYOFFICE Document Server access
     """
     authentication_classes = []  # Disable Keycloak JWT auth - we handle auth manually
@@ -1871,9 +1903,8 @@ class ViewFileView(APIView):
             file_handle = open(file_path, 'rb')
             response = FileResponse(file_handle, content_type=content_type)
             
-            # Set headers for proper file display
-            response['Content-Disposition'] = f'inline; filename="{file_instance.name}"'
-            response['X-Content-Type-Options'] = 'nosniff'
+            # Apply security headers (will force download for web files)
+            response = self.apply_security_headers(response, file_instance)
             
             # Add CORS headers for ONLYOFFICE if needed
             if is_onlyoffice_request:
@@ -1882,7 +1913,7 @@ class ViewFileView(APIView):
                 response['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
             
             file_size = os.path.getsize(file_path)
-            logging.info(f"Serving file {file_id} ({file_instance.name}) - Size: {file_size} bytes, Content-Type: {content_type}")
+            logging.info(f"Serving file {file_id} ({file_instance.name}) - Size: {file_size} bytes, Content-Type: {content_type}, Secure: {file_instance.requires_secure_download}")
             return response
             
         except FileNotFoundError:

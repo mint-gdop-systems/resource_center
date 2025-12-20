@@ -950,6 +950,43 @@ export const getAdminUsersStorage = async (): Promise<Array<{
 };
 
 /**
+ * Get system file size limit (admin only)
+ */
+export const getSystemFileSizeLimit = async (): Promise<{
+  max_file_size_bytes: number;
+  max_file_size_mb: number;
+  max_file_size_gb: number;
+}> => {
+  try {
+    const response = await api.get('/admin/file-size-limit/');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching file size limit:', error);
+    throw error;
+  }
+};
+
+/**
+ * Update system file size limit (admin only)
+ */
+export const updateSystemFileSizeLimit = async (fileSizeMB: number): Promise<{
+  message: string;
+  max_file_size_bytes: number;
+  max_file_size_mb: number;
+  max_file_size_gb: number;
+}> => {
+  try {
+    const response = await api.post('/admin/file-size-limit/update/', {
+      max_file_size_mb: fileSizeMB
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error updating file size limit:', error);
+    throw error;
+  }
+};
+
+/**
  * Get current user's Django profile information
  */
 export const getUserProfile = async (): Promise<{

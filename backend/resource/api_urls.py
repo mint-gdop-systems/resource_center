@@ -8,7 +8,8 @@ from .views import (
 )
 from .storage_views import (
     StorageQuotaView, UserStorageQuotaView, recalculate_storage_usage,
-    check_upload_capacity, storage_statistics, admin_users_storage
+    check_upload_capacity, storage_statistics, admin_users_storage,
+    get_system_file_size_limit, update_system_file_size_limit
 )
 from .sharing_views import ShareItemView, SharedWithMeView, shared_unseen_count, SendFileEmailView
 from .group_views import (
@@ -120,6 +121,10 @@ urlpatterns = [
     
     # Admin user management
     path('admin/users/storage/', admin_users_storage, name='admin-users-storage'),
+    
+    # System File Size Limit APIs
+    path('admin/file-size-limit/', get_system_file_size_limit, name='get-file-size-limit'),
+    path('admin/file-size-limit/update/', update_system_file_size_limit, name='update-file-size-limit'),
     
     path('', include(router.urls)),
 ] 

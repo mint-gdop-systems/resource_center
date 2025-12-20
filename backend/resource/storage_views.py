@@ -261,3 +261,115 @@ def admin_users_storage(request):
         })
     
     return Response(users_data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_system_file_size_limit(request):
+    """
+    Get the current system-wide file size limit
+    """
+    if not request.user.is_superuser:
+        return Response(
+            {'error': 'Only administrators can view system settings'}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    try:
+        from .models import SystemConfiguration
+        max_file_size = SystemConfiguration.get_max_file_size()
+        
+        return Response({
+            'max_file_size_bytes': max_file_size,
+            'max_file_size_mb': round(max_file_size / (1024 * 1024), 2),
+            'max_file_size_gb': round(max_file_size / (1024 * 1024 * 1024), 2),
+        })
+    except Exception as e:
+        return Response(
+            {'error': f'Failed to get file size limit: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_system_file_size_limit(request):
+    """
+    Update the system-wide file size limit
+    """
+    if not request.user.is_superuser:
+        return Response(
+            {'error': 'Only administrators can modify system settings'}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    try:
+        from .models import SystemConfiguration
+        import json
+        
+        # Get the new file size limit from request
+        new_limit_mb = request.data.get('max_file_size_mb')
+        new_limit_gb = request.data.get('max_file_size_gb')
+        new_limit_bytes = request.data.get('max_file_size_bytes')
+        
+        # Convert to bytes
+        if new_limit_mb is not None:
+            new_limit_bytes = int(float(new_limit_mb) * 1024 * 1024)
+        elif new_limit_gb is not None:
+            new_limit_bytes = int(float(new_limit_gb) * 1024 * 1024 * 1024)
+        elif new_limit_bytes is not None:
+            new_limit_bytes = int(new_limit_bytes)
+        else:
+            return Response(
+                {'error': 'Please provide max_file_size_mb, max_file_size_gb, or max_file_size_bytes'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate limits (1MB to 100GB)
+        min_size = 1024 * 1024  # 1MB
+        max_size = 100 * 1024 * 1024 * 1024  # 100GB
+        
+        if new_limit_bytes < min_size:
+            return Response(
+                {'error': f'File size limit cannot be less than 1MB ({min_size} bytes)'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if new_limit_bytes > max_size:
+            return Response(
+                {'error': f'File size limit cannot exceed 100GB ({max_size} bytes)'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Update or create the configuration
+        config, created = SystemConfiguration.objects.get_or_create(
+            key=SystemConfiguration.MAX_FILE_SIZE,
+            defaults={
+                'value': json.dumps(new_limit_bytes),
+                'description': 'Maximum file size allowed for uploads (in bytes)',
+                'updated_by': request.user
+            }
+        )
+        
+        if not created:
+            config.value = json.dumps(new_limit_bytes)
+            config.updated_by = request.user
+            config.save()
+        
+        return Response({
+            'message': 'File size limit updated successfully',
+            'max_file_size_bytes': new_limit_bytes,
+            'max_file_size_mb': round(new_limit_bytes / (1024 * 1024), 2),
+            'max_file_size_gb': round(new_limit_bytes / (1024 * 1024 * 1024), 2),
+        })
+        
+    except ValueError as e:
+        return Response(
+            {'error': f'Invalid file size value: {str(e)}'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    except Exception as e:
+        return Response(
+            {'error': f'Failed to update file size limit: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

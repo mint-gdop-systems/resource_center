@@ -11,7 +11,11 @@ import {
   AlertTriangle,
   CheckCircle,
   Database,
-  TrendingUp
+  TrendingUp,
+  FileText,
+  Edit3,
+  Save,
+  X
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -21,7 +25,7 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { Progress } from '../components/ui/progress';
 import { useAuth } from '../services/auth';
 import { useStorageQuota } from '../hooks/useStorageQuota';
-import { getStorageStatistics, getAdminUsersStorage, api } from '../services/api';
+import { getStorageStatistics, getAdminUsersStorage, getSystemFileSizeLimit, updateSystemFileSizeLimit, api } from '../services/api';
 import { StorageStatistics } from '../types';
 import toast from 'react-hot-toast';
 import Breadcrumb from '../components/layout/Breadcrumb';
@@ -50,6 +54,15 @@ export default function AdminStorage() {
   const [selectedUser, setSelectedUser] = useState<UserStorageInfo | null>(null);
   const [quotaInput, setQuotaInput] = useState('');
   const [updating, setUpdating] = useState(false);
+  
+  // File size limit state
+  const [fileSizeLimit, setFileSizeLimit] = useState<{
+    max_file_size_bytes: number;
+    max_file_size_mb: number;
+    max_file_size_gb: number;
+  } | null>(null);
+  const [editingFileSize, setEditingFileSize] = useState(false);
+  const [fileSizeInput, setFileSizeInput] = useState('');
 
   const breadcrumbItems = [
     { id: 'dashboard', name: 'Dashboard', path: '/dashboard' },
@@ -85,6 +98,10 @@ export default function AdminStorage() {
       // Fetch all users with storage info
       const usersData = await getAdminUsersStorage();
       setUsers(usersData);
+      
+      // Fetch file size limit
+      const fileSizeLimitData = await getSystemFileSizeLimit();
+      setFileSizeLimit(fileSizeLimitData);
       
     } catch (error) {
       console.error('Error fetching admin data:', error);
@@ -141,6 +158,85 @@ export default function AdminStorage() {
       : Math.max(0.1, currentQuotaGB - increment); // Minimum 0.1GB
 
     await updateUserQuota(userId, newQuotaGB);
+  };
+
+  const updateFileSizeLimit = async () => {
+    try {
+      setUpdating(true);
+      const newLimitMB = parseFloat(fileSizeInput);
+      
+      if (newLimitMB < 1) {
+        toast.error('File size limit must be at least 1MB');
+        return;
+      }
+      
+      if (newLimitMB > 100 * 1024) { // 100GB in MB
+        toast.error('File size limit cannot exceed 100GB');
+        return;
+      }
+      
+      const result = await updateSystemFileSizeLimit(newLimitMB);
+      setFileSizeLimit({
+        max_file_size_bytes: result.max_file_size_bytes,
+        max_file_size_mb: result.max_file_size_mb,
+        max_file_size_gb: result.max_file_size_gb,
+      });
+      
+      setEditingFileSize(false);
+      setFileSizeInput('');
+      toast.success('File size limit updated successfully. Changes apply immediately to new uploads.');
+      
+    } catch (error) {
+      console.error('Error updating file size limit:', error);
+      toast.error('Failed to update file size limit');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const startEditingFileSize = () => {
+    if (fileSizeLimit) {
+      setFileSizeInput(fileSizeLimit.max_file_size_mb.toString());
+      setEditingFileSize(true);
+    }
+  };
+
+  const cancelEditingFileSize = () => {
+    setEditingFileSize(false);
+    setFileSizeInput('');
+  };
+
+  const quickFileSizeUpdate = async (action: 'increase' | 'decrease') => {
+    if (!fileSizeLimit) return;
+    
+    try {
+      setUpdating(true);
+      const currentMB = fileSizeLimit.max_file_size_mb;
+      const increment = 100; // 100MB increment/decrement
+      const newLimitMB = action === 'increase' 
+        ? currentMB + increment 
+        : Math.max(1, currentMB - increment); // Minimum 1MB
+      
+      if (newLimitMB > 100 * 1024) { // 100GB in MB
+        toast.error('File size limit cannot exceed 100GB');
+        return;
+      }
+      
+      const result = await updateSystemFileSizeLimit(newLimitMB);
+      setFileSizeLimit({
+        max_file_size_bytes: result.max_file_size_bytes,
+        max_file_size_mb: result.max_file_size_mb,
+        max_file_size_gb: result.max_file_size_gb,
+      });
+      
+      toast.success(`File size limit ${action === 'increase' ? 'increased' : 'decreased'} by 100MB. Changes apply immediately to new uploads.`);
+      
+    } catch (error) {
+      console.error('Error updating file size limit:', error);
+      toast.error('Failed to update file size limit');
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const filteredUsers = users.filter(user =>
@@ -255,6 +351,128 @@ export default function AdminStorage() {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* File Size Limit Management */}
+      {fileSizeLimit && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <FileText className="h-5 w-5 mr-2" />
+              File Size Limit Configuration
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center space-x-4">
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Maximum file size allowed for uploads
+                    </p>
+                    {!editingFileSize ? (
+                      <div className="flex items-center space-x-2 mt-1">
+                        <span className="text-2xl font-bold text-blue-600">
+                          {fileSizeLimit.max_file_size_mb >= 1024 
+                            ? `${fileSizeLimit.max_file_size_gb.toFixed(1)} GB`
+                            : `${fileSizeLimit.max_file_size_mb.toFixed(0)} MB`
+                          }
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          ({formatBytes(fileSizeLimit.max_file_size_bytes)})
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-2 mt-2">
+                        <Input
+                          type="number"
+                          value={fileSizeInput}
+                          onChange={(e) => setFileSizeInput(e.target.value)}
+                          placeholder="Size in MB"
+                          className="w-32"
+                          min="1"
+                          max="102400"
+                          step="1"
+                        />
+                        <span className="text-sm text-gray-500">MB</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                {!editingFileSize ? (
+                  <>
+                    {/* Quick adjustment buttons */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => quickFileSizeUpdate('decrease')}
+                      disabled={updating}
+                      title="Decrease by 100MB"
+                      className="flex items-center space-x-1"
+                    >
+                      <Minus className="h-3 w-3" />
+                      <span className="text-xs">100MB</span>
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => quickFileSizeUpdate('increase')}
+                      disabled={updating}
+                      title="Increase by 100MB"
+                      className="flex items-center space-x-1"
+                    >
+                      <Plus className="h-3 w-3" />
+                      <span className="text-xs">100MB</span>
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={startEditingFileSize}
+                      className="flex items-center space-x-2"
+                    >
+                      <Edit3 className="h-3 w-3" />
+                      <span>Edit Limit</span>
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={cancelEditingFileSize}
+                      disabled={updating}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={updateFileSizeLimit}
+                      disabled={updating || !fileSizeInput || parseFloat(fileSizeInput) <= 0}
+                      className="flex items-center space-x-2"
+                    >
+                      <Save className="h-3 w-3" />
+                      <span>{updating ? 'Saving...' : 'Save'}</span>
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {editingFileSize && (
+              <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  <strong>Note:</strong> This setting affects all users globally. 
+                  Valid range: 1 MB to 100 GB (102,400 MB).
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* User Management */}

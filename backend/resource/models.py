@@ -1,6 +1,146 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.core.cache import cache
+import json
+
+
+class SystemConfiguration(models.Model):
+    """
+    System-wide configuration settings that can be managed by administrators
+    """
+    # Configuration keys
+    MAX_FILE_SIZE = 'max_file_size'
+    ALLOWED_FILE_CATEGORIES = 'allowed_file_categories'
+    SECURITY_SETTINGS = 'security_settings'
+    
+    CONFIGURATION_CHOICES = [
+        (MAX_FILE_SIZE, 'Maximum File Size (bytes)'),
+        (ALLOWED_FILE_CATEGORIES, 'Allowed File Categories'),
+        (SECURITY_SETTINGS, 'Security Settings'),
+    ]
+    
+    key = models.CharField(max_length=50, choices=CONFIGURATION_CHOICES, unique=True)
+    value = models.TextField(help_text="JSON-encoded configuration value")
+    description = models.TextField(blank=True, help_text="Description of this configuration setting")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    
+    class Meta:
+        verbose_name = "System Configuration"
+        verbose_name_plural = "System Configurations"
+        ordering = ['key']
+    
+    def __str__(self):
+        return f"{self.get_key_display()}: {self.value[:50]}..."
+    
+    def get_parsed_value(self):
+        """Parse JSON value safely"""
+        try:
+            return json.loads(self.value)
+        except (json.JSONDecodeError, TypeError):
+            return self.value
+    
+    def set_parsed_value(self, value):
+        """Set value as JSON"""
+        if isinstance(value, (dict, list)):
+            self.value = json.dumps(value)
+        else:
+            self.value = str(value)
+    
+    @classmethod
+    def get_max_file_size(cls):
+        """Get maximum file size setting"""
+        try:
+            config = cls.objects.get(key=cls.MAX_FILE_SIZE)
+            return int(config.get_parsed_value())
+        except (cls.DoesNotExist, ValueError, TypeError):
+            # Default to 2GB if not configured
+            return 2 * 1024 * 1024 * 1024
+    
+    @classmethod
+    def get_allowed_file_categories(cls):
+        """Get allowed file categories setting"""
+        try:
+            config = cls.objects.get(key=cls.ALLOWED_FILE_CATEGORIES)
+            categories = config.get_parsed_value()
+            if isinstance(categories, dict):
+                return categories
+        except (cls.DoesNotExist, ValueError, TypeError):
+            pass
+        
+        # Default categories if not configured
+        return {
+            'documents': True,
+            'images': True,
+            'audio': True,
+            'video': True,
+            'data_files': True,
+            'archives': True,
+            'web_files': True,
+            'markdown': True,
+        }
+    
+    @classmethod
+    def get_security_settings(cls):
+        """Get security settings"""
+        try:
+            config = cls.objects.get(key=cls.SECURITY_SETTINGS)
+            settings = config.get_parsed_value()
+            if isinstance(settings, dict):
+                return settings
+        except (cls.DoesNotExist, ValueError, TypeError):
+            pass
+        
+        # Default security settings
+        return {
+            'enable_mime_validation': True,
+            'force_secure_download_web_files': True,
+            'block_executable_files': True,
+            'log_security_events': True,
+        }
+    
+    @classmethod
+    def set_max_file_size(cls, size_bytes, updated_by=None):
+        """Set maximum file size"""
+        config, created = cls.objects.get_or_create(
+            key=cls.MAX_FILE_SIZE,
+            defaults={
+                'value': str(size_bytes),
+                'description': 'Maximum allowed file size in bytes',
+                'updated_by': updated_by,
+            }
+        )
+        if not created:
+            config.value = str(size_bytes)
+            config.updated_by = updated_by
+            config.save()
+        
+        # Clear cache
+        cache.delete('system_config_max_file_size')
+        return config
+    
+    @classmethod
+    def set_allowed_file_categories(cls, categories, updated_by=None):
+        """Set allowed file categories"""
+        config, created = cls.objects.get_or_create(
+            key=cls.ALLOWED_FILE_CATEGORIES,
+            defaults={
+                'value': json.dumps(categories),
+                'description': 'Allowed file categories configuration',
+                'updated_by': updated_by,
+            }
+        )
+        if not created:
+            config.set_parsed_value(categories)
+            config.updated_by = updated_by
+            config.save()
+        
+        # Clear cache
+        cache.delete('system_config_file_categories')
+        return config
+
 
 class UserProfile(models.Model):
     """
@@ -389,6 +529,14 @@ class UploadedFile(models.Model):
     # ONLYOFFICE document key for collaborative editing
     current_document_key = models.CharField(max_length=64, blank=True, null=True, 
                                           help_text="Current ONLYOFFICE document key for collaborative editing")
+    
+    # Security fields for enhanced file handling
+    requires_secure_download = models.BooleanField(default=False, 
+                                                 help_text="Force secure download for web files (HTML, JS, CSS)")
+    mime_validated = models.BooleanField(default=False, 
+                                       help_text="Whether MIME type validation was performed")
+    detected_mime_type = models.CharField(max_length=100, blank=True, null=True,
+                                        help_text="MIME type detected from file content")
 
 
     def rollback_to_version(self, version: 'FileVersion'):
